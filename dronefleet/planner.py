@@ -35,6 +35,7 @@ from .world import Cell, GridWorld, ground, lift
 
 HOVER_TIEBREAK = 0.01     # prefer flying / waiting on the ground over hovering ...
 VERTICAL_TIEBREAK = 0.02  # ... and hovering over a climb or descent that arrives no sooner
+ZONE_ESCAPE_COST = 1000.0 # per tick inside a no-fly zone the drone is already caught in
 
 
 @dataclass(frozen=True)
@@ -163,11 +164,21 @@ class SpaceTimePlanner:
             return None
         airborne = start[2] > 0
 
-        def in_zone(c, t: int) -> bool:
-            for z in zones:
+        def in_zone(c, t: int, among=zones) -> bool:
+            for z in among:
                 if z.start_t <= t < z.end_t and z.contains(c):
                     return True
             return False
+
+        # A drone can be caught inside an active zone - typically held there by
+        # traffic when the zone started. Forbidding every zone cell would leave
+        # it no move at all, so it would hover in the zone until the zone lifts
+        # (and could run its battery flat). Instead the cells of the zones it is
+        # in cost ZONE_ESCAPE_COST per tick: A* leaves by the quickest route and
+        # never lingers. Costs only grow, so the heuristic stays admissible and
+        # consistent; a drone outside every active zone plans exactly as before.
+        escape = [z for z in zones if airborne and z.active(t0) and z.contains(start)]
+        hard = [z for z in zones if z not in escape] if escape else zones
 
         # Earliest tick the goal itself can be occupied (a customer inside a
         # no-fly zone must wait for it to lift). Folding this into the
@@ -180,13 +191,16 @@ class SpaceTimePlanner:
         horizon = max(t0 + 3 * dm[start_air] + 80, open_t + dm[start_air] + 40)
 
         def blocked(c, t: int) -> bool:
-            return in_zone(c, t) or (extra_blocked is not None and (c, t) in extra_blocked)
+            return in_zone(c, t, hard) or (extra_blocked is not None and (c, t) in extra_blocked)
 
         def goal_ok(t: int) -> bool:
+            if escape and in_zone(goal, t, escape):
+                return False
             if dwell == 0:
                 return True
             for k in range(1, dwell + 1):
-                if blocked(goal, t + k) or not res.vertex_free(goal, t + k, agent, ignore):
+                if blocked(goal, t + k) or (escape and in_zone(goal, t + k, escape)) \
+                        or not res.vertex_free(goal, t + k, agent, ignore):
                     return False
             return True
 
@@ -235,6 +249,8 @@ class SpaceTimePlanner:
                         cost = 1.0 + VERTICAL_TIEBREAK
                     else:
                         cost = 1.0
+                    if escape and in_zone(n, nt, escape):
+                        cost += ZONE_ESCAPE_COST
                     succ.append(((n, nt), cost))
             for nxt, cost in succ:
                 if nxt in closed:

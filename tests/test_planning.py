@@ -116,6 +116,15 @@ class PlannerTests(unittest.TestCase):
         drop = next(s for s in plan.steps if s.tag == "drop_start")
         self.assertGreaterEqual(drop.t, 40)
 
+    def test_drone_caught_in_an_active_zone_leaves_by_the_shortest_route(self):
+        zone = NoFlyZone(0, (3, 2, 7, 6), announce_t=0, start_t=0, end_t=50)
+        w = open_world(w=12, h=8, nfzs=[zone])
+        plan = SpaceTimePlanner(w, ReservationTable()).plan(0, (5, 4), 0, True, [Waypoint((11, 7), "land")], now=0)
+        self.assertIsNotNone(plan)
+        inside = [s for s in plan.steps[1:] if s.airborne and zone.active(s.t) and zone.contains(s.cell)]
+        self.assertEqual(len(inside), 2)                 # 3 moves to the nearest edge, the last one outside
+        self.assertEqual([s.t for s in inside], [1, 2])  # and it never comes back in
+
     def test_unannounced_zone_is_unknown(self):
         zone = NoFlyZone(0, (2, 0, 2, 5), announce_t=50, start_t=58, end_t=90)
         w = open_world(nfzs=[zone])

@@ -226,6 +226,15 @@ class LayeredSystemTests(unittest.TestCase):
         self.assertEqual(m["collisions"], 0)
         self.assertEqual(m["dead_drones"], 0)
 
+    def test_drone_caught_by_a_zone_is_not_lost(self):
+        # seed 9: drone 7 is held by traffic inside a zone's footprint when the zone starts
+        sim = Simulation(dataclasses.replace(FAST, seed=9, n_layers=5, n_drones=24, order_rate=0.35,
+                                             station_spare_packs=6))
+        m = sim.run()
+        self.assertEqual((m["dead_drones"], m["collisions"]), (0, 0))
+        self.assertLessEqual(m["nfz_violations"], 2)
+        self.assertEqual(m["delivered"], m["orders"])
+
     def test_low_no_fly_zones_can_be_overflown(self):
         sim = Simulation(dataclasses.replace(FAST, seed=1, n_layers=3, nfz_ceiling=1))
         self.assertTrue(all(z.layers(3) == (1, 1) for z in sim.world.nfzs))

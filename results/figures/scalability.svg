@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1364 346" width="100%" style="max-width:1364px" role="img" aria-label="Scalability with fleet size">
+
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
+        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a;
+          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+  }
+  .bg { fill: var(--surface); }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
+  .title { fill: var(--ink); font-size: 15px; font-weight: 600; }
+  .sub { fill: var(--ink2); font-size: 12px; }
+  .ptitle { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .val { fill: var(--ink2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .base { stroke: var(--base); stroke-width: 1; }
+  .err { stroke: var(--muted); stroke-width: 1; }
+  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); }
+  .l1 { stroke: var(--s1); } .l2 { stroke: var(--s2); } .l3 { stroke: var(--s3); }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+</style>
+<rect class="bg" width="1364" height="346"/>
+<text class="title" x="16" y="26">Scalability with fleet size</text>
+<text class="sub" x="16" y="45">Demand grows with the fleet. Throughput keeps rising, but past 16 drones the three swap stations saturate and delivery times grow.</text>
+<text class="ptitle" x="44" y="94">Deliveries per 100 ticks</text>
+<line class="grid" x1="44" x2="344" y1="288.0" y2="288.0"/><text class="tick" x="38" y="292.0" text-anchor="end">0</text>
+<line class="grid" x1="44" x2="344" y1="243.0" y2="243.0"/><text class="tick" x="38" y="247.0" text-anchor="end">10</text>
+<line class="grid" x1="44" x2="344" y1="198.0" y2="198.0"/><text class="tick" x="38" y="202.0" text-anchor="end">20</text>
+<line class="grid" x1="44" x2="344" y1="153.0" y2="153.0"/><text class="tick" x="38" y="157.0" text-anchor="end">30</text>
+<line class="grid" x1="44" x2="344" y1="108.0" y2="108.0"/><text class="tick" x="38" y="112.0" text-anchor="end">40</text>
+<line class="base" x1="44" x2="344" y1="288" y2="288"/>
+<text class="tick" x="54.0" y="306" text-anchor="middle">4</text>
+<text class="tick" x="94.0" y="306" text-anchor="middle">8</text>
+<text class="tick" x="134.0" y="306" text-anchor="middle">12</text>
+<text class="tick" x="174.0" y="306" text-anchor="middle">16</text>
+<text class="tick" x="254.0" y="306" text-anchor="middle">24</text>
+<text class="tick" x="334.0" y="306" text-anchor="middle">32</text>
+<text class="tick" x="194.0" y="324" text-anchor="middle">drones in fleet</text>
+<path class="line l1" d="M54.0,268.0 L94.0,244.4 L134.0,220.3 L174.0,202.7 L254.0,174.0 L334.0,161.4"/>
+<circle class="dot s1" cx="54.0" cy="268.0" r="4"><title>fleet @ 4: 4.45 (±0.69)</title></circle>
+<circle class="dot s1" cx="94.0" cy="244.4" r="4"><title>fleet @ 8: 9.68 (±1.12)</title></circle>
+<circle class="dot s1" cx="134.0" cy="220.3" r="4"><title>fleet @ 12: 15 (±1.37)</title></circle>
+<circle class="dot s1" cx="174.0" cy="202.7" r="4"><title>fleet @ 16: 19 (±2.16)</title></circle>
+<circle class="dot s1" cx="254.0" cy="174.0" r="4"><title>fleet @ 24: 25.3 (±1.9)</title></circle>
+<circle class="dot s1" cx="334.0" cy="161.4" r="4"><title>fleet @ 32: 28.1 (±1.64)</title></circle>
+<text class="val" x="328.0" y="152.4" text-anchor="end">28.1</text>
+<text class="ptitle" x="374" y="94">Average delivery time (ticks)</text>
+<line class="grid" x1="374" x2="674" y1="288.0" y2="288.0"/><text class="tick" x="368" y="292.0" text-anchor="end">0</text>
+<line class="grid" x1="374" x2="674" y1="228.0" y2="228.0"/><text class="tick" x="368" y="232.0" text-anchor="end">50</text>
+<line class="grid" x1="374" x2="674" y1="168.0" y2="168.0"/><text class="tick" x="368" y="172.0" text-anchor="end">100</text>
+<line class="grid" x1="374" x2="674" y1="108.0" y2="108.0"/><text class="tick" x="368" y="112.0" text-anchor="end">150</text>
+<line class="base" x1="374" x2="674" y1="288" y2="288"/>
+<text class="tick" x="384.0" y="306" text-anchor="middle">4</text>
+<text class="tick" x="424.0" y="306" text-anchor="middle">8</text>
+<text class="tick" x="464.0" y="306" text-anchor="middle">12</text>
+<text class="tick" x="504.0" y="306" text-anchor="middle">16</text>
+<text class="tick" x="584.0" y="306" text-anchor="middle">24</text>
+<text class="tick" x="664.0" y="306" text-anchor="middle">32</text>
+<text class="tick" x="524.0" y="324" text-anchor="middle">drones in fleet</text>
+<path class="line l1" d="M384.0,245.7 L424.0,246.2 L464.0,246.8 L504.0,249.8 L584.0,230.9 L664.0,200.4"/>
+<circle class="dot s1" cx="384.0" cy="245.7" r="4"><title>fleet @ 4: 35.3 (±6.11)</title></circle>
+<circle class="dot s1" cx="424.0" cy="246.2" r="4"><title>fleet @ 8: 34.9 (±6.57)</title></circle>
+<circle class="dot s1" cx="464.0" cy="246.8" r="4"><title>fleet @ 12: 34.3 (±5.77)</title></circle>
+<circle class="dot s1" cx="504.0" cy="249.8" r="4"><title>fleet @ 16: 31.8 (±4.07)</title></circle>
+<circle class="dot s1" cx="584.0" cy="230.9" r="4"><title>fleet @ 24: 47.6 (±22)</title></circle>
+<circle class="dot s1" cx="664.0" cy="200.4" r="4"><title>fleet @ 32: 73 (±31.5)</title></circle>
+<text class="val" x="658.0" y="191.4" text-anchor="end">73</text>
+<text class="ptitle" x="704" y="94">Average wait at a swap station (ticks)</text>
+<line class="grid" x1="704" x2="1004" y1="288.0" y2="288.0"/><text class="tick" x="698" y="292.0" text-anchor="end">0</text>
+<line class="grid" x1="704" x2="1004" y1="243.0" y2="243.0"/><text class="tick" x="698" y="247.0" text-anchor="end">20</text>
+<line class="grid" x1="704" x2="1004" y1="198.0" y2="198.0"/><text class="tick" x="698" y="202.0" text-anchor="end">40</text>
+<line class="grid" x1="704" x2="1004" y1="153.0" y2="153.0"/><text class="tick" x="698" y="157.0" text-anchor="end">60</text>
+<line class="grid" x1="704" x2="1004" y1="108.0" y2="108.0"/><text class="tick" x="698" y="112.0" text-anchor="end">80</text>
+<line class="base" x1="704" x2="1004" y1="288" y2="288"/>
+<text class="tick" x="714.0" y="306" text-anchor="middle">4</text>
+<text class="tick" x="754.0" y="306" text-anchor="middle">8</text>
+<text class="tick" x="794.0" y="306" text-anchor="middle">12</text>
+<text class="tick" x="834.0" y="306" text-anchor="middle">16</text>
+<text class="tick" x="914.0" y="306" text-anchor="middle">24</text>
+<text class="tick" x="994.0" y="306" text-anchor="middle">32</text>
+<text class="tick" x="854.0" y="324" text-anchor="middle">drones in fleet</text>
+<path class="line l1" d="M714.0,288.0 L754.0,287.0 L794.0,282.7 L834.0,274.5 L914.0,232.7 L994.0,154.2"/>
+<circle class="dot s1" cx="714.0" cy="288.0" r="4"><title>fleet @ 4: 0.01 (±0.03)</title></circle>
+<circle class="dot s1" cx="754.0" cy="287.0" r="4"><title>fleet @ 8: 0.46 (±0.55)</title></circle>
+<circle class="dot s1" cx="794.0" cy="282.7" r="4"><title>fleet @ 12: 2.36 (±1.19)</title></circle>
+<circle class="dot s1" cx="834.0" cy="274.5" r="4"><title>fleet @ 16: 6.01 (±2.93)</title></circle>
+<circle class="dot s1" cx="914.0" cy="232.7" r="4"><title>fleet @ 24: 24.6 (±9.04)</title></circle>
+<circle class="dot s1" cx="994.0" cy="154.2" r="4"><title>fleet @ 32: 59.5 (±10.5)</title></circle>
+<text class="val" x="988.0" y="145.2" text-anchor="end">59.5</text>
+<text class="ptitle" x="1034" y="94">Planner time per A* search (ms)</text>
+<line class="grid" x1="1034" x2="1334" y1="288.0" y2="288.0"/><text class="tick" x="1028" y="292.0" text-anchor="end">0</text>
+<line class="grid" x1="1034" x2="1334" y1="228.0" y2="228.0"/><text class="tick" x="1028" y="232.0" text-anchor="end">0.5</text>
+<line class="grid" x1="1034" x2="1334" y1="168.0" y2="168.0"/><text class="tick" x="1028" y="172.0" text-anchor="end">1</text>
+<line class="grid" x1="1034" x2="1334" y1="108.0" y2="108.0"/><text class="tick" x="1028" y="112.0" text-anchor="end">1.5</text>
+<line class="base" x1="1034" x2="1334" y1="288" y2="288"/>
+<text class="tick" x="1044.0" y="306" text-anchor="middle">4</text>
+<text class="tick" x="1084.0" y="306" text-anchor="middle">8</text>
+<text class="tick" x="1124.0" y="306" text-anchor="middle">12</text>
+<text class="tick" x="1164.0" y="306" text-anchor="middle">16</text>
+<text class="tick" x="1244.0" y="306" text-anchor="middle">24</text>
+<text class="tick" x="1324.0" y="306" text-anchor="middle">32</text>
+<text class="tick" x="1184.0" y="324" text-anchor="middle">drones in fleet</text>
+<path class="line l1" d="M1044.0,250.3 L1084.0,279.9 L1124.0,263.8 L1164.0,261.7 L1244.0,275.9 L1324.0,275.2"/>
+<circle class="dot s1" cx="1044.0" cy="250.3" r="4"><title>fleet @ 4: 0.31 (±0.75)</title></circle>
+<circle class="dot s1" cx="1084.0" cy="279.9" r="4"><title>fleet @ 8: 0.07 (±0.01)</title></circle>
+<circle class="dot s1" cx="1124.0" cy="263.8" r="4"><title>fleet @ 12: 0.2 (±0.3)</title></circle>
+<circle class="dot s1" cx="1164.0" cy="261.7" r="4"><title>fleet @ 16: 0.22 (±0.18)</title></circle>
+<circle class="dot s1" cx="1244.0" cy="275.9" r="4"><title>fleet @ 24: 0.1 (±0.05)</title></circle>
+<circle class="dot s1" cx="1324.0" cy="275.2" r="4"><title>fleet @ 32: 0.11 (±0.04)</title></circle>
+<text class="val" x="1318.0" y="266.2" text-anchor="end">0.11</text>
+</svg>

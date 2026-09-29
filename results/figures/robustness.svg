@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 374 346" width="100%" style="max-width:374px" role="img" aria-label="Robustness to wind gusts: execution events">
+
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
+        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a;
+          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+  }
+  .bg { fill: var(--surface); }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
+  .title { fill: var(--ink); font-size: 15px; font-weight: 600; }
+  .sub { fill: var(--ink2); font-size: 12px; }
+  .ptitle { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .val { fill: var(--ink2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .base { stroke: var(--base); stroke-width: 1; }
+  .err { stroke: var(--muted); stroke-width: 1; }
+  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); }
+  .l1 { stroke: var(--s1); } .l2 { stroke: var(--s2); } .l3 { stroke: var(--s3); }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+</style>
+<rect class="bg" width="374" height="346"/>
+<text class="title" x="16" y="26">Robustness to wind gusts: execution events</text>
+<text class="sub" x="16" y="45">Gusts knock drones off-plan; cheap plan repair absorbs most deviations, collisions stay at zero.</text>
+<rect x="16" y="59" width="10" height="10" rx="2" class="s1"/><text x="31" y="68">deviations</text><rect x="116" y="59" width="10" height="10" rx="2" class="s2"/><text x="131" y="68">plan repairs</text><rect x="229" y="59" width="10" height="10" rx="2" class="s3"/><text x="244" y="68">collisions</text>
+<text class="ptitle" x="44" y="94">Events per run</text>
+<line class="grid" x1="44" x2="344" y1="288.0" y2="288.0"/><text class="tick" x="38" y="292.0" text-anchor="end">0</text>
+<line class="grid" x1="44" x2="344" y1="228.0" y2="228.0"/><text class="tick" x="38" y="232.0" text-anchor="end">1.0k</text>
+<line class="grid" x1="44" x2="344" y1="168.0" y2="168.0"/><text class="tick" x="38" y="172.0" text-anchor="end">2.0k</text>
+<line class="grid" x1="44" x2="344" y1="108.0" y2="108.0"/><text class="tick" x="38" y="112.0" text-anchor="end">3.0k</text>
+<line class="base" x1="44" x2="344" y1="288" y2="288"/>
+<text class="tick" x="54.0" y="306" text-anchor="middle">0</text>
+<text class="tick" x="100.7" y="306" text-anchor="middle">0.05</text>
+<text class="tick" x="147.3" y="306" text-anchor="middle">0.1</text>
+<text class="tick" x="240.7" y="306" text-anchor="middle">0.2</text>
+<text class="tick" x="334.0" y="306" text-anchor="middle">0.3</text>
+<text class="tick" x="194.0" y="324" text-anchor="middle">gust probability per move</text>
+<path class="line l1" d="M54.0,288.0 L100.7,276.8 L147.3,264.7 L240.7,233.2 L334.0,190.7"/>
+<circle class="dot s1" cx="54.0" cy="288.0" r="4"><title>deviations @ 0: 0 (±0)</title></circle>
+<circle class="dot s1" cx="100.7" cy="276.8" r="4"><title>deviations @ 0.05: 186 (±27.2)</title></circle>
+<circle class="dot s1" cx="147.3" cy="264.7" r="4"><title>deviations @ 0.1: 388 (±67.1)</title></circle>
+<circle class="dot s1" cx="240.7" cy="233.2" r="4"><title>deviations @ 0.2: 914 (±122)</title></circle>
+<circle class="dot s1" cx="334.0" cy="190.7" r="4"><title>deviations @ 0.3: 1.6k (±256)</title></circle>
+<text class="val" x="328.0" y="181.7" text-anchor="end">1.6k</text>
+<path class="line l2" d="M54.0,288.0 L100.7,278.1 L147.3,267.5 L240.7,239.8 L334.0,201.9"/>
+<circle class="dot s2" cx="54.0" cy="288.0" r="4"><title>plan repairs @ 0: 0 (±0)</title></circle>
+<circle class="dot s2" cx="100.7" cy="278.1" r="4"><title>plan repairs @ 0.05: 164 (±22.9)</title></circle>
+<circle class="dot s2" cx="147.3" cy="267.5" r="4"><title>plan repairs @ 0.1: 342 (±51.6)</title></circle>
+<circle class="dot s2" cx="240.7" cy="239.8" r="4"><title>plan repairs @ 0.2: 803 (±111)</title></circle>
+<circle class="dot s2" cx="334.0" cy="201.9" r="4"><title>plan repairs @ 0.3: 1.4k (±219)</title></circle>
+<text class="val" x="328.0" y="192.9" text-anchor="end">1.4k</text>
+<path class="line l3" d="M54.0,288.0 L100.7,288.0 L147.3,288.0 L240.7,288.0 L334.0,288.0"/>
+<circle class="dot s3" cx="54.0" cy="288.0" r="4"><title>collisions @ 0: 0 (±0)</title></circle>
+<circle class="dot s3" cx="100.7" cy="288.0" r="4"><title>collisions @ 0.05: 0 (±0)</title></circle>
+<circle class="dot s3" cx="147.3" cy="288.0" r="4"><title>collisions @ 0.1: 0 (±0)</title></circle>
+<circle class="dot s3" cx="240.7" cy="288.0" r="4"><title>collisions @ 0.2: 0 (±0)</title></circle>
+<circle class="dot s3" cx="334.0" cy="288.0" r="4"><title>collisions @ 0.3: 0 (±0)</title></circle>
+<text class="val" x="328.0" y="279.0" text-anchor="end">0</text>
+</svg>

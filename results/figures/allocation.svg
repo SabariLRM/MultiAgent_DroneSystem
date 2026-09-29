@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1022 350" width="100%" style="max-width:1022px" role="img" aria-label="Task allocation strategies">
+
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
+        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a;
+          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+  }
+  .bg { fill: var(--surface); }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
+  .title { fill: var(--ink); font-size: 15px; font-weight: 600; }
+  .sub { fill: var(--ink2); font-size: 12px; }
+  .ptitle { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .val { fill: var(--ink2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .base { stroke: var(--base); stroke-width: 1; }
+  .err { stroke: var(--muted); stroke-width: 1; }
+  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); }
+  .l1 { stroke: var(--s1); } .l2 { stroke: var(--s2); } .l3 { stroke: var(--s3); }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+</style>
+<rect class="bg" width="1022" height="350"/>
+<text class="title" x="16" y="26">Task allocation strategies</text>
+<text class="sub" x="16" y="45">Contract-net auctions use each drone&#x27;s private state (battery, ETA, swap plans).</text>
+<rect x="16" y="59" width="10" height="10" rx="2" class="s1"/><text x="31" y="68">contract net</text><rect x="129" y="59" width="10" height="10" rx="2" class="s2"/><text x="144" y="68">nearest idle</text><rect x="242" y="59" width="10" height="10" rx="2" class="s3"/><text x="257" y="68">round robin</text>
+<text class="ptitle" x="44" y="94">Average delivery time (ticks)</text>
+<line class="grid" x1="44" x2="344" y1="298.0" y2="298.0"/><text class="tick" x="38" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="44" x2="344" y1="234.7" y2="234.7"/><text class="tick" x="38" y="238.7" text-anchor="end">50</text>
+<line class="grid" x1="44" x2="344" y1="171.3" y2="171.3"/><text class="tick" x="38" y="175.3" text-anchor="end">100</text>
+<line class="grid" x1="44" x2="344" y1="108.0" y2="108.0"/><text class="tick" x="38" y="112.0" text-anchor="end">150</text>
+<line class="base" x1="44" x2="344" y1="298" y2="298"/>
+<path class="s1" d="M81.0,298.0 L81.0,257.9 Q81.0,253.9 85.0,253.9 L101.0,253.9 Q105.0,253.9 105.0,257.9 L105.0,298.0 Z"><title>contract net · 12 drones: 34.8 (±6.79)</title></path>
+<line class="err" x1="93.0" x2="93.0" y1="245.3" y2="262.5"/>
+<text class="val" x="93.0" y="240.3" text-anchor="middle">34.8</text>
+<path class="s2" d="M107.0,298.0 L107.0,258.3 Q107.0,254.3 111.0,254.3 L127.0,254.3 Q131.0,254.3 131.0,258.3 L131.0,298.0 Z"><title>nearest idle · 12 drones: 34.5 (±7.49)</title></path>
+<line class="err" x1="119.0" x2="119.0" y1="244.8" y2="263.8"/>
+<text class="val" x="119.0" y="239.8" text-anchor="middle">34.5</text>
+<path class="s3" d="M133.0,298.0 L133.0,237.1 Q133.0,233.1 137.0,233.1 L153.0,233.1 Q157.0,233.1 157.0,237.1 L157.0,298.0 Z"><title>round robin · 12 drones: 51.3 (±7.81)</title></path>
+<line class="err" x1="145.0" x2="145.0" y1="223.2" y2="243.0"/>
+<text class="val" x="145.0" y="218.2" text-anchor="middle">51.3</text>
+<text class="tick" x="119.0" y="316" text-anchor="middle">12 drones</text>
+<path class="s1" d="M231.0,298.0 L231.0,228.6 Q231.0,224.6 235.0,224.6 L251.0,224.6 Q255.0,224.6 255.0,228.6 L255.0,298.0 Z"><title>contract net · 24 drones: 57.9 (±24.6)</title></path>
+<line class="err" x1="243.0" x2="243.0" y1="193.4" y2="255.8"/>
+<text class="val" x="243.0" y="188.4" text-anchor="middle">57.9</text>
+<path class="s2" d="M257.0,298.0 L257.0,224.0 Q257.0,220.0 261.0,220.0 L277.0,220.0 Q281.0,220.0 281.0,224.0 L281.0,298.0 Z"><title>nearest idle · 24 drones: 61.6 (±20.6)</title></path>
+<line class="err" x1="269.0" x2="269.0" y1="193.9" y2="246.1"/>
+<text class="val" x="269.0" y="188.9" text-anchor="middle">61.6</text>
+<path class="s3" d="M283.0,298.0 L283.0,173.0 Q283.0,169.0 287.0,169.0 L303.0,169.0 Q307.0,169.0 307.0,173.0 L307.0,298.0 Z"><title>round robin · 24 drones: 102 (±28)</title></path>
+<line class="err" x1="295.0" x2="295.0" y1="133.5" y2="204.4"/>
+<text class="val" x="295.0" y="128.5" text-anchor="middle">102</text>
+<text class="tick" x="269.0" y="316" text-anchor="middle">24 drones</text>
+<text class="ptitle" x="370" y="94">95th percentile delivery time</text>
+<line class="grid" x1="370" x2="670" y1="298.0" y2="298.0"/><text class="tick" x="364" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="370" x2="670" y1="234.7" y2="234.7"/><text class="tick" x="364" y="238.7" text-anchor="end">100</text>
+<line class="grid" x1="370" x2="670" y1="171.3" y2="171.3"/><text class="tick" x="364" y="175.3" text-anchor="end">200</text>
+<line class="grid" x1="370" x2="670" y1="108.0" y2="108.0"/><text class="tick" x="364" y="112.0" text-anchor="end">300</text>
+<line class="base" x1="370" x2="670" y1="298" y2="298"/>
+<path class="s1" d="M407.0,298.0 L407.0,257.4 Q407.0,253.3 411.0,253.3 L427.0,253.3 Q431.0,253.3 431.0,257.4 L431.0,298.0 Z"><title>contract net · 12 drones: 70.5 (±13.4)</title></path>
+<line class="err" x1="419.0" x2="419.0" y1="244.9" y2="261.8"/>
+<text class="val" x="419.0" y="239.9" text-anchor="middle">70.5</text>
+<path class="s2" d="M433.0,298.0 L433.0,254.1 Q433.0,250.1 437.0,250.1 L453.0,250.1 Q457.0,250.1 457.0,254.1 L457.0,298.0 Z"><title>nearest idle · 12 drones: 75.7 (±18.3)</title></path>
+<line class="err" x1="445.0" x2="445.0" y1="238.5" y2="261.6"/>
+<text class="val" x="445.0" y="233.5" text-anchor="middle">75.7</text>
+<path class="s3" d="M459.0,298.0 L459.0,244.1 Q459.0,240.1 463.0,240.1 L479.0,240.1 Q483.0,240.1 483.0,244.1 L483.0,298.0 Z"><title>round robin · 12 drones: 91.5 (±13)</title></path>
+<line class="err" x1="471.0" x2="471.0" y1="231.8" y2="248.3"/>
+<text class="val" x="471.0" y="226.8" text-anchor="middle">91.5</text>
+<text class="tick" x="445.0" y="316" text-anchor="middle">12 drones</text>
+<path class="s1" d="M557.0,298.0 L557.0,211.9 Q557.0,207.9 561.0,207.9 L577.0,207.9 Q581.0,207.9 581.0,211.9 L581.0,298.0 Z"><title>contract net · 24 drones: 142 (±71.5)</title></path>
+<line class="err" x1="569.0" x2="569.0" y1="162.6" y2="253.2"/>
+<text class="val" x="569.0" y="157.6" text-anchor="middle">142</text>
+<path class="s2" d="M583.0,298.0 L583.0,213.1 Q583.0,209.1 587.0,209.1 L603.0,209.1 Q607.0,209.1 607.0,213.1 L607.0,298.0 Z"><title>nearest idle · 24 drones: 140 (±48.3)</title></path>
+<line class="err" x1="595.0" x2="595.0" y1="178.5" y2="239.8"/>
+<text class="val" x="595.0" y="173.5" text-anchor="middle">140</text>
+<path class="s3" d="M609.0,298.0 L609.0,173.5 Q609.0,169.5 613.0,169.5 L629.0,169.5 Q633.0,169.5 633.0,173.5 L633.0,298.0 Z"><title>round robin · 24 drones: 203 (±52.4)</title></path>
+<line class="err" x1="621.0" x2="621.0" y1="136.3" y2="202.7"/>
+<text class="val" x="621.0" y="131.3" text-anchor="middle">203</text>
+<text class="tick" x="595.0" y="316" text-anchor="middle">24 drones</text>
+<text class="ptitle" x="696" y="94">Energy per delivery</text>
+<line class="grid" x1="696" x2="996" y1="298.0" y2="298.0"/><text class="tick" x="690" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="696" x2="996" y1="250.5" y2="250.5"/><text class="tick" x="690" y="254.5" text-anchor="end">20</text>
+<line class="grid" x1="696" x2="996" y1="203.0" y2="203.0"/><text class="tick" x="690" y="207.0" text-anchor="end">40</text>
+<line class="grid" x1="696" x2="996" y1="155.5" y2="155.5"/><text class="tick" x="690" y="159.5" text-anchor="end">60</text>
+<line class="grid" x1="696" x2="996" y1="108.0" y2="108.0"/><text class="tick" x="690" y="112.0" text-anchor="end">80</text>
+<line class="base" x1="696" x2="996" y1="298" y2="298"/>
+<path class="s1" d="M733.0,298.0 L733.0,180.6 Q733.0,176.6 737.0,176.6 L753.0,176.6 Q757.0,176.6 757.0,180.6 L757.0,298.0 Z"><title>contract net · 12 drones: 51.1 (±3.87)</title></path>
+<line class="err" x1="745.0" x2="745.0" y1="167.4" y2="185.8"/>
+<text class="val" x="745.0" y="162.4" text-anchor="middle">51.1</text>
+<path class="s2" d="M759.0,298.0 L759.0,178.2 Q759.0,174.2 763.0,174.2 L779.0,174.2 Q783.0,174.2 783.0,178.2 L783.0,298.0 Z"><title>nearest idle · 12 drones: 52.1 (±3.75)</title></path>
+<line class="err" x1="771.0" x2="771.0" y1="165.3" y2="183.1"/>
+<text class="val" x="771.0" y="160.3" text-anchor="middle">52.1</text>
+<path class="s3" d="M785.0,298.0 L785.0,152.9 Q785.0,148.9 789.0,148.9 L805.0,148.9 Q809.0,148.9 809.0,152.9 L809.0,298.0 Z"><title>round robin · 12 drones: 62.8 (±4.16)</title></path>
+<line class="err" x1="797.0" x2="797.0" y1="139.0" y2="158.8"/>
+<text class="val" x="797.0" y="134.0" text-anchor="middle">62.8</text>
+<text class="tick" x="771.0" y="316" text-anchor="middle">12 drones</text>
+<path class="s1" d="M883.0,298.0 L883.0,170.4 Q883.0,166.4 887.0,166.4 L903.0,166.4 Q907.0,166.4 907.0,170.4 L907.0,298.0 Z"><title>contract net · 24 drones: 55.4 (±4.84)</title></path>
+<line class="err" x1="895.0" x2="895.0" y1="154.9" y2="177.9"/>
+<text class="val" x="895.0" y="149.9" text-anchor="middle">55.4</text>
+<path class="s2" d="M909.0,298.0 L909.0,166.1 Q909.0,162.1 913.0,162.1 L929.0,162.1 Q933.0,162.1 933.0,166.1 L933.0,298.0 Z"><title>nearest idle · 24 drones: 57.2 (±3.74)</title></path>
+<line class="err" x1="921.0" x2="921.0" y1="153.3" y2="171.0"/>
+<text class="val" x="921.0" y="148.3" text-anchor="middle">57.2</text>
+<path class="s3" d="M935.0,298.0 L935.0,150.0 Q935.0,146.0 939.0,146.0 L955.0,146.0 Q959.0,146.0 959.0,150.0 L959.0,298.0 Z"><title>round robin · 24 drones: 64 (±4.14)</title></path>
+<line class="err" x1="947.0" x2="947.0" y1="136.2" y2="155.8"/>
+<text class="val" x="947.0" y="131.2" text-anchor="middle">64</text>
+<text class="tick" x="921.0" y="316" text-anchor="middle">24 drones</text>
+<text class="tick" x="16" y="340">Bars: mean over seeds; whiskers: ±1 standard deviation.</text>
+</svg>

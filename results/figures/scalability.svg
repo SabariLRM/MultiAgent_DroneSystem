@@ -2,10 +2,10 @@
 
 <style>
   svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
-        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; }
+        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --o1:#86b6ef; --o2:#2a78d6; --o3:#104281; }
   @media (prefers-color-scheme: dark) {
     svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a;
-          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
+          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --o1:#184f95; --o2:#3987e5; --o3:#9ec5f4; }
   }
   .bg { fill: var(--surface); }
   text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
@@ -18,6 +18,7 @@
   .base { stroke: var(--base); stroke-width: 1; }
   .err { stroke: var(--muted); stroke-width: 1; }
   .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); }
+  .o1 { fill: var(--o1); } .o2 { fill: var(--o2); } .o3 { fill: var(--o3); }
   .l1 { stroke: var(--s1); } .l2 { stroke: var(--s2); } .l3 { stroke: var(--s3); }
   .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
   .dot { stroke: var(--surface); stroke-width: 2; }
@@ -103,12 +104,12 @@
 <text class="tick" x="1244.0" y="306" text-anchor="middle">24</text>
 <text class="tick" x="1324.0" y="306" text-anchor="middle">32</text>
 <text class="tick" x="1184.0" y="324" text-anchor="middle">drones in fleet</text>
-<path class="line l1" d="M1044.0,250.3 L1084.0,279.9 L1124.0,263.8 L1164.0,261.7 L1244.0,275.9 L1324.0,275.2"/>
-<circle class="dot s1" cx="1044.0" cy="250.3" r="4"><title>fleet @ 4: 0.31 (±0.75)</title></circle>
-<circle class="dot s1" cx="1084.0" cy="279.9" r="4"><title>fleet @ 8: 0.07 (±0.01)</title></circle>
-<circle class="dot s1" cx="1124.0" cy="263.8" r="4"><title>fleet @ 12: 0.2 (±0.3)</title></circle>
-<circle class="dot s1" cx="1164.0" cy="261.7" r="4"><title>fleet @ 16: 0.22 (±0.18)</title></circle>
-<circle class="dot s1" cx="1244.0" cy="275.9" r="4"><title>fleet @ 24: 0.1 (±0.05)</title></circle>
-<circle class="dot s1" cx="1324.0" cy="275.2" r="4"><title>fleet @ 32: 0.11 (±0.04)</title></circle>
-<text class="val" x="1318.0" y="266.2" text-anchor="end">0.11</text>
+<path class="line l1" d="M1044.0,249.5 L1084.0,279.5 L1124.0,263.3 L1164.0,261.1 L1244.0,275.3 L1324.0,274.7"/>
+<circle class="dot s1" cx="1044.0" cy="249.5" r="4"><title>fleet @ 4: 0.32 (±0.76)</title></circle>
+<circle class="dot s1" cx="1084.0" cy="279.5" r="4"><title>fleet @ 8: 0.07 (±0.01)</title></circle>
+<circle class="dot s1" cx="1124.0" cy="263.3" r="4"><title>fleet @ 12: 0.21 (±0.3)</title></circle>
+<circle class="dot s1" cx="1164.0" cy="261.1" r="4"><title>fleet @ 16: 0.22 (±0.19)</title></circle>
+<circle class="dot s1" cx="1244.0" cy="275.3" r="4"><title>fleet @ 24: 0.11 (±0.05)</title></circle>
+<circle class="dot s1" cx="1324.0" cy="274.7" r="4"><title>fleet @ 32: 0.11 (±0.04)</title></circle>
+<text class="val" x="1318.0" y="265.7" text-anchor="end">0.11</text>
 </svg>

@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1348 350" width="100%" style="max-width:1348px" role="img" aria-label="Altitude layers (24 and 32 drones, 6 spare packs per station)">
+
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
+        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --o1:#86b6ef; --o2:#2a78d6; --o3:#104281; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a;
+          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --o1:#184f95; --o2:#3987e5; --o3:#9ec5f4; }
+  }
+  .bg { fill: var(--surface); }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
+  .title { fill: var(--ink); font-size: 15px; font-weight: 600; }
+  .sub { fill: var(--ink2); font-size: 12px; }
+  .ptitle { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .val { fill: var(--ink2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .base { stroke: var(--base); stroke-width: 1; }
+  .err { stroke: var(--muted); stroke-width: 1; }
+  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); }
+  .o1 { fill: var(--o1); } .o2 { fill: var(--o2); } .o3 { fill: var(--o3); }
+  .l1 { stroke: var(--s1); } .l2 { stroke: var(--s2); } .l3 { stroke: var(--s3); }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+</style>
+<rect class="bg" width="1348" height="350"/>
+<text class="title" x="16" y="26">Altitude layers (24 and 32 drones, 6 spare packs per station)</text>
+<text class="sub" x="16" y="45">Groups: fleet size and layer rule (free, or east/west on odd layers and north/south on even). With one layer the heading rule has no effect.</text>
+<rect x="16" y="59" width="10" height="10" rx="2" class="o1"/><text x="31" y="68">1 layer</text><rect x="96" y="59" width="10" height="10" rx="2" class="o2"/><text x="111" y="68">3 layers</text><rect x="183" y="59" width="10" height="10" rx="2" class="o3"/><text x="198" y="68">5 layers</text>
+<text class="ptitle" x="44" y="94">Average delivery time (ticks)</text>
+<line class="grid" x1="44" x2="344" y1="298.0" y2="298.0"/><text class="tick" x="38" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="44" x2="344" y1="234.7" y2="234.7"/><text class="tick" x="38" y="238.7" text-anchor="end">20</text>
+<line class="grid" x1="44" x2="344" y1="171.3" y2="171.3"/><text class="tick" x="38" y="175.3" text-anchor="end">40</text>
+<line class="grid" x1="44" x2="344" y1="108.0" y2="108.0"/><text class="tick" x="38" y="112.0" text-anchor="end">60</text>
+<line class="base" x1="44" x2="344" y1="298" y2="298"/>
+<path class="o1" d="M57.0,298.0 L57.0,208.3 Q57.0,204.3 61.0,204.3 L68.0,204.3 Q72.0,204.3 72.0,208.3 L72.0,298.0 Z"><title>1 layer · 24 free: 29.6 (±3.15)</title></path>
+<line class="err" x1="64.5" x2="64.5" y1="194.3" y2="214.3"/>
+<path class="o2" d="M74.0,298.0 L74.0,207.6 Q74.0,203.6 78.0,203.6 L85.0,203.6 Q89.0,203.6 89.0,207.6 L89.0,298.0 Z"><title>3 layers · 24 free: 29.8 (±3.34)</title></path>
+<line class="err" x1="81.5" x2="81.5" y1="193.0" y2="214.2"/>
+<path class="o3" d="M91.0,298.0 L91.0,207.2 Q91.0,203.2 95.0,203.2 L102.0,203.2 Q106.0,203.2 106.0,207.2 L106.0,298.0 Z"><title>5 layers · 24 free: 29.9 (±3.29)</title></path>
+<line class="err" x1="98.5" x2="98.5" y1="192.8" y2="213.6"/>
+<text class="tick" x="81.5" y="316" text-anchor="middle">24 free</text>
+<path class="o1" d="M132.0,298.0 L132.0,208.3 Q132.0,204.3 136.0,204.3 L143.0,204.3 Q147.0,204.3 147.0,208.3 L147.0,298.0 Z"><title>1 layer · 24 heading: 29.6 (±3.15)</title></path>
+<line class="err" x1="139.5" x2="139.5" y1="194.3" y2="214.3"/>
+<path class="o2" d="M149.0,298.0 L149.0,189.5 Q149.0,185.5 153.0,185.5 L160.0,185.5 Q164.0,185.5 164.0,189.5 L164.0,298.0 Z"><title>3 layers · 24 heading: 35.5 (±7.33)</title></path>
+<line class="err" x1="156.5" x2="156.5" y1="162.3" y2="208.7"/>
+<path class="o3" d="M166.0,298.0 L166.0,185.9 Q166.0,181.9 170.0,181.9 L177.0,181.9 Q181.0,181.9 181.0,185.9 L181.0,298.0 Z"><title>5 layers · 24 heading: 36.7 (±8.2)</title></path>
+<line class="err" x1="173.5" x2="173.5" y1="155.9" y2="207.8"/>
+<text class="tick" x="156.5" y="316" text-anchor="middle">24 heading</text>
+<path class="o1" d="M207.0,298.0 L207.0,202.2 Q207.0,198.2 211.0,198.2 L218.0,198.2 Q222.0,198.2 222.0,202.2 L222.0,298.0 Z"><title>1 layer · 32 free: 31.5 (±5.38)</title></path>
+<line class="err" x1="214.5" x2="214.5" y1="181.1" y2="215.2"/>
+<path class="o2" d="M224.0,298.0 L224.0,205.4 Q224.0,201.4 228.0,201.4 L235.0,201.4 Q239.0,201.4 239.0,205.4 L239.0,298.0 Z"><title>3 layers · 32 free: 30.5 (±5.27)</title></path>
+<line class="err" x1="231.5" x2="231.5" y1="184.7" y2="218.1"/>
+<path class="o3" d="M241.0,298.0 L241.0,203.2 Q241.0,199.2 245.0,199.2 L252.0,199.2 Q256.0,199.2 256.0,203.2 L256.0,298.0 Z"><title>5 layers · 32 free: 31.2 (±5.17)</title></path>
+<line class="err" x1="248.5" x2="248.5" y1="182.8" y2="215.6"/>
+<text class="tick" x="231.5" y="316" text-anchor="middle">32 free</text>
+<path class="o1" d="M282.0,298.0 L282.0,202.2 Q282.0,198.2 286.0,198.2 L293.0,198.2 Q297.0,198.2 297.0,202.2 L297.0,298.0 Z"><title>1 layer · 32 heading: 31.5 (±5.38)</title></path>
+<line class="err" x1="289.5" x2="289.5" y1="181.1" y2="215.2"/>
+<path class="o2" d="M299.0,298.0 L299.0,171.8 Q299.0,167.8 303.0,167.8 L310.0,167.8 Q314.0,167.8 314.0,171.8 L314.0,298.0 Z"><title>3 layers · 32 heading: 41.1 (±10.2)</title></path>
+<line class="err" x1="306.5" x2="306.5" y1="135.4" y2="200.2"/>
+<path class="o3" d="M316.0,298.0 L316.0,168.7 Q316.0,164.7 320.0,164.7 L327.0,164.7 Q331.0,164.7 331.0,168.7 L331.0,298.0 Z"><title>5 layers · 32 heading: 42.1 (±10.4)</title></path>
+<line class="err" x1="323.5" x2="323.5" y1="131.8" y2="197.5"/>
+<text class="tick" x="306.5" y="316" text-anchor="middle">32 heading</text>
+<text class="ptitle" x="370" y="94">Reactive holds per run</text>
+<line class="grid" x1="370" x2="670" y1="298.0" y2="298.0"/><text class="tick" x="364" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="370" x2="670" y1="234.7" y2="234.7"/><text class="tick" x="364" y="238.7" text-anchor="end">20</text>
+<line class="grid" x1="370" x2="670" y1="171.3" y2="171.3"/><text class="tick" x="364" y="175.3" text-anchor="end">40</text>
+<line class="grid" x1="370" x2="670" y1="108.0" y2="108.0"/><text class="tick" x="364" y="112.0" text-anchor="end">60</text>
+<line class="base" x1="370" x2="670" y1="298" y2="298"/>
+<path class="o1" d="M383.0,298.0 L383.0,243.4 Q383.0,239.4 387.0,239.4 L394.0,239.4 Q398.0,239.4 398.0,243.4 L398.0,298.0 Z"><title>1 layer · 24 free: 18.5 (±4.09)</title></path>
+<line class="err" x1="390.5" x2="390.5" y1="226.5" y2="252.4"/>
+<path class="o2" d="M400.0,298.0 L400.0,243.7 Q400.0,239.7 404.0,239.7 L411.0,239.7 Q415.0,239.7 415.0,243.7 L415.0,298.0 Z"><title>3 layers · 24 free: 18.4 (±5.74)</title></path>
+<line class="err" x1="407.5" x2="407.5" y1="221.6" y2="257.9"/>
+<path class="o3" d="M417.0,298.0 L417.0,246.9 Q417.0,242.9 421.0,242.9 L428.0,242.9 Q432.0,242.9 432.0,246.9 L432.0,298.0 Z"><title>5 layers · 24 free: 17.4 (±5.04)</title></path>
+<line class="err" x1="424.5" x2="424.5" y1="226.9" y2="258.9"/>
+<text class="tick" x="407.5" y="316" text-anchor="middle">24 free</text>
+<path class="o1" d="M458.0,298.0 L458.0,243.4 Q458.0,239.4 462.0,239.4 L469.0,239.4 Q473.0,239.4 473.0,243.4 L473.0,298.0 Z"><title>1 layer · 24 heading: 18.5 (±4.09)</title></path>
+<line class="err" x1="465.5" x2="465.5" y1="226.5" y2="252.4"/>
+<path class="o2" d="M475.0,298.0 L475.0,252.9 Q475.0,248.9 479.0,248.9 L486.0,248.9 Q490.0,248.9 490.0,252.9 L490.0,298.0 Z"><title>3 layers · 24 heading: 15.5 (±5.19)</title></path>
+<line class="err" x1="482.5" x2="482.5" y1="232.5" y2="265.4"/>
+<path class="o3" d="M492.0,298.0 L492.0,246.3 Q492.0,242.3 496.0,242.3 L503.0,242.3 Q507.0,242.3 507.0,246.3 L507.0,298.0 Z"><title>5 layers · 24 heading: 17.6 (±6.54)</title></path>
+<line class="err" x1="499.5" x2="499.5" y1="221.6" y2="263.0"/>
+<text class="tick" x="482.5" y="316" text-anchor="middle">24 heading</text>
+<path class="o1" d="M533.0,298.0 L533.0,186.7 Q533.0,182.7 537.0,182.7 L544.0,182.7 Q548.0,182.7 548.0,186.7 L548.0,298.0 Z"><title>1 layer · 32 free: 36.4 (±12.1)</title></path>
+<line class="err" x1="540.5" x2="540.5" y1="144.4" y2="221.1"/>
+<path class="o2" d="M550.0,298.0 L550.0,202.2 Q550.0,198.2 554.0,198.2 L561.0,198.2 Q565.0,198.2 565.0,202.2 L565.0,298.0 Z"><title>3 layers · 32 free: 31.5 (±5.95)</title></path>
+<line class="err" x1="557.5" x2="557.5" y1="179.4" y2="217.1"/>
+<path class="o3" d="M567.0,298.0 L567.0,201.3 Q567.0,197.3 571.0,197.3 L578.0,197.3 Q582.0,197.3 582.0,201.3 L582.0,298.0 Z"><title>5 layers · 32 free: 31.8 (±8)</title></path>
+<line class="err" x1="574.5" x2="574.5" y1="172.0" y2="222.6"/>
+<text class="tick" x="557.5" y="316" text-anchor="middle">32 free</text>
+<path class="o1" d="M608.0,298.0 L608.0,186.7 Q608.0,182.7 612.0,182.7 L619.0,182.7 Q623.0,182.7 623.0,186.7 L623.0,298.0 Z"><title>1 layer · 32 heading: 36.4 (±12.1)</title></path>
+<line class="err" x1="615.5" x2="615.5" y1="144.4" y2="221.1"/>
+<path class="o2" d="M625.0,298.0 L625.0,216.8 Q625.0,212.8 629.0,212.8 L636.0,212.8 Q640.0,212.8 640.0,216.8 L640.0,298.0 Z"><title>3 layers · 32 heading: 26.9 (±8.33)</title></path>
+<line class="err" x1="632.5" x2="632.5" y1="186.4" y2="239.2"/>
+<path class="o3" d="M642.0,298.0 L642.0,201.6 Q642.0,197.6 646.0,197.6 L653.0,197.6 Q657.0,197.6 657.0,201.6 L657.0,298.0 Z"><title>5 layers · 32 heading: 31.7 (±8.19)</title></path>
+<line class="err" x1="649.5" x2="649.5" y1="171.7" y2="223.6"/>
+<text class="tick" x="632.5" y="316" text-anchor="middle">32 heading</text>
+<text class="ptitle" x="696" y="94">Energy per delivery</text>
+<line class="grid" x1="696" x2="996" y1="298.0" y2="298.0"/><text class="tick" x="690" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="696" x2="996" y1="250.5" y2="250.5"/><text class="tick" x="690" y="254.5" text-anchor="end">20</text>
+<line class="grid" x1="696" x2="996" y1="203.0" y2="203.0"/><text class="tick" x="690" y="207.0" text-anchor="end">40</text>
+<line class="grid" x1="696" x2="996" y1="155.5" y2="155.5"/><text class="tick" x="690" y="159.5" text-anchor="end">60</text>
+<line class="grid" x1="696" x2="996" y1="108.0" y2="108.0"/><text class="tick" x="690" y="112.0" text-anchor="end">80</text>
+<line class="base" x1="696" x2="996" y1="298" y2="298"/>
+<path class="o1" d="M709.0,298.0 L709.0,183.7 Q709.0,179.7 713.0,179.7 L720.0,179.7 Q724.0,179.7 724.0,183.7 L724.0,298.0 Z"><title>1 layer · 24 free: 49.8 (±3.05)</title></path>
+<line class="err" x1="716.5" x2="716.5" y1="172.5" y2="187.0"/>
+<path class="o2" d="M726.0,298.0 L726.0,183.5 Q726.0,179.5 730.0,179.5 L737.0,179.5 Q741.0,179.5 741.0,183.5 L741.0,298.0 Z"><title>3 layers · 24 free: 49.9 (±3.05)</title></path>
+<line class="err" x1="733.5" x2="733.5" y1="172.3" y2="186.8"/>
+<path class="o3" d="M743.0,298.0 L743.0,183.4 Q743.0,179.4 747.0,179.4 L754.0,179.4 Q758.0,179.4 758.0,183.4 L758.0,298.0 Z"><title>5 layers · 24 free: 49.9 (±2.97)</title></path>
+<line class="err" x1="750.5" x2="750.5" y1="172.4" y2="186.5"/>
+<text class="tick" x="733.5" y="316" text-anchor="middle">24 free</text>
+<path class="o1" d="M784.0,298.0 L784.0,183.7 Q784.0,179.7 788.0,179.7 L795.0,179.7 Q799.0,179.7 799.0,183.7 L799.0,298.0 Z"><title>1 layer · 24 heading: 49.8 (±3.05)</title></path>
+<line class="err" x1="791.5" x2="791.5" y1="172.5" y2="187.0"/>
+<path class="o2" d="M801.0,298.0 L801.0,167.5 Q801.0,163.5 805.0,163.5 L812.0,163.5 Q816.0,163.5 816.0,167.5 L816.0,298.0 Z"><title>3 layers · 24 heading: 56.6 (±3.66)</title></path>
+<line class="err" x1="808.5" x2="808.5" y1="154.8" y2="172.2"/>
+<path class="o3" d="M818.0,298.0 L818.0,166.4 Q818.0,162.4 822.0,162.4 L829.0,162.4 Q833.0,162.4 833.0,166.4 L833.0,298.0 Z"><title>5 layers · 24 heading: 57.1 (±3.64)</title></path>
+<line class="err" x1="825.5" x2="825.5" y1="153.7" y2="171.0"/>
+<text class="tick" x="808.5" y="316" text-anchor="middle">24 heading</text>
+<path class="o1" d="M859.0,298.0 L859.0,179.9 Q859.0,175.9 863.0,175.9 L870.0,175.9 Q874.0,175.9 874.0,179.9 L874.0,298.0 Z"><title>1 layer · 32 free: 51.4 (±3.54)</title></path>
+<line class="err" x1="866.5" x2="866.5" y1="167.5" y2="184.3"/>
+<path class="o2" d="M876.0,298.0 L876.0,181.1 Q876.0,177.1 880.0,177.1 L887.0,177.1 Q891.0,177.1 891.0,181.1 L891.0,298.0 Z"><title>3 layers · 32 free: 50.9 (±3.35)</title></path>
+<line class="err" x1="883.5" x2="883.5" y1="169.1" y2="185.1"/>
+<path class="o3" d="M893.0,298.0 L893.0,180.3 Q893.0,176.3 897.0,176.3 L904.0,176.3 Q908.0,176.3 908.0,180.3 L908.0,298.0 Z"><title>5 layers · 32 free: 51.2 (±3.35)</title></path>
+<line class="err" x1="900.5" x2="900.5" y1="168.3" y2="184.2"/>
+<text class="tick" x="883.5" y="316" text-anchor="middle">32 free</text>
+<path class="o1" d="M934.0,298.0 L934.0,179.9 Q934.0,175.9 938.0,175.9 L945.0,175.9 Q949.0,175.9 949.0,179.9 L949.0,298.0 Z"><title>1 layer · 32 heading: 51.4 (±3.54)</title></path>
+<line class="err" x1="941.5" x2="941.5" y1="167.5" y2="184.3"/>
+<path class="o2" d="M951.0,298.0 L951.0,162.2 Q951.0,158.2 955.0,158.2 L962.0,158.2 Q966.0,158.2 966.0,162.2 L966.0,298.0 Z"><title>3 layers · 32 heading: 58.8 (±4.26)</title></path>
+<line class="err" x1="958.5" x2="958.5" y1="148.1" y2="168.3"/>
+<path class="o3" d="M968.0,298.0 L968.0,160.8 Q968.0,156.8 972.0,156.8 L979.0,156.8 Q983.0,156.8 983.0,160.8 L983.0,298.0 Z"><title>5 layers · 32 heading: 59.4 (±4.28)</title></path>
+<line class="err" x1="975.5" x2="975.5" y1="146.7" y2="167.0"/>
+<text class="tick" x="958.5" y="316" text-anchor="middle">32 heading</text>
+<text class="ptitle" x="1022" y="94">Planner time per A* search (ms)</text>
+<line class="grid" x1="1022" x2="1322" y1="298.0" y2="298.0"/><text class="tick" x="1016" y="302.0" text-anchor="end">0</text>
+<line class="grid" x1="1022" x2="1322" y1="250.5" y2="250.5"/><text class="tick" x="1016" y="254.5" text-anchor="end">1</text>
+<line class="grid" x1="1022" x2="1322" y1="203.0" y2="203.0"/><text class="tick" x="1016" y="207.0" text-anchor="end">2</text>
+<line class="grid" x1="1022" x2="1322" y1="155.5" y2="155.5"/><text class="tick" x="1016" y="159.5" text-anchor="end">3</text>
+<line class="grid" x1="1022" x2="1322" y1="108.0" y2="108.0"/><text class="tick" x="1016" y="112.0" text-anchor="end">4</text>
+<line class="base" x1="1022" x2="1322" y1="298" y2="298"/>
+<path class="o1" d="M1035.0,298.0 L1035.0,292.9 Q1035.0,288.9 1039.0,288.9 L1046.0,288.9 Q1050.0,288.9 1050.0,292.9 L1050.0,298.0 Z"><title>1 layer · 24 free: 0.19 (±0.24)</title></path>
+<line class="err" x1="1042.5" x2="1042.5" y1="277.6" y2="298.0"/>
+<path class="o2" d="M1052.0,298.0 L1052.0,271.4 Q1052.0,267.4 1056.0,267.4 L1063.0,267.4 Q1067.0,267.4 1067.0,271.4 L1067.0,298.0 Z"><title>3 layers · 24 free: 0.64 (±1)</title></path>
+<line class="err" x1="1059.5" x2="1059.5" y1="220.0" y2="298.0"/>
+<path class="o3" d="M1069.0,298.0 L1069.0,253.2 Q1069.0,249.2 1073.0,249.2 L1080.0,249.2 Q1084.0,249.2 1084.0,253.2 L1084.0,298.0 Z"><title>5 layers · 24 free: 1.03 (±1.76)</title></path>
+<line class="err" x1="1076.5" x2="1076.5" y1="165.6" y2="298.0"/>
+<text class="tick" x="1059.5" y="316" text-anchor="middle">24 free</text>
+<path class="o1" d="M1110.0,298.0 L1110.0,293.0 Q1110.0,289.0 1114.0,289.0 L1121.0,289.0 Q1125.0,289.0 1125.0,293.0 L1125.0,298.0 Z"><title>1 layer · 24 heading: 0.19 (±0.24)</title></path>
+<line class="err" x1="1117.5" x2="1117.5" y1="277.7" y2="298.0"/>
+<path class="o2" d="M1127.0,298.0 L1127.0,265.5 Q1127.0,261.5 1131.0,261.5 L1138.0,261.5 Q1142.0,261.5 1142.0,265.5 L1142.0,298.0 Z"><title>3 layers · 24 heading: 0.77 (±1.03)</title></path>
+<line class="err" x1="1134.5" x2="1134.5" y1="212.8" y2="298.0"/>
+<path class="o3" d="M1144.0,298.0 L1144.0,239.7 Q1144.0,235.7 1148.0,235.7 L1155.0,235.7 Q1159.0,235.7 1159.0,239.7 L1159.0,298.0 Z"><title>5 layers · 24 heading: 1.31 (±2.38)</title></path>
+<line class="err" x1="1151.5" x2="1151.5" y1="122.7" y2="298.0"/>
+<text class="tick" x="1134.5" y="316" text-anchor="middle">24 heading</text>
+<path class="o1" d="M1185.0,298.0 L1185.0,289.9 Q1185.0,285.9 1189.0,285.9 L1196.0,285.9 Q1200.0,285.9 1200.0,289.9 L1200.0,298.0 Z"><title>1 layer · 32 free: 0.25 (±0.27)</title></path>
+<line class="err" x1="1192.5" x2="1192.5" y1="273.0" y2="298.0"/>
+<path class="o2" d="M1202.0,298.0 L1202.0,265.0 Q1202.0,261.0 1206.0,261.0 L1213.0,261.0 Q1217.0,261.0 1217.0,265.0 L1217.0,298.0 Z"><title>3 layers · 32 free: 0.78 (±1.1)</title></path>
+<line class="err" x1="1209.5" x2="1209.5" y1="208.7" y2="298.0"/>
+<path class="o3" d="M1219.0,298.0 L1219.0,243.0 Q1219.0,239.0 1223.0,239.0 L1230.0,239.0 Q1234.0,239.0 1234.0,243.0 L1234.0,298.0 Z"><title>5 layers · 32 free: 1.24 (±1.9)</title></path>
+<line class="err" x1="1226.5" x2="1226.5" y1="148.5" y2="298.0"/>
+<text class="tick" x="1209.5" y="316" text-anchor="middle">32 free</text>
+<path class="o1" d="M1260.0,298.0 L1260.0,290.0 Q1260.0,286.0 1264.0,286.0 L1271.0,286.0 Q1275.0,286.0 1275.0,290.0 L1275.0,298.0 Z"><title>1 layer · 32 heading: 0.25 (±0.27)</title></path>
+<line class="err" x1="1267.5" x2="1267.5" y1="273.1" y2="298.0"/>
+<path class="o2" d="M1277.0,298.0 L1277.0,255.6 Q1277.0,251.6 1281.0,251.6 L1288.0,251.6 Q1292.0,251.6 1292.0,255.6 L1292.0,298.0 Z"><title>3 layers · 32 heading: 0.98 (±0.94)</title></path>
+<line class="err" x1="1284.5" x2="1284.5" y1="206.7" y2="296.5"/>
+<path class="o3" d="M1294.0,298.0 L1294.0,224.1 Q1294.0,220.1 1298.0,220.1 L1305.0,220.1 Q1309.0,220.1 1309.0,224.1 L1309.0,298.0 Z"><title>5 layers · 32 heading: 1.64 (±1.63)</title></path>
+<line class="err" x1="1301.5" x2="1301.5" y1="142.6" y2="297.5"/>
+<text class="tick" x="1284.5" y="316" text-anchor="middle">32 heading</text>
+<text class="tick" x="16" y="340">Bars: mean over seeds; whiskers: ±1 standard deviation. Hover a bar for its value; the report's table lists every number.</text>
+</svg>

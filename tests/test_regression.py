@@ -2,7 +2,8 @@
 
 ``tests/data/baseline_flat_seeds_1_3.json`` holds the metrics of seeds 1-3
 with the default configuration, recorded before altitude layers were added.
-Every run must reproduce them exactly (timing metrics excluded).
+With a single flight layer (``n_layers=1``) the layered simulator must
+reproduce them exactly (timing metrics excluded).
 """
 
 import dataclasses
@@ -13,7 +14,7 @@ from pathlib import Path
 from dronefleet import SimConfig, Simulation
 
 BASELINE = Path(__file__).with_name("data") / "baseline_flat_seeds_1_3.json"
-FLAT = SimConfig(record_trace=False)
+FLAT = SimConfig(record_trace=False, n_layers=1)
 
 
 class FlatBaselineRegressionTests(unittest.TestCase):

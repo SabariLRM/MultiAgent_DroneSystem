@@ -70,27 +70,27 @@ class PlannerTests(unittest.TestCase):
         tags = {s.tag: s.t for s in plan.steps if s.tag}
         self.assertEqual(tags["drop_done"] - tags["drop_start"], 2)
         drop_steps = [s for s in plan.steps if tags["drop_start"] <= s.t <= tags["drop_done"]]
-        self.assertTrue(all(s.cell == (3, 0) for s in drop_steps))
+        self.assertTrue(all(s.cell == (3, 0, 1) for s in drop_steps))
 
     def test_avoids_reserved_cells_in_time(self):
         w = open_world(w=6, h=1)   # a 1-wide corridor forces waiting
         rt = ReservationTable()
         # another drone sits over (2,0) during t=0..4
-        rt.reserve_path(9, [((2, 0), t, True) for t in range(5)])
+        rt.reserve_path(9, [((2, 0, 1), t, True) for t in range(5)])
         plan = SpaceTimePlanner(w, rt).plan(0, (0, 0), 0, False, [Waypoint((5, 0), "land")], now=0)
         self.assertIsNotNone(plan)
         for s in plan.steps:
-            if s.airborne and s.cell == (2, 0):
+            if s.airborne and s.cell == (2, 0, 1):
                 self.assertGreaterEqual(s.t, 5)
 
     def test_never_plans_head_on_swap(self):
         w = open_world(w=6, h=2)
         rt = ReservationTable()
         # drone 9 flies right-to-left along row 0
-        rt.reserve_path(9, [((5 - t, 0), t, True) for t in range(6)])
+        rt.reserve_path(9, [((5 - t, 0, 1), t, True) for t in range(6)])
         plan = SpaceTimePlanner(w, rt).plan(0, (0, 0), 0, True, [Waypoint((5, 0), "land")], now=0)
         self.assertIsNotNone(plan)
-        other = {t: (5 - t, 0) for t in range(6)}
+        other = {t: (5 - t, 0, 1) for t in range(6)}
         for a, b in zip(plan.steps, plan.steps[1:]):
             self.assertNotEqual(other.get(b.t), b.cell, "vertex conflict")
             self.assertFalse(other.get(a.t) == b.cell and other.get(b.t) == a.cell, "swap conflict")
@@ -98,7 +98,7 @@ class PlannerTests(unittest.TestCase):
     def test_waits_on_ground_when_pad_airspace_taken(self):
         w = open_world()
         rt = ReservationTable()
-        rt.reserve_path(9, [((0, 0), t, True) for t in range(1, 4)])
+        rt.reserve_path(9, [((0, 0, 1), t, True) for t in range(1, 4)])
         plan = SpaceTimePlanner(w, rt).plan(0, (0, 0), 0, False, [Waypoint((3, 0), "land")], now=0)
         takeoff = next(s for s in plan.steps if s.tag == "takeoff")
         self.assertGreaterEqual(takeoff.t, 4)

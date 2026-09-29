@@ -3,12 +3,14 @@
 Cooperative path planning (Silver, 2005) lets agents plan one after another,
 each treating the cells already claimed by others as obstacles *in time*.
 
-Two kinds of claims are stored:
+Two kinds of claims are stored (cells are ``(x, y, z)`` airspace cells):
 
 * vertex ``(cell, t)``  - the drone will be airborne in ``cell`` at tick ``t``
 * edge ``(a, b, t)``    - the drone will fly from ``a`` (at ``t``) to ``b``
   (at ``t + 1``). An edge claim blocks the opposite move ``b -> a`` at the same
   tick, which is the classic head-on "swap" collision a vertex check misses.
+  Moves between layers are edges too, so a drone climbing through a layer
+  that another drone is descending through is a (vertical) head-on conflict.
 
 When ``enabled`` is False every query succeeds and nothing is stored; this is
 how the uncoordinated baselines run.

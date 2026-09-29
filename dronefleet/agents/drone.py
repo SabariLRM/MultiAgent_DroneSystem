@@ -7,7 +7,8 @@ Architecture: a hybrid (layered) agent.
   no-fly zones) that decides *what* to do next: bid on orders, fly to a hub,
   deliver, go and swap a battery. It plans *how* with space-time A* against
   the shared reservation table, and checks every plan against its energy
-  budget before committing (predictive battery policy).
+  budget before committing (predictive battery policy). Its position is an
+  airspace cell ``(x, y, z)``: ``z = 0`` on the ground, ``z >= 1`` airborne.
 * **Reactive layer** - executed by :mod:`dronefleet.traffic` every tick: if the
   next cell is contested the lower-priority drone holds position. When that
   (or a wind gust) makes the drone fall behind its plan, the deliberative layer
@@ -30,7 +31,7 @@ from ..energy import BatteryPack, EnergyModel
 from ..messages import Performative
 from ..planner import Plan, PlanStep, SpaceTimePlanner, Waypoint
 from ..reservation import ReservationTable
-from ..world import Cell, GridWorld
+from ..world import Cell, GridWorld, Site, ground, lift
 from .base import Agent
 from .station import READY_SOC
 
@@ -58,7 +59,7 @@ class DroneAgent(Agent):
     role = "drones"
 
     def __init__(self, did: int, cfg, bus, world: GridWorld, planner: SpaceTimePlanner,
-                 reservations: ReservationTable, energy: EnergyModel, start: Cell, pack: BatteryPack,
+                 reservations: ReservationTable, energy: EnergyModel, start: Site, pack: BatteryPack,
                  sensor=None):
         super().__init__(f"drone{did}", bus)
         self.did = did
@@ -68,8 +69,7 @@ class DroneAgent(Agent):
         self.res = reservations
         self.energy = energy
         self.sensor = sensor               # callable(drone) -> set of (cell, t) seen occupied
-        self.pos: Cell = start
-        self.airborne = False
+        self.pos: Cell = ground(start)     # parked on its start pad
         self.pack = pack
         self.state = DroneState.IDLE
         self.task: dict | None = None
@@ -96,11 +96,21 @@ class DroneAgent(Agent):
         # statistics
         self.stats = dict(replans=0, repairs=0, holds=0, deviations=0, yields=0, escalations=0,
                           energy_used=0.0, cells_flown=0, hover_ticks=0, deliveries=0, swaps=0,
-                          emergencies=0, bids=0, busy_ticks=0, airborne_ticks=0, plan_failures=0)
+                          emergencies=0, bids=0, busy_ticks=0, airborne_ticks=0, plan_failures=0,
+                          climbs=0, descents=0, upper_layer_ticks=0)
         self.plan_log: list[tuple[int, list]] = []       # (t, cells) for the replay viewer
         self.event_log: list[str] = []
 
     # ================================================================ helpers
+    @property
+    def airborne(self) -> bool:
+        return self.pos[2] > 0
+
+    @property
+    def site(self) -> Site:
+        """The ground location below the drone."""
+        return self.pos[0], self.pos[1]
+
     @property
     def battery(self) -> float:
         return self.pack.charge
@@ -125,18 +135,20 @@ class DroneAgent(Agent):
     def _log(self, t: int, text: str) -> None:
         self.event_log.append(f"Drone {self.did} {text}")
 
-    def _station_energy(self, frm: Cell, takeoff: bool = True) -> float:
+    def _station_energy(self, frm, takeoff: bool = True) -> float:
         """Energy to reach the nearest swap station from ``frm`` (0 if already there).
 
-        A drone must never land somewhere it cannot fly out of to recharge, so
-        every plan is checked against: battery >= plan + this + reserve.
+        ``frm`` is a site, or a cell (on a station pad or at layer 1 above it
+        counts as there). A drone must never land somewhere it cannot fly out
+        of to recharge, so every plan is checked against:
+        battery >= plan + this + reserve.
         """
-        if frm in self.world.stations:
+        if (frm[0], frm[1]) in self.world.stations and (len(frm) == 2 or frm[2] <= 1):
             return 0.0
         d = min(self.world.dist(frm, s) for s in self.world.stations)
         return self.energy.estimate(d, takeoff=takeoff, slack=self.cfg.detour_factor)
 
-    def _nearest_hub(self, frm: Cell) -> Cell:
+    def _nearest_hub(self, frm) -> Site:
         return min(self.world.hubs, key=lambda h: (self.world.dist(frm, h), h))
 
     def _in_drop(self, t: int) -> bool:
@@ -144,7 +156,7 @@ class DroneAgent(Agent):
         if not self.plan or not self.carrying:
             return False
         s = self.plan.step_at(t)
-        if s is None or s.cell != self.task["dest"] or not self.airborne:
+        if s is None or s.cell != lift(self.task["dest"]) or not self.airborne:
             return False
         started = any(p.tag == "drop_start" and p.t <= t for p in self.plan.steps)
         return started
@@ -158,7 +170,8 @@ class DroneAgent(Agent):
             self._handle(msg, t)
         self._act(t)
         self.send("dispatcher", Performative.INFORM, t, type="telemetry", state=self.state.value,
-                  pos=self.pos, soc=round(self.soc, 3), task=self.task["oid"] if self.task else None)
+                  pos=self.site, alt=self.pos[2], soc=round(self.soc, 3),
+                  task=self.task["oid"] if self.task else None)
 
     def process_urgent(self, t: int) -> None:
         """Handle same-tick yield requests (called by the simulation in extra rounds)."""
@@ -196,9 +209,10 @@ class DroneAgent(Agent):
         elif kind == "nfz":
             if self.plan and self.state in AIR_STATES:
                 x0, y0, x1, y1 = msg.content["rect"]
+                z0, z1 = msg.content["layers"]
                 s, e = msg.content["start_t"], msg.content["end_t"]
                 hit = any(s <= st.t < e and x0 <= st.cell[0] <= x1 and y0 <= st.cell[1] <= y1
-                          for st in self.plan.remaining(t))
+                          and z0 <= st.cell[2] <= z1 for st in self.plan.remaining(t))
                 if hit:
                     self.needs_replan = "nfz"
                     self._log(t, "re-routes around the newly announced no-fly zone")
@@ -212,7 +226,7 @@ class DroneAgent(Agent):
         # on the way to / at a station: bid for work that starts after the swap
         return self.state in SWAP_STATES and self.cfg.battery_policy == "predictive"
 
-    def _availability(self, t: int) -> tuple[Cell, int, float, bool]:
+    def _availability(self, t: int) -> tuple[tuple, int, float, bool]:
         """(where, when, battery, airborne) this drone could start a new mission from."""
         if self.state in (DroneState.IDLE, DroneState.RETURNING):
             return self.pos, t, self.battery, self.airborne
@@ -228,14 +242,14 @@ class DroneAgent(Agent):
             ready = arrive + max(0, wait - (arrive - t)) + self.cfg.swap_ticks
         return cell, ready, READY_SOC * self.cfg.battery_capacity, False
 
-    def _leg_estimate(self, start: Cell, t0: int, airborne: bool, order: dict) -> tuple[float, int] | None:
+    def _leg_estimate(self, start, t0: int, airborne: bool, order: dict) -> tuple[float, int] | None:
         """(energy, eta_delivery) for start -> hub -> customer -> nearest station."""
         w, e = self.world, self.energy
         slack = self.cfg.detour_factor
         hub, dest, kg = tuple(order["hub"]), tuple(order["dest"]), order["weight"]
         if kg > self.cfg.max_payload_kg:
             return None
-        d1 = 0 if (start == hub and not airborne) else w.dist(start, hub)
+        d1 = 0 if ((start[0], start[1]) == hub and not airborne) else w.dist(start, hub)
         d2 = w.dist(hub, dest)
         d3 = min(w.dist(dest, s) for s in w.stations)   # must always be able to recharge
         if math.inf in (d1, d2, d3):
@@ -270,7 +284,7 @@ class DroneAgent(Agent):
         # not enough charge: offer to do it via a battery swap first
         best = None
         for sid, cell in enumerate(self.world.stations):
-            here = self.pos == cell and not self.airborne
+            here = self.site == cell and not self.airborne
             d = 0 if here else self.world.dist(self.pos, cell)
             reach = 0.0 if here else self.energy.estimate(d, takeoff=not self.airborne, slack=self.cfg.detour_factor)
             if reach + self.energy.critical > self.battery:
@@ -353,7 +367,7 @@ class DroneAgent(Agent):
                 if not self.carrying:
                     self.carrying = True
                     self.send("dispatcher", Performative.INFORM, t, type="picked_up", oid=self.task["oid"])
-                    self._log(t, f"picks up order #{self.task['oid']} at Hub {self.world.hubs.index(self.pos)}")
+                    self._log(t, f"picks up order #{self.task['oid']} at Hub {self.world.hubs.index(self.site)}")
                 self._start_delivery_leg(t)
         elif st in AIR_STATES:
             if self._battery_emergency(t):
@@ -367,7 +381,7 @@ class DroneAgent(Agent):
                 self._start_delivery_leg(t)
             elif self.swap_first:                   # won the job on a "swap first" bid
                 self._go_swap(t, self.world.stations[self.swap_first_sid], TRIP_BEFORE_JOB)
-            elif self.pos == self.task["hub"]:
+            elif self.site == self.task["hub"]:
                 self.state = DroneState.LOADING
                 self.load_until = t + self.cfg.loading_ticks
             else:
@@ -379,17 +393,17 @@ class DroneAgent(Agent):
             return                                  # wait for the auction result first
         policy = self.cfg.battery_policy
         low = self.soc < (self.cfg.swap_threshold if policy == "predictive" else self.cfg.naive_threshold)
-        if low and self.pos not in self.world.stations:
+        if low and self.site not in self.world.stations:
             self._go_swap(t)
-        elif low and self.pos in self.world.stations and self.soc < 0.9:
+        elif low and self.site in self.world.stations and self.soc < 0.9:
             # already sitting on a station: just queue here
-            sid = self.world.stations.index(self.pos)
+            sid = self.world.stations.index(self.site)
             self.station_sid = sid
             self.state = DroneState.QUEUED
             self.trip_reason = TRIP_LOW
             self.send(f"station{sid}", Performative.REQUEST, t, type="swap", pack=self.pack)
             self._log(t, f"is low on battery ({self.soc:.0%}) and queues for a swap here at Station {sid}")
-        elif self.pos not in self.world.hubs and t - self.idle_since >= self.cfg.reposition_after:
+        elif self.site not in self.world.hubs and t - self.idle_since >= self.cfg.reposition_after:
             # parked at a station with a good battery: reposition to where parcels are
             self._reposition(t)
 
@@ -432,7 +446,7 @@ class DroneAgent(Agent):
         # nothing feasible from here
         if self.airborne:
             self._hold(t)
-        elif energy_short and self.pos in self.world.hubs:
+        elif energy_short and self.site in self.world.hubs:
             # still at the hub: put the parcel back on the shelf and go recharge
             self.carrying = False
             self._drop_task(t, "insufficient battery for delivery")
@@ -440,7 +454,7 @@ class DroneAgent(Agent):
             self._go_swap(t)
         # otherwise stay on the ground (safe) and retry next tick
 
-    def _post_delivery_pads(self, dest: Cell, battery_after: float) -> list[tuple[Cell, bool]]:
+    def _post_delivery_pads(self, dest: Site, battery_after: float) -> list[tuple[Site, bool]]:
         hub = self._nearest_hub(dest)
         if self.cfg.battery_policy == "naive":
             if battery_after < self.cfg.naive_threshold * self.cfg.battery_capacity:
@@ -454,7 +468,7 @@ class DroneAgent(Agent):
             return st_opts + [(hub, False)]
         return [(hub, False)] + st_opts
 
-    def _choose_station(self, frm: Cell, battery: float) -> Cell:
+    def _choose_station(self, frm, battery: float) -> Site:
         """Pick the station minimising travel + believed queueing delay (must be reachable)."""
         best, best_cost = None, math.inf
         for sid, cell in enumerate(self.world.stations):
@@ -469,12 +483,12 @@ class DroneAgent(Agent):
                 best, best_cost = cell, cost
         return best
 
-    def _go_swap(self, t: int, target: Cell | None = None, reason: int = TRIP_LOW) -> bool:
+    def _go_swap(self, t: int, target: Site | None = None, reason: int = TRIP_LOW) -> bool:
         target = target or self._choose_station(self.pos, self.battery)
         self.station_sid = self.world.stations.index(target)
         self.post_pad = target
         self.trip_reason = reason
-        if self.pos == target and not self.airborne:
+        if self.site == target and not self.airborne:
             self.state = DroneState.QUEUED
             self.send(f"station{self.station_sid}", Performative.REQUEST, t, type="swap", pack=self.pack)
             return True
@@ -631,7 +645,7 @@ class DroneAgent(Agent):
             if nxt is not None and cur is not None and cur.cell == self.pos and cur.airborne == self.airborne:
                 return nxt.cell, nxt.airborne
             if cur is not None and cur.tag == "land" and cur.cell == self.pos and self.airborne:
-                return self.pos, False
+                return ground(self.pos), False
         return self.pos, self.airborne
 
     def apply_motion(self, t_new: int, cell: Cell, airborne: bool) -> None:
@@ -639,13 +653,18 @@ class DroneAgent(Agent):
         cost = self.energy.transition(self.airborne, self.pos, airborne, cell, self.payload)
         if airborne:
             self.stats["airborne_ticks"] += 1
+            if cell[2] > 1:
+                self.stats["upper_layer_ticks"] += 1
             if self.airborne and cell != self.pos:
-                self.stats["cells_flown"] += 1
+                if cell[0] == self.pos[0] and cell[1] == self.pos[1]:
+                    self.stats["climbs" if cell[2] > self.pos[2] else "descents"] += 1
+                else:
+                    self.stats["cells_flown"] += 1
             elif self.airborne:
                 self.stats["hover_ticks"] += 1
         self.pack.charge = max(0.0, self.pack.charge - cost)
         self.stats["energy_used"] += cost
-        self.pos, self.airborne = cell, airborne
+        self.pos = cell if airborne else ground(cell)
         if airborne and self.pack.charge <= 0.0:
             self._die(t_new)
 
@@ -653,7 +672,7 @@ class DroneAgent(Agent):
         self._log(t, "!! RAN OUT OF BATTERY IN FLIGHT and is lost"
                      + (f" with order #{self.task['oid']}" if self.task and self.carrying else ""))
         self.state = DroneState.DEAD
-        self.airborne = False
+        self.pos = ground(self.pos)         # it falls out of the airspace
         self.plan = None
         self.res.release(self.did)
         if self.task:
@@ -699,14 +718,14 @@ class DroneAgent(Agent):
             else:
                 self.state = DroneState.RETURNING
         elif tag == "land":
-            self.airborne = False
+            self.pos = ground(self.pos)     # touch down on the pad
             self.plan = None
             self.res.release(self.did, t + 1)
             if self.state == DroneState.TO_PICKUP:
                 self.state = DroneState.LOADING
                 self.load_until = t + self.cfg.loading_ticks
             elif self.state == DroneState.TO_STATION:
-                sid = self.world.stations.index(self.pos)
+                sid = self.world.stations.index(self.site)
                 self.station_sid = sid
                 self.state = DroneState.QUEUED
                 self.send(f"station{sid}", Performative.REQUEST, t, type="swap", pack=self.pack)

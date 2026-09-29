@@ -6,14 +6,15 @@ import math
 import random
 from dataclasses import dataclass
 
-from .world import Cell, GridWorld
+from .energy import step_cost_bound
+from .world import GridWorld, Site
 
 
 @dataclass
 class Order:
     oid: int
-    hub: Cell
-    dest: Cell
+    hub: Site
+    dest: Site
     weight: float
     express: bool
     created_t: int
@@ -36,12 +37,13 @@ class Order:
         }
 
 
-def _in_range_energy(cfg, world: GridWorld, hub: Cell, dest: Cell, kg: float) -> float:
+def _in_range_energy(cfg, world: GridWorld, hub: Site, dest: Site, kg: float) -> float:
     """Conservative energy of station -> hub -> dest -> station on a fresh pack."""
     slack = cfg.detour_factor
-    fetch = min(world.dist(s, hub) for s in world.stations) * slack * cfg.move_cost + cfg.takeoff_cost
-    out = world.dist(hub, dest) * slack * cfg.move_cost * (1 + cfg.payload_factor * kg)
-    back = min(world.dist(dest, s) for s in world.stations) * slack * cfg.move_cost
+    step = step_cost_bound(cfg)             # per tick of flight, climbs and descents included
+    fetch = min(world.dist(s, hub) for s in world.stations) * slack * step + cfg.takeoff_cost
+    out = world.dist(hub, dest) * slack * step * (1 + cfg.payload_factor * kg)
+    back = min(world.dist(dest, s) for s in world.stations) * slack * step
     extra = (cfg.takeoff_cost + cfg.drop_ticks * cfg.hover_cost) * (1 + cfg.payload_factor * kg)
     return fetch + out + back + extra
 
@@ -64,7 +66,7 @@ class OrderGenerator:
         self._next = 1
         self.generated: list[Order] = []
 
-    def _in_range(self, hub: Cell, dest: Cell, kg: float) -> bool:
+    def _in_range(self, hub: Site, dest: Site, kg: float) -> bool:
         budget = self.cfg.battery_capacity * (0.95 - self.cfg.reserve_fraction)
         return _in_range_energy(self.cfg, self.world, hub, dest, kg) <= budget
 

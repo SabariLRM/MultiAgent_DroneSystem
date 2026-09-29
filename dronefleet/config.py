@@ -5,7 +5,8 @@ single field (``dataclasses.replace(cfg, n_drones=16)``) and stay reproducible
 through ``seed``.
 
 Units: one grid cell is ~100 m, one tick is ~10 s, so a drone cruises at one
-cell per tick (~36 km/h). Battery energy is expressed in abstract "energy
+cell per tick (~36 km/h). One altitude layer is ~30 m and a drone climbs or
+descends one layer per tick. Battery energy is expressed in abstract "energy
 units" where flying one empty cell costs ``move_cost``.
 """
 
@@ -16,6 +17,7 @@ from dataclasses import dataclass, field, asdict
 ALLOCATION_STRATEGIES = ("cnp", "nearest", "round_robin")
 COORDINATION_MODES = ("cooperative", "reactive", "none")
 BATTERY_POLICIES = ("predictive", "naive")
+LAYER_RULES = ("free", "heading")
 
 
 @dataclass
@@ -29,13 +31,17 @@ class SimConfig:
     n_hubs: int = 2
     n_stations: int = 3
     n_customers: int = 40
+    n_layers: int = 3               # flight layers z = 1..n_layers above the ground (z = 0)
+    layer_rule: str = "free"        # "free" | "heading": east/west on odd layers, north/south on even
 
     # --- fleet -----------------------------------------------------------
     n_drones: int = 12
     battery_capacity: float = 150.0
     move_cost: float = 1.0          # energy per cell flown (empty)
     hover_cost: float = 0.7         # energy per tick spent hovering in place
-    takeoff_cost: float = 1.5       # extra energy for a climb-out
+    takeoff_cost: float = 1.5       # extra energy for a climb-out (ground -> layer 1)
+    climb_cost: float = 1.2         # energy per layer climbed (layer z -> z + 1)
+    descend_cost: float = 0.5       # energy per layer descended (touch-down itself is free)
     payload_factor: float = 0.25    # +25 % flight energy per kg carried
     max_payload_kg: float = 3.0
     loading_ticks: int = 2          # ground time at a hub to load a parcel
@@ -73,14 +79,15 @@ class SimConfig:
     # --- disturbances ----------------------------------------------------
     gust_prob: float = 0.03         # chance a moving drone is held back a tick
     nfz_events: list = field(default_factory=lambda: [
-        # (announce_t, start_t, end_t, (x0, y0, x1, y1)) -- filled by world gen
-        # when ``auto_nfz`` is True
+        # (announce_t, start_t, end_t, (x0, y0, x1, y1)[, (z0, z1)]) -- filled by
+        # world gen when ``auto_nfz`` is True; without (z0, z1) a zone closes every layer
     ])
     auto_nfz: bool = True
     nfz_lead_time: int = 8          # ticks of warning before a zone activates
+    nfz_ceiling: int | None = None  # generated zones cover layers 1..nfz_ceiling (None = all layers)
 
     # --- planner ---------------------------------------------------------
-    max_expansions: int = 40000
+    max_expansions: int = 40000     # A* budget per search and per flight layer
     hold_escalation: int = 4        # failed plans before priority escalation
     reservation_hold: int = 3       # ticks a stuck drone reserves its cell
 
@@ -98,6 +105,12 @@ class SimConfig:
             raise ValueError("need at least one drone")
         if not 0 <= self.gust_prob < 1:
             raise ValueError("gust_prob must be in [0, 1)")
+        if self.n_layers < 1:
+            raise ValueError("need at least one flight layer")
+        if self.layer_rule not in LAYER_RULES:
+            raise ValueError(f"layer_rule must be one of {LAYER_RULES}")
+        if self.nfz_ceiling is not None and self.nfz_ceiling < 1:
+            raise ValueError("nfz_ceiling must be None (all layers) or >= 1")
         return self
 
     def to_dict(self) -> dict:

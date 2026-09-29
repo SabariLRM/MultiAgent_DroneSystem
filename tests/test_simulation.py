@@ -21,7 +21,7 @@ class WorldGenerationTests(unittest.TestCase):
         self.assertEqual(a.customers, b.customers)
         dm = a.distance_map(a.hubs[0])
         for c in a.customers + a.stations + a.hubs:
-            self.assertIn(c, dm, f"{c} unreachable")
+            self.assertIn((*c, 1), dm, f"{c} unreachable")
 
     def test_nfz_never_covers_a_pad(self):
         for seed in range(1, 8):

@@ -1,21 +1,26 @@
 """Space-time A* for one drone, chained through a list of waypoints.
 
-Search state is ``(cell, t, airborne)``. Actions per tick:
+Search state is ``(cell, t)`` with ``cell = (x, y, z)``; ``z = 0`` means the
+drone is on the ground (only ever at a pad), ``z >= 1`` that it is airborne on
+that flight layer. Actions per tick:
 
-* airborne: move to a 4-neighbour, or hover in place
-* on a pad (not airborne): wait on the ground (free of any conflict, costs no
-  energy) or take off into the airspace above the pad
+* airborne: move to a horizontal neighbour (subject to the layer rule), climb
+  one layer, descend one layer (not below layer 1), or hover in place
+* on a pad: wait on the ground (free of any conflict, costs no energy) or take
+  off vertically to layer 1 above the pad
 
-An air *segment* always ends by landing on a pad. Because a landed drone is out
-of the airspace, every committed plan ends in a state that can never collide
-with anyone - the property that makes cooperative planning safe without
-unbounded "stay at goal" reservations.
+An air *segment* always ends by landing on a pad: the drone arrives at layer 1
+above the pad and touches down at the end of that tick. Because a landed drone
+is out of the airspace, every committed plan ends in a state that can never
+collide with anyone - the property that makes cooperative planning safe
+without unbounded "stay at goal" reservations. Parcels are lowered from
+layer 1 above the customer.
 
-The heuristic is the exact static BFS distance to the waypoint (+1 for a
-pending take-off). Buildings are the only static obstacles, while other drones
-and temporary no-fly zones only ever lengthen a path, so the heuristic is
-admissible and A* returns the earliest-arrival path given everyone else's
-reservations.
+The heuristic is the exact static 3-D BFS distance to the waypoint (+1 for a
+pending take-off). Buildings (up to their height) are the only static
+obstacles, while other drones and temporary no-fly zones only ever lengthen a
+path, so the heuristic is admissible and consistent, and A* returns the
+earliest-arrival path given everyone else's reservations.
 """
 
 from __future__ import annotations
@@ -26,14 +31,15 @@ from dataclasses import dataclass, field
 from itertools import count
 
 from .reservation import ReservationTable
-from .world import Cell, GridWorld
+from .world import Cell, GridWorld, ground, lift
 
-HOVER_TIEBREAK = 0.01  # prefer flying / waiting on the ground over hovering
+HOVER_TIEBREAK = 0.01     # prefer flying / waiting on the ground over hovering ...
+VERTICAL_TIEBREAK = 0.02  # ... and hovering over a climb or descent that arrives no sooner
 
 
 @dataclass(frozen=True)
 class Waypoint:
-    cell: Cell
+    cell: tuple        # a site (x, y) means its layer-1 cell
     kind: str          # "drop" (hover for ``dwell`` ticks) or "land"
     dwell: int = 0
 
@@ -89,16 +95,17 @@ class PlannerStats:
 
 class SpaceTimePlanner:
     def __init__(self, world: GridWorld, reservations: ReservationTable, max_expansions: int = 40000):
+        """``max_expansions`` is the search budget per flight layer (the airspace grows with the layers)."""
         self.world = world
         self.res = reservations
-        self.max_expansions = max_expansions
+        self.max_expansions = max_expansions * world.n_layers
         self.stats = PlannerStats()
 
     # ---------------------------------------------------------------- public
     def plan(
         self,
         agent: int,
-        start: Cell,
+        start,
         start_t: int,
         airborne: bool,
         waypoints: list[Waypoint],
@@ -106,51 +113,57 @@ class SpaceTimePlanner:
         ignore: frozenset = frozenset(),
         extra_blocked: set | None = None,
     ) -> Plan | None:
-        """Plan through ``waypoints`` (the last must be a landing).
+        """Plan from ``start`` through ``waypoints`` (the last must be a landing).
 
-        Returns ``None`` if any segment cannot be found within the search
-        budget; the caller then holds position (in the air) or stays on the
-        ground and retries later.
+        ``start`` is a cell, or a site read as layer 1 (``airborne``) or the
+        ground. Returns ``None`` if any segment cannot be found within the
+        search budget; the caller then holds position (in the air) or stays on
+        the ground and retries later.
         """
         assert waypoints and waypoints[-1].kind == "land", "air segments must end with a landing"
         t_begin = time.perf_counter()
+        if len(start) == 2:
+            start = lift(start) if airborne else ground(start)
         zones = self.world.known_zones(now)
-        steps = [PlanStep(start_t, start, airborne)]
-        cur, t, air = start, start_t, airborne
+        steps = [PlanStep(start_t, start, start[2] > 0)]
+        cur, t = start, start_t
         try:
             for wp in waypoints:
-                seg = self._search(agent, cur, t, air, wp, zones, ignore, extra_blocked)
+                goal = lift(wp.cell)
+                dwell = wp.dwell if wp.kind == "drop" else 0
+                seg = self._search(agent, cur, t, goal, dwell, zones, ignore, extra_blocked)
                 if seg is None:
                     self.stats.failures += 1
                     return None
-                for c, st, sa in seg[1:]:
+                for c, st in seg[1:]:
+                    sa = c[2] > 0
                     tag = "takeoff" if sa and not steps[-1].airborne else None
                     steps.append(PlanStep(st, c, sa, tag))
                 if wp.kind == "drop":
                     t_arr = steps[-1].t
                     steps[-1].tag = "drop_start"
-                    for k in range(1, wp.dwell + 1):
-                        steps.append(PlanStep(t_arr + k, wp.cell, True))
+                    for k in range(1, dwell + 1):
+                        steps.append(PlanStep(t_arr + k, goal, True))
                     steps[-1].tag = "drop_done"
-                    cur, t, air = wp.cell, t_arr + wp.dwell, True
+                    cur, t = goal, t_arr + dwell
                 else:
                     steps[-1].tag = "land"
-                    cur, t, air = wp.cell, steps[-1].t, False
+                    cur, t = ground(goal), steps[-1].t
             return Plan(steps, tuple(waypoints))
         finally:
             self.stats.seconds += time.perf_counter() - t_begin
 
     # --------------------------------------------------------------- internal
-    def _search(self, agent, start, t0, airborne, wp: Waypoint, zones, ignore, extra_blocked):
+    def _search(self, agent, start: Cell, t0: int, goal: Cell, dwell: int, zones, ignore, extra_blocked):
         self.stats.searches += 1
         world, res = self.world, self.res
-        goal = wp.cell
         dm = world.distance_map(goal)
-        if start not in dm:
+        start_air = lift(start)
+        if start_air not in dm:
             return None
-        dwell = wp.dwell if wp.kind == "drop" else 0
+        airborne = start[2] > 0
 
-        def in_zone(c: Cell, t: int) -> bool:
+        def in_zone(c, t: int) -> bool:
             for z in zones:
                 if z.start_t <= t < z.end_t and z.contains(c):
                     return True
@@ -164,9 +177,9 @@ class SpaceTimePlanner:
         goal_zones = [z for z in zones if z.contains(goal)]
         while any(in_zone(goal, open_t + k) for k in range(dwell + 1)) and goal_zones:
             open_t = max(z.end_t for z in goal_zones if z.start_t <= open_t + dwell and z.end_t > open_t)
-        horizon = max(t0 + 3 * dm[start] + 80, open_t + dm[start] + 40)
+        horizon = max(t0 + 3 * dm[start_air] + 80, open_t + dm[start_air] + 40)
 
-        def blocked(c: Cell, t: int) -> bool:
+        def blocked(c, t: int) -> bool:
             return in_zone(c, t) or (extra_blocked is not None and (c, t) in extra_blocked)
 
         def goal_ok(t: int) -> bool:
@@ -178,8 +191,8 @@ class SpaceTimePlanner:
             return True
 
         tie = count()
-        s0 = (start, t0, airborne)
-        h0 = max(dm[start] + (0 if airborne else 1), open_t - t0)
+        s0 = (start, t0)
+        h0 = max(dm[start_air] + (0 if airborne else 1), open_t - t0)
         open_heap = [(h0, -t0, next(tie), 0.0, s0)]
         parent: dict = {s0: None}
         parent_g: dict = {s0: 0.0}
@@ -190,8 +203,8 @@ class SpaceTimePlanner:
             if state in closed:
                 continue
             closed.add(state)
-            cell, t, air = state
-            if air and cell == goal and goal_ok(t):
+            cell, t = state
+            if cell == goal and goal_ok(t):
                 self.stats.expansions += expansions
                 path = []
                 while state is not None:
@@ -205,25 +218,38 @@ class SpaceTimePlanner:
                     break
                 continue
             nt = t + 1
-            if not air:
-                succ = [((cell, nt, False), 1.0)]
-                if not blocked(cell, nt) and res.vertex_free(cell, nt, agent, ignore):
-                    succ.append(((cell, nt, True), 1.0))
+            x, y, z = cell
+            if z == 0:
+                succ = [((cell, nt), 1.0)]
+                up = (x, y, 1)
+                if not blocked(up, nt) and res.vertex_free(up, nt, agent, ignore):
+                    succ.append(((up, nt), 1.0))
             else:
                 succ = []
                 for n in world.neighbors(cell) + (cell,):
                     if blocked(n, nt) or not res.move_free(cell, n, t, agent, ignore):
                         continue
-                    succ.append(((n, nt, True), 1.0 + (HOVER_TIEBREAK if n == cell else 0.0)))
+                    if n == cell:
+                        cost = 1.0 + HOVER_TIEBREAK
+                    elif n[2] != z:
+                        cost = 1.0 + VERTICAL_TIEBREAK
+                    else:
+                        cost = 1.0
+                    succ.append(((n, nt), cost))
             for nxt, cost in succ:
                 if nxt in closed:
                     continue
                 ng = g + cost
-                h = dm.get(nxt[0])
-                if h is None:
-                    continue
-                if not nxt[2]:
+                c = nxt[0]
+                if c[2] == 0:
+                    h = dm.get((c[0], c[1], 1))
+                    if h is None:
+                        continue
                     h += 1
+                else:
+                    h = dm.get(c)
+                    if h is None:
+                        continue
                 if open_t > nt:
                     h = max(h, open_t - nt)
                 if ng < parent_g.get(nxt, float("inf")):

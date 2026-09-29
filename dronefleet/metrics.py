@@ -46,6 +46,9 @@ def compute_metrics(sim) -> dict:
         "energy_per_delivery": energy / len(delivered) if delivered else 0.0,
         "cells_flown": tot("cells_flown"),
         "hover_ticks": tot("hover_ticks"),
+        "climbs": tot("climbs"),
+        "descents": tot("descents"),
+        "upper_layer_share": tot("upper_layer_ticks") / max(1, tot("airborne_ticks")),
         "swaps": sum(s.swaps_done for s in sim.stations),
         "avg_swap_wait": (sum(s.wait_ticks_total for s in sim.stations) / max(1, sum(s.swaps_done for s in sim.stations))),
         "max_station_queue": max((s.max_queue for s in sim.stations), default=0),
@@ -84,6 +87,8 @@ def format_metrics(m: dict) -> str:
         ("Collisions", f"{m['collisions']} (vertex {m['vertex_conflicts']}, head-on {m['edge_conflicts']})"
                        f"   NFZ violations {m['nfz_violations']}"),
         ("Energy", f"{m['energy_total']:.0f} total, {m['energy_per_delivery']:.1f} per delivery"),
+        ("Altitude", f"{m['climbs']} climbs, {m['descents']} descents, "
+                     f"{m['upper_layer_share']:.0%} of flight time above layer 1"),
         ("Battery", f"{m['swaps']} swaps, avg wait {m['avg_swap_wait']:.1f} ticks, "
                     f"{m['emergencies']} emergency diversions, {m['dead_drones']} drones lost"),
         ("Fleet utilisation", f"{m['utilisation']:.1%}"),

@@ -4,7 +4,8 @@ Cooperative planning makes plans conflict-free *on paper*. Execution is not
 perfect: wind gusts hold drones back, and the uncoordinated baselines do not
 plan around each other at all. Every tick, before anything moves, each drone
 broadcasts its intended next cell (like ADS-B / V2V) and applies a local
-right-of-way rule:
+right-of-way rule. Cells are ``(x, y, z)``, so everything below applies per
+layer, and a climb/descent pair through the same two cells is a head-on swap:
 
 1. A drone that is staying put (hovering) always keeps its cell.
 2. If several drones want the same cell, airborne traffic beats a drone
@@ -83,7 +84,7 @@ def resolve(intents: dict[int, Intent], rank: dict[int, tuple]) -> tuple[dict[in
 
 
 def detect_collisions(before: dict[int, tuple[Cell, bool]], after: dict[int, tuple[Cell, bool]]) -> list[tuple]:
-    """Vertex (same cell) and edge (head-on swap) conflicts between airborne drones."""
+    """Vertex (same cell) and edge (head-on swap, horizontal or vertical) conflicts between airborne drones."""
     out = []
     cells: dict[Cell, list[int]] = defaultdict(list)
     for i, (c, air) in after.items():

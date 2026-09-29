@@ -2,8 +2,8 @@
 
 One tick, in order:
 
-1. **Environment** - new orders arrive (Poisson); NFZ announcements are
-   broadcast by air-traffic control.
+1. **Environment** - new orders arrive (Poisson); NFZ announcements (area,
+   time window and closed layers) are broadcast by air-traffic control.
 2. **Dispatcher** - closes the previous auction round / opens a new one.
 3. **Stations** - charge packs, progress swaps, broadcast status.
 4. **Drones deliberate** (highest right-of-way first) - read messages, bid,
@@ -12,8 +12,8 @@ One tick, in order:
    the same tick.
 6. **Intents -> disturbances -> reactive resolution** - wind gusts may hold a
    drone back; the right-of-way rule removes any remaining conflict.
-7. **Physics** - positions and batteries update; collisions are *detected*
-   independently of how they were avoided.
+7. **Physics** - positions (x, y, layer) and batteries update; collisions
+   are *detected* independently of how they were avoided.
 8. **Drones observe** - arrivals, drops, landings, deviations from plan.
 """
 
@@ -86,7 +86,8 @@ class Simulation:
 
     # ------------------------------------------------------------- sensing
     def _sense(self, drone: DroneAgent, t: int) -> set:
-        """Local perception for the reactive baseline: nearby drones, assumed to stay put."""
+        """Local perception for the reactive baseline: nearby drones (horizontal range,
+        any layer), assumed to stay put."""
         seen = set()
         for o in self.drones:
             if o is drone or not o.airborne or manhattan(o.pos, drone.pos) > SENSOR_RANGE:
@@ -105,9 +106,12 @@ class Simulation:
             ev.append(f"New order #{o.oid}{' (EXPRESS)' if o.express else ''}: a {o.weight:.1f} kg parcel "
                       f"from Hub {self.world.hubs.index(o.hub)} to a customer, due by t={o.deadline_t}")
         for z in self.world.zones_announced_at(t):
+            layers = z.layers(self.world.n_layers)
             self.bus.send(Message("atc", "drones", Performative.INFORM,
-                                  {"type": "nfz", "rect": z.rect, "start_t": z.start_t, "end_t": z.end_t}, t))
-            ev.append(f"Air traffic control announces a no-fly zone, closed from t={z.start_t} to t={z.end_t}")
+                                  {"type": "nfz", "rect": z.rect, "start_t": z.start_t, "end_t": z.end_t,
+                                   "layers": layers}, t))
+            closed = "" if layers == (1, self.world.n_layers) else f" (layers {layers[0]}-{layers[1]} only)"
+            ev.append(f"Air traffic control announces a no-fly zone{closed}, closed from t={z.start_t} to t={z.end_t}")
 
         ev += self.dispatcher.step(t)
         for s in self.stations:
@@ -151,7 +155,8 @@ class Simulation:
         for kind, ids, cell in detect_collisions(before, after):
             self.collisions.append((self.t, kind, ids, cell))
             what = "are in the same cell" if kind == "vertex" else "fly through each other head-on"
-            ev.append(f"!! COLLISION: drones {' and '.join(map(str, ids))} {what} at {cell}")
+            ev.append(f"!! COLLISION: drones {' and '.join(map(str, ids))} {what} "
+                      f"at ({cell[0]}, {cell[1]}) on layer {cell[2]}")
         for d in alive:
             if d.airborne and self.world.in_active_nfz(d.pos, self.t):
                 self.nfz_violations += 1

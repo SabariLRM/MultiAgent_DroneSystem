@@ -1,0 +1,471 @@
+/* Shared core of the 2-D and 3-D replay viewers (inlined by replay.py).
+
+   It owns everything except the map: colour tokens and theme switching, the
+   plain-language description of what each drone is doing (describe()), the
+   header chips, the side panels (follow card, fleet list, stations, event log,
+   run summary), the orders timeline, playback and keyboard shortcuts.
+
+   A view plugs in the map:
+     view.init(api)         once, before the first render
+     view.draw(i, f, t)     draw frame i (+ fraction f towards frame i + 1) at tick t
+     view.theme()           colour tokens changed (api.T)
+     view.selected(k)       the followed drone changed (-1 = none)
+*/
+function startReplay(DATA, view) {
+  "use strict";
+  const W = DATA.world.w, H = DATA.world.h, L = DATA.world.layers || 1;
+  const frames = DATA.frames, LAST = frames.length - 1;
+  const N = frames[0].d.length;
+  const STATES = DATA.states;
+  const LAYER_M = (DATA.meta && DATA.meta.layer_m) || 30;
+  // cells are encoded as (z * H + y) * W + x; sites (pads, customers, buildings) have z = 0
+  const enc = (x, y, z = 0) => (z * H + y) * W + x;
+  const decode = e => [e % W, Math.floor(e / W) % H, Math.floor(e / (W * H))];
+  const FLAG = { NONE: 0, WIND: 1, GIVE_WAY: 2, HOLDING: 3, LOWERING: 4 };
+  const TRIP = { NONE: 0, LOW: 1, BEFORE_JOB: 2, EMERGENCY: 3, AFTER: 4 };
+  const GROUP = { idle: "idle", returning: "idle", to_pickup: "pickup", loading: "pickup",
+                  to_customer: "parcel", to_station: "energy", queued: "energy", swapping: "energy", dead: "dead" };
+  const altOf = d => d[13] || 0;                  // flight layer, 0 = on the ground
+
+  // ------------------------------------------------------------ tokens
+  const TOKENS = ["surface", "ink", "ink2", "muted", "grid", "base", "building", "c-pickup", "c-parcel",
+                  "c-energy", "c-idle", "good", "warning", "critical", "bg", "accent", "raised"].concat(view.tokens || []);
+  const T = {};
+  function readTokens() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of TOKENS) T[k] = cs.getPropertyValue("--" + k).trim();
+  }
+  const groupColor = g => g === "dead" ? T.critical : T["c-" + g];
+  const colorOf = d => groupColor(GROUP[STATES[d[3]]]);
+  const socColor = s => s >= 50 ? T.good : s >= 25 ? T.warning : T.critical;
+  function textOn(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return "#fff";
+    const n = parseInt(m[1], 16);
+    const lum = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
+    return .2126 * lum[0] + .7152 * lum[1] + .0722 * lum[2] > .3 ? "#0b0b0b" : "#ffffff";
+  }
+  const esc = s => String(s).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+
+  // ------------------------------------------------------------ places
+  const hubs = DATA.world.hubs, stations = DATA.world.stations;
+  const placeByEnc = new Map();
+  hubs.forEach(([x, y], i) => placeByEnc.set(enc(x, y), `Hub ${i}`));
+  stations.forEach(([x, y], i) => placeByEnc.set(enc(x, y), `Station ${i}`));
+  const placeName = e => placeByEnc.get(e) || "the customer";
+  const heights = new Map(DATA.world.blocked.map((b, j) => [b, DATA.world.heights ? DATA.world.heights[j] : L]));
+
+  // ------------------------------------------------------------ orders
+  const orders = DATA.orders.map(o => ({ oid: o[0], hub: o[1], x: o[2], y: o[3], created: o[4], deadline: o[5],
+                                         delivered: o[6], express: !!o[7], drone: o[8], status: o[9], weight: o[10] }));
+  const orderById = new Map(orders.map(o => [o.oid, o]));
+
+  // ------------------------------------------------------------ events
+  const flashes = [];
+  const byDrone = Array.from({ length: N }, () => []);
+  frames.forEach((f, i) => f.e.forEach(e => {
+    const m = /COLLISION.*at \((\d+), (\d+)(?:, (\d+))?\)(?: on layer (\d+))?/.exec(e);
+    if (m) flashes.push({ i, x: +m[1], y: +m[2], z: +(m[4] || m[3] || 1) });
+    const seen = new Set();
+    for (const mm of e.matchAll(/Drone (\d+)(?!\d)/g)) seen.add(+mm[1]);
+    const cm = /drones ([\d and]+) (are|fly)/.exec(e);
+    if (cm) for (const x of cm[1].split(" and ")) seen.add(+x);
+    for (const k of seen) if (k < N) byDrone[k].push([i, f.t, e]);
+  }));
+
+  // ------------------------------------------------------------ language
+  function describe(d) {
+    const st = STATES[d[3]], oid = d[5], air = !!d[2], flag = d[9], reason = d[10];
+    const tgt = d[8] >= 0 ? placeName(d[8]) : null;
+    const here = placeByEnc.get(enc(d[0], d[1]));
+    const o = orderById.get(oid);
+    const ex = o && o.express ? " (express)" : "";
+    let text = "", tag = "";
+    switch (st) {
+      case "idle":
+        text = air ? "Hovering with nothing to do" : `Parked at ${here || "a pad"}, ready for the next order`;
+        tag = air ? "free" : ""; break;
+      case "to_pickup":
+        text = air ? `Flying to ${tgt} to collect order #${oid}${ex}` : `Taking off for ${tgt} to collect order #${oid}`;
+        tag = `→ ${tgt} for #${oid}`; break;
+      case "loading":
+        text = `Loading order #${oid}${ex} at ${tgt}`; tag = `loading #${oid}`; break;
+      case "to_customer":
+        if (flag === FLAG.LOWERING) { text = `Lowering order #${oid} to the customer on a winch`; tag = `lowering #${oid}`; }
+        else if (!air) { text = `Taking off with order #${oid}${ex}`; tag = ""; }
+        else { text = `Carrying order #${oid}${ex} to the customer`; tag = `#${oid} → customer`; }
+        break;
+      case "returning":
+        text = `Flying back to ${tgt} to wait for the next order`; tag = `→ ${tgt}`; break;
+      case "to_station":
+        if (reason === TRIP.BEFORE_JOB) { text = `Flying to ${tgt} for a fresh battery before collecting order #${oid}`; tag = `→ ${tgt} battery`; }
+        else if (reason === TRIP.EMERGENCY) { text = `Battery emergency: diverting to ${tgt}` + (d[6] ? ` with order #${oid} on board` : ""); tag = `EMERGENCY → ${tgt}`; }
+        else if (reason === TRIP.AFTER) { text = `Parcel delivered; flying to ${tgt} to swap its battery (${d[4]}% left)`; tag = `→ ${tgt} battery`; }
+        else { text = `Battery low (${d[4]}%): flying to ${tgt} for a swap`; tag = `→ ${tgt} battery`; }
+        if (!air) text = text.replace("Flying", "Taking off").replace("flying", "taking off");
+        break;
+      case "queued":
+        text = `Waiting in line at ${tgt} for a battery swap` + (oid >= 0 ? `, then collects order #${oid}` : ""); break;
+      case "swapping":
+        text = `Getting a fresh battery at ${tgt}` + (oid >= 0 ? `, then collects order #${oid}` : ""); break;
+      case "dead":
+        text = "Ran out of battery in flight and was lost"; tag = "LOST"; break;
+    }
+    const why = flag === FLAG.WIND ? "Held back one tick by a wind gust"
+              : flag === FLAG.GIVE_WAY ? "Paused to give way to another drone"
+              : flag === FLAG.HOLDING ? "Hovering in place until its route is clear" : "";
+    const whyTag = flag === FLAG.WIND ? "wind" : flag === FLAG.GIVE_WAY ? "giving way" : flag === FLAG.HOLDING ? "waiting" : "";
+    // the map label: what + (in stacked airspace) which layer + why it paused
+    const alt = L > 1 && air && st !== "dead" ? `L${altOf(d)}` : "";
+    const label = tag ? [tag, alt, whyTag].filter(Boolean).join(" · ") : "";
+    return { text, why, tag: tag && whyTag ? `${tag} · ${whyTag}` : tag, label, alt };
+  }
+  function altitudeText(d) {
+    if (!d[2]) return "on the ground";
+    const z = altOf(d);
+    return `layer ${z} of ${L} (about ${z * LAYER_M} m up)`;
+  }
+
+  // ------------------------------------------------------------- header
+  const meta = DATA.meta;
+  const ALLOC = { cnp: "Parcels assigned by auction", nearest: "Parcels go to the nearest free drone", round_robin: "Parcels assigned in turn" };
+  const COORD = { cooperative: "Routes booked in space and time", reactive: "No route booking: drones give way on sight", none: "No collision avoidance" };
+  const BATT = { predictive: "Energy-aware battery swaps", naive: "Naive battery rule (swap below 30 %)" };
+  const layersChip = L > 1 ? `${L} flight layers` + (DATA.world.layer_rule === "heading" ? " · east/west odd, north/south even" : "") : "One flight layer";
+  document.getElementById("chips").innerHTML = [`${meta.n_drones} drones`, layersChip, ALLOC[meta.allocation], COORD[meta.coordination],
+    BATT[meta.battery_policy], `Wind gusts ${(meta.gust_prob * 100).toFixed(0)} %`, `Seed ${meta.seed}`]
+    .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join("");
+  document.querySelectorAll("[data-layers]").forEach(el => { el.hidden = L === 1; });
+
+  const themeBtn = document.getElementById("theme");
+  const THEMES = ["auto", "light", "dark"];
+  let themeIdx = 0;
+  try { const saved = localStorage.getItem("dronefleet-theme"); if (saved) themeIdx = Math.max(0, THEMES.indexOf(saved)); } catch (e) {}
+  function applyTheme() {
+    const th = THEMES[themeIdx];
+    if (th === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", th);
+    themeBtn.textContent = "Theme: " + th;
+    try { localStorage.setItem("dronefleet-theme", th); } catch (e) {}
+    themeChanged();
+  }
+  function themeChanged() { readTokens(); view.theme(); lastUi = -1; render(); }
+  themeBtn.onclick = () => { themeIdx = (themeIdx + 1) % 3; applyTheme(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeChanged);
+  const guide = document.getElementById("guide");
+  try { if (localStorage.getItem("dronefleet-guide") === "closed") guide.open = false; } catch (e) {}
+  guide.addEventListener("toggle", ev => {
+    try { localStorage.setItem("dronefleet-guide", ev.target.open ? "open" : "closed"); } catch (e) {}
+  });
+
+  // --------------------------------------------------------- side panels
+  const nowEl = document.getElementById("now"), kpis = document.getElementById("kpis"), fleet = document.getElementById("fleet"),
+        stEl = document.getElementById("stations"), logEl = document.getElementById("log"), followEl = document.getElementById("follow"),
+        logFilterWrap = document.getElementById("logFilterWrap"), logFilter = document.getElementById("logFilter"),
+        logFilterLabel = document.getElementById("logFilterLabel");
+  let selected = -1;
+
+  function summary(fr) {
+    const c = { pickup: 0, parcel: 0, energyAir: 0, returning: 0, parked: 0, atStation: 0, lost: 0, loading: 0 };
+    const perLayer = new Array(L + 1).fill(0);
+    for (const d of fr.d) {
+      const st = STATES[d[3]];
+      if (d[2] && st !== "dead") perLayer[altOf(d)]++;
+      if (st === "dead") c.lost++;
+      else if (st === "to_pickup" && d[2]) c.pickup++;
+      else if (st === "to_customer" && d[2]) c.parcel++;
+      else if (st === "to_station" && d[2]) c.energyAir++;
+      else if (st === "returning" || (st === "idle" && d[2])) c.returning++;
+      else if (st === "queued" || st === "swapping" || st === "to_station") c.atStation++;
+      else if (st === "loading" || st === "to_pickup" || st === "to_customer") c.loading++;
+      else c.parked++;
+    }
+    const flying = c.pickup + c.parcel + c.energyAir + c.returning;
+    const parts = [];
+    if (c.parcel) parts.push(`<b>${c.parcel}</b> carrying parcels`);
+    if (c.pickup) parts.push(`<b>${c.pickup}</b> going to collect one`);
+    if (c.energyAir) parts.push(`<b>${c.energyAir}</b> heading for a battery swap`);
+    if (c.returning) parts.push(`<b>${c.returning}</b> returning to a hub`);
+    const ground = [];
+    if (c.loading) ground.push(`${c.loading} loading at a hub`);
+    if (c.atStation) ground.push(`${c.atStation} at a swap station`);
+    if (c.parked) ground.push(`${c.parked} parked and free`);
+    if (c.lost) ground.push(`<b style="color:var(--critical)">${c.lost} lost</b>`);
+    const waiting = fr.o[0];
+    let s = `<b>t = ${fr.t}</b> · ${flying ? `${flying} of ${N} drones flying: ${parts.join(", ")}.` : "No drones in the air."}`;
+    if (flying && L > 1) s += ` By layer: ${perLayer.slice(1).map((n, z) => `L${z + 1} ${n}`).join(", ")}.`;
+    if (ground.length) s += ` On the ground: ${ground.join(", ")}.`;
+    s += waiting ? ` <b>${waiting}</b> order${waiting > 1 ? "s" : ""} waiting for a drone.` : " No order is waiting for a drone.";
+    return s;
+  }
+
+  function renderUi(i) {
+    const fr = frames[i];
+    nowEl.innerHTML = summary(fr);
+    const created = orders.filter(o => o.created <= fr.t).length;
+    kpis.innerHTML = [
+      ["Delivered", `${fr.o[2]} <small>of ${created}</small>`],
+      ["Being delivered", fr.o[1]],
+      ["Waiting for a drone", fr.o[0]],
+      ["Collisions", fr.c],
+    ].map(([l, v]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
+
+    fleet.innerHTML = fr.d.map((d, k) => {
+      const col = colorOf(d), desc = describe(d);
+      const sub = [desc.alt ? `Layer ${altOf(d)}` : "", desc.why].filter(Boolean).join(" · ");
+      return `<button class="frow${k === selected ? " sel" : ""}" data-k="${k}" aria-pressed="${k === selected}">` +
+        `<span class="fid" style="background:${col};color:${textOn(col)}">${k}</span>` +
+        `<span class="ftext">${esc(desc.text)}${sub ? `<small>${esc(sub)}</small>` : ""}</span>` +
+        `<span class="fbat" title="battery ${d[4]}%">${d[4]}%<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span></span></button>`;
+    }).join("");
+
+    stEl.innerHTML = fr.s.map((s, j) => {
+      const [q, act, charged, total] = s;
+      const packs = Array.from({ length: total }, (_, p) => `<i class="${p < charged ? "full" : ""}"></i>`).join("");
+      const here = enc(stations[j][0], stations[j][1]);
+      const swapping = [], queued = [];
+      fr.d.forEach((d, k) => { if (d[8] === here) { if (STATES[d[3]] === "swapping") swapping.push(k); else if (STATES[d[3]] === "queued") queued.push(k); } });
+      const line = [swapping.length ? `swapping drone ${swapping.join(", ")}` : "",
+                    queued.length ? `drone ${queued.join(", ")} waiting` : ""].filter(Boolean).join(" · ") || "free";
+      return `<div class="station"><div><b>Station ${j}</b></div><div class="meta">${line}</div>` +
+             `<div class="packs" title="${charged} of ${total} spare packs fully charged">${packs}<span>${charged} of ${total} spare packs charged</span></div></div>`;
+    }).join("");
+
+    renderFollow(i);
+    renderLog(i);
+  }
+
+  const followMini = document.getElementById("followMini");
+  function renderFollow(i) {
+    const fr = frames[i];
+    followMini.hidden = selected < 0;
+    if (selected >= 0) {
+      const d = fr.d[selected], col = colorOf(d), desc = describe(d);
+      const eta = d[12] >= 0 && d[12] > fr.t ? ` · arrives t=${d[12]}` : "";
+      followMini.innerHTML = `<span class="badge" style="background:${col};color:${textOn(col)}">${selected}</span>` +
+        `<span class="txt"><b>Drone ${selected}</b>: ${esc(desc.text)}${eta} · battery ${d[4]}%` +
+        `${desc.alt ? ` · <span class="alt">${desc.alt}</span>` : ""}${desc.why ? ` · ${esc(desc.why.toLowerCase())}` : ""}</span>` +
+        `<button id="unfollowMini">Stop</button>`;
+      document.getElementById("unfollowMini").onclick = () => select(-1);
+    }
+    if (selected < 0) {
+      followEl.innerHTML = `<h2>Follow a drone</h2><p class="hint">${view.followHint || "Click a drone on the map or in the fleet list."} You will see what it is doing, why, where it is going and when it gets there.</p>`;
+      return;
+    }
+    const d = fr.d[selected], col = colorOf(d), desc = describe(d);
+    const o = orderById.get(d[5]);
+    const facts = [];
+    facts.push(["Battery", `<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span>${d[4]}%`]);
+    if (L > 1 && STATES[d[3]] !== "dead") facts.push(["Altitude", `<span class="alt">${desc.alt ? desc.alt + " · " : ""}${altitudeText(d)}</span>`]);
+    if (o) facts.push(["Order", `#${o.oid} · ${o.weight != null ? o.weight.toFixed(1) + " kg" : ""}${o.express ? " · express" : ""} · due t=${o.deadline}` +
+                               (d[6] ? " · on board" : " · not collected yet")]);
+    const st = STATES[d[3]];
+    if (d[8] >= 0 && st !== "queued" && st !== "swapping" && st !== "loading")
+      facts.push(["Going to", placeByEnc.has(d[8]) ? placeName(d[8]) : `the customer (ring #${d[5]} on the map)`]);
+    if (d[12] >= 0 && d[12] > fr.t) facts.push(["Arrives", `t=${d[12]} (in ${d[12] - fr.t} tick${d[12] - fr.t === 1 ? "" : "s"})`]);
+    if (d[11] >= 0) facts.push(["After that", `lands at ${placeName(d[11])}`]);
+    const recent = byDrone[selected].filter(([fi]) => fi <= i).slice(-6).reverse();
+    followEl.innerHTML =
+      `<div class="fhead"><span class="badge" style="background:${col};color:${textOn(col)}">${selected}</span><b>Drone ${selected}</b>` +
+      `<button id="unfollow">Stop following</button></div>` +
+      `<p class="fnow">${esc(desc.text)}</p>${desc.why ? `<p class="fwhy">${esc(desc.why)}</p>` : ""}` +
+      `<dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>` +
+      `<h3>Recent activity</h3><ul class="mini-log">${recent.length ? recent.map(([, t, e]) => `<li><span class="t">t=${t}</span>${esc(e.replace(/^!! /, ""))}</li>`).join("") : "<li>Nothing yet.</li>"}</ul>`;
+    document.getElementById("unfollow").onclick = () => select(-1);
+  }
+
+  function renderLog(i) {
+    const only = selected >= 0 && logFilter.checked;
+    logFilterWrap.hidden = selected < 0;
+    logFilterLabel.textContent = `only Drone ${selected}`;
+    const lines = [];
+    if (only) {
+      const arr = byDrone[selected];
+      for (let j = arr.length - 1; j >= 0 && lines.length < 80; j--) if (arr[j][0] <= i) lines.push([arr[j][1], arr[j][2]]);
+    } else {
+      for (let j = i; j >= 0 && lines.length < 80; j--) {
+        const f = frames[j];
+        for (let e = f.e.length - 1; e >= 0 && lines.length < 80; e--) lines.push([f.t, f.e[e]]);
+      }
+    }
+    logEl.innerHTML = lines.map(([t, e]) => {
+      const cls = /!!|LOST|EMERGENCY|COLLISION|LATE/.test(e) ? "alert" : /delivers order/.test(e) ? "good" : "";
+      return `<li class="${cls}"><span class="t">t=${t}</span>${esc(e.replace(/^!! /, ""))}</li>`;
+    }).join("") || "<li>Nothing has happened yet.</li>";
+  }
+  logFilter.onchange = () => { lastUi = -1; render(); };
+
+  fleet.addEventListener("click", ev => {
+    const b = ev.target.closest(".frow");
+    if (b) select(Number(b.dataset.k) === selected ? -1 : Number(b.dataset.k));
+  });
+  function select(k) { selected = k; view.selected(k); lastUi = -1; render(); }
+
+  // ------------------------------------------------------------ tooltips
+  const tip = document.getElementById("tip");
+  function showTip(html, x, y, width = 290) {
+    tip.innerHTML = html; tip.hidden = false;
+    tip.style.left = Math.max(4, Math.min(x + 14, innerWidth - width)) + "px"; tip.style.top = (y + 14) + "px";
+  }
+  function hideTip() { tip.hidden = true; }
+  function droneTip(k) {
+    const d = frames[Math.min(LAST, Math.floor(pos))].d[k], desc = describe(d);
+    return `<b>Drone ${k}</b> · battery ${d[4]}%${desc.alt ? ` · ${desc.alt}` : ""}<br>${esc(desc.text)}` +
+           `${desc.why ? `<br><span class="why">${esc(desc.why)}</span>` : ""}<br><span class="why">${view.clickHint || "Click to follow"}</span>`;
+  }
+
+  // -------------------------------------------------------------- metrics
+  const M = DATA.metrics || {};
+  const fmt1 = v => v != null ? v.toFixed(1) : null;
+  document.getElementById("metrics").innerHTML = [
+    ["Orders delivered", M.delivered != null ? `${M.delivered} of ${M.orders}` : null],
+    ["Average delivery time", M.avg_delivery_time != null ? `${fmt1(M.avg_delivery_time)} ticks` : null],
+    ["Slowest 5 % took at least", M.p95_delivery_time != null ? `${M.p95_delivery_time} ticks` : null],
+    ["Delivered on time", M.on_time_rate != null ? `${(M.on_time_rate * 100).toFixed(1)} %` : null],
+    ["Collisions", M.collisions], ["Drones lost", M.dead_drones],
+    ["Battery swaps", M.swaps], ["Battery emergencies", M.emergencies],
+    ["Energy per delivery", fmt1(M.energy_per_delivery)],
+    ["Time drones spent busy", M.utilisation != null ? `${(M.utilisation * 100).toFixed(1)} %` : null],
+    ["Routes planned / shifted after wind", M.replans != null ? `${M.replans} / ${M.plan_repairs}` : null],
+    ["Times a drone gave way", M.forced_holds], ["Auctions held", M.auction_rounds],
+    ["Climbs / descents", L > 1 && M.climbs != null ? `${M.climbs} / ${M.descents}` : null],
+    ["Flight time above layer 1", L > 1 && M.upper_layer_share != null ? `${(M.upper_layer_share * 100).toFixed(1)} %` : null],
+  ].filter(r => r[1] != null).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+
+  // ------------------------------------------------------------- timeline
+  const FONT = getComputedStyle(document.body).fontFamily;
+  const tl = document.getElementById("timeline"), tctx = tl.getContext("2d");
+  let tlW = 600, dpr = 1;
+  const tlH = 130;
+  const PAD = { l: 34, r: 10, t: 8, b: 20 };
+  const maxY = Math.max(4, ...frames.map(f => Math.max(f.o[0], f.o[1])));
+  const yStep = Math.max(1, Math.ceil(maxY / 4)), yMax = yStep * 4;
+  function sizeTimeline() {
+    dpr = window.devicePixelRatio || 1;
+    tlW = tl.clientWidth || 600;
+    tl.width = Math.round(tlW * dpr); tl.height = Math.round(tlH * dpr);
+    tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  const tx = i => PAD.l + (tlW - PAD.l - PAD.r) * i / Math.max(1, LAST);
+  const ty = v => tlH - PAD.b - (tlH - PAD.t - PAD.b) * v / yMax;
+  function drawTimeline(p) {
+    const c = tctx;
+    c.clearRect(0, 0, tlW, tlH);
+    c.font = `11px ${FONT}`; c.fillStyle = T.muted; c.textAlign = "right"; c.textBaseline = "middle";
+    c.strokeStyle = T.grid; c.lineWidth = 1;
+    for (let v = 0; v <= yMax; v += yStep) {
+      const y = Math.round(ty(v)) + .5;
+      c.beginPath(); c.moveTo(PAD.l, y); c.lineTo(tlW - PAD.r, y); c.stroke(); c.fillText(String(v), PAD.l - 6, y);
+    }
+    c.textAlign = "center"; c.textBaseline = "top";
+    const tStep = Math.max(50, Math.ceil(frames[LAST].t / 8 / 50) * 50);
+    for (let t = 0; t <= frames[LAST].t; t += tStep) c.fillText(String(t), tx(t), tlH - PAD.b + 5);
+    const series = [[0, T["c-pickup"]], [1, T["c-parcel"]]];
+    for (const [k, col] of series) {
+      c.beginPath(); c.lineWidth = 2; c.lineJoin = "round"; c.strokeStyle = col;
+      frames.forEach((f, i) => { const x = tx(i), y = ty(f.o[k]); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+      c.stroke();
+    }
+    const x = tx(p);
+    c.strokeStyle = T.ink2; c.lineWidth = 1; c.beginPath(); c.moveTo(x + .5, PAD.t); c.lineTo(x + .5, tlH - PAD.b); c.stroke();
+    const f = frames[Math.round(p)];
+    for (const [k, col] of series) { c.beginPath(); c.arc(x, ty(f.o[k]), 4, 0, 7); c.fillStyle = col; c.fill(); c.lineWidth = 2; c.strokeStyle = T.surface; c.stroke(); }
+  }
+  function frameFromEvent(ev) {
+    const rect = tl.getBoundingClientRect();
+    return Math.max(0, Math.min(LAST, Math.round((ev.clientX - rect.left - PAD.l) / (tlW - PAD.l - PAD.r) * LAST)));
+  }
+  tl.addEventListener("mousemove", ev => {
+    const f = frames[frameFromEvent(ev)];
+    showTip(`<b>t = ${f.t}</b><br>waiting for a drone: ${f.o[0]}<br>being delivered: ${f.o[1]}<br>delivered so far: ${f.o[2]}`,
+            ev.clientX, ev.clientY - 24, 200);
+  });
+  tl.addEventListener("mouseleave", hideTip);
+  tl.addEventListener("click", ev => seek(frameFromEvent(ev)));
+  new ResizeObserver(() => { sizeTimeline(); render(); }).observe(tl);
+
+  // ------------------------------------------------------------- playback
+  const slider = document.getElementById("slider"), tlabel = document.getElementById("tlabel"),
+        playBtn = document.getElementById("play"), speedSel = document.getElementById("speed");
+  slider.max = LAST;
+  const opt = id => { const el = document.getElementById(id); return !!(el && el.checked); };
+  let pos = 0, playing = false, lastTs = null, lastUi = -1, ready = false;
+
+  function render() {
+    if (!ready || !T.surface) return;
+    const i = Math.min(LAST, Math.floor(pos)), f = pos - i, t = frames[i].t;
+    view.draw(i, f, t);
+    drawTimeline(pos);
+    if (i !== lastUi) { renderUi(i); lastUi = i; slider.value = i; tlabel.textContent = `t = ${t}`; }
+  }
+  function seek(i) { pos = Math.max(0, Math.min(LAST, i)); lastUi = -1; render(); }
+  function setPlaying(p) {
+    playing = p; playBtn.textContent = p ? "❚❚ Pause" : "▶ Play"; playBtn.setAttribute("aria-label", p ? "Pause" : "Play");
+    if (p && pos >= LAST) pos = 0;
+    lastTs = null; if (p) requestAnimationFrame(loop);
+  }
+  function loop(ts) {
+    if (!playing) return;
+    if (lastTs !== null) {
+      pos += (ts - lastTs) / 1000 * Number(speedSel.value);
+      if (pos >= LAST) { pos = LAST; render(); setPlaying(false); return; }
+    }
+    lastTs = ts; render(); requestAnimationFrame(loop);
+  }
+  playBtn.onclick = () => setPlaying(!playing);
+  document.getElementById("back").onclick = () => { setPlaying(false); seek(Math.ceil(pos) - 1); };
+  document.getElementById("fwd").onclick = () => { setPlaying(false); seek(Math.floor(pos) + 1); };
+  slider.oninput = () => { setPlaying(false); seek(Number(slider.value)); };
+  document.querySelectorAll("input[data-opt]").forEach(el => { el.onchange = render; });
+  addEventListener("keydown", ev => {
+    if (ev.target.tagName === "SELECT") return;
+    if (ev.target.tagName === "INPUT" && ev.target.type !== "checkbox" && ev.target.type !== "range") return;
+    if (ev.code === "Space") { ev.preventDefault(); setPlaying(!playing); }
+    else if (ev.key === "ArrowRight") { ev.preventDefault(); setPlaying(false); seek(Math.floor(pos) + (ev.shiftKey ? 10 : 1)); }
+    else if (ev.key === "ArrowLeft") { ev.preventDefault(); setPlaying(false); seek(Math.ceil(pos) - (ev.shiftKey ? 10 : 1)); }
+    else if (ev.key === "Escape") select(-1);
+  });
+
+  // ---------------------------------------------------------- routes
+  function planAt(did, t) {
+    const arr = DATA.plans[did];
+    if (!arr || !arr.length) return null;
+    let lo = 0, hi = arr.length - 1, best = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid][0] <= t) { best = mid; lo = mid + 1; } else hi = mid - 1; }
+    return best < 0 ? null : arr[best];
+  }
+  /* The part of drone k's booked route still ahead at tick t, as [[x, y, z], ...]
+     (starting with its current cell), or null if it is not following a route. */
+  function routeAhead(k, t, d) {
+    const p = planAt(k, t);
+    if (!p) return null;
+    const idx = t - p[0], cells = p[1];
+    if (idx < 0 || idx >= cells.length || cells[idx] !== enc(d[0], d[1], altOf(d))) return null;
+    const out = [];
+    for (let j = idx; j < cells.length; j++) {
+      const c = decode(cells[j]);
+      const last = out[out.length - 1];
+      if (!last || last[0] !== c[0] || last[1] !== c[1] || last[2] !== c[2]) out.push(c);
+    }
+    return out;
+  }
+
+  const api = {
+    W, H, L, frames, LAST, N, STATES, FLAG, TRIP, T, FONT, DATA, enc, decode, altOf, heights, hubs, stations,
+    describe, colorOf, socColor, textOn, esc, placeName, placeByEnc, orders, orderById, flashes, byDrone,
+    routeAhead, opt, select, showTip, hideTip, droneTip, render,
+    get selected() { return selected; }, get pos() { return pos; }, get playing() { return playing; },
+  };
+
+  // open on a busy moment in the first half rather than an empty t = 0
+  const airborne = f => f.d.filter(d => d[2]).length;
+  let busiest = 0;
+  for (let i = 0; i < LAST * .5; i++) if (airborne(frames[i]) > airborne(frames[busiest])) busiest = i;
+  pos = busiest;
+  readTokens();
+  view.init(api);
+  ready = true;
+  sizeTimeline();
+  applyTheme();
+  return api;
+}

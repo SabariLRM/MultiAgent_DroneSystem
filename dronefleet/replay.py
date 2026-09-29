@@ -1,11 +1,24 @@
-"""Records a compact trace of a run and exports a self-contained HTML replay."""
+"""Records a compact trace of a run and exports self-contained HTML replays.
+
+The viewer's map (``viewer_template.html``, works offline) plugs into a
+shared core (``viewer_core.js`` / ``viewer_core.css``, inlined at export time).
+
+Cells are encoded as integers ``(z * H + y) * W + x``; sites such as pads,
+customers and building footprints have ``z = 0``, so their code is the plain
+2-D one.
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-TEMPLATE = Path(__file__).with_name("viewer_template.html")
+HERE = Path(__file__).parent
+TEMPLATES = {"2d": HERE / "viewer_template.html"}
+TEMPLATE = TEMPLATES["2d"]
+CORE_JS = HERE / "viewer_core.js"
+CORE_CSS = HERE / "viewer_core.css"
+LAYER_METRES = 30                  # nominal height of one flight layer (see config.py)
 STATE_NAMES = ["idle", "to_pickup", "loading", "to_customer", "returning", "to_station",
                "queued", "swapping", "dead"]
 STATE_IDX = {n: i for i, n in enumerate(STATE_NAMES)}
@@ -14,16 +27,21 @@ FLAG_NONE, FLAG_WIND, FLAG_GIVE_WAY, FLAG_HOLDING, FLAG_LOWERING = range(5)
 
 
 class TraceRecorder:
+    """Per tick and per drone: ``[x, y, airborne, state, soc %, order, carrying, express,
+    target, flag, trip reason, landing pad after the drop, eta, layer]``."""
+
     def __init__(self, sim):
         self.sim = sim
         self.frames: list[dict] = []
         self.plans: dict[int, list] = {d.did: [] for d in sim.drones}
         self._seen = {d.did: 0 for d in sim.drones}
         self.W = sim.world.width
+        self.H = sim.world.height
         self.record(0, ["simulation start"])
 
     def _enc(self, cell) -> int:
-        return cell[1] * self.W + cell[0]
+        z = cell[2] if len(cell) > 2 else 0
+        return (z * self.H + cell[1]) * self.W + cell[0]
 
     def _target(self, d):
         """Where the drone is heading right now (or where it is being served)."""
@@ -35,7 +53,7 @@ class TraceRecorder:
         if st in ("returning", "to_station") and d.post_pad:
             return d.post_pad
         if st in ("queued", "swapping"):
-            return d.pos
+            return d.site
         return None
 
     def _eta(self, d, t: int) -> int:
@@ -72,7 +90,7 @@ class TraceRecorder:
                 d.pos[0], d.pos[1], int(d.airborne), STATE_IDX[d.state.value], round(d.soc * 100),
                 task["oid"] if task else -1, int(d.carrying), int(bool(task and task["express"])),
                 self._enc(tgt) if tgt else -1, self._flag(d, t), d.trip_reason,
-                self._enc(post) if post else -1, self._eta(d, t),
+                self._enc(post) if post else -1, self._eta(d, t), d.pos[2],
             ])
             log = d.plan_log
             for pt, cells in log[self._seen[d.did]:]:
@@ -104,13 +122,17 @@ class TraceRecorder:
                    o.drone if o.drone is not None else -1, o.status, o.weight]
                   for o in sorted(sim.dispatcher.orders.values(), key=lambda o: o.oid)]
         cfg = sim.cfg
+        blocked = sorted(w.blocked, key=self._enc)
         return {
             "meta": {"seed": cfg.seed, "allocation": cfg.allocation, "coordination": cfg.coordination,
                      "battery_policy": cfg.battery_policy, "n_drones": cfg.n_drones,
-                     "gust_prob": cfg.gust_prob, "capacity": cfg.battery_capacity},
-            "world": {"w": w.width, "h": w.height, "blocked": sorted(self._enc(c) for c in w.blocked),
+                     "gust_prob": cfg.gust_prob, "capacity": cfg.battery_capacity,
+                     "n_layers": w.n_layers, "layer_rule": w.layer_rule, "layer_m": LAYER_METRES},
+            "world": {"w": w.width, "h": w.height, "layers": w.n_layers, "layer_rule": w.layer_rule,
+                      "blocked": [self._enc(c) for c in blocked], "heights": [w.heights[c] for c in blocked],
                       "hubs": w.hubs, "stations": w.stations, "customers": w.customers,
-                      "nfz": [{"rect": z.rect, "announce": z.announce_t, "start": z.start_t, "end": z.end_t}
+                      "nfz": [{"rect": z.rect, "announce": z.announce_t, "start": z.start_t, "end": z.end_t,
+                               "layers": list(z.layers(w.n_layers))}
                               for z in w.nfzs]},
             "frames": self.frames,
             "plans": {str(k): v for k, v in self.plans.items()},
@@ -120,14 +142,24 @@ class TraceRecorder:
         }
 
 
-def export_html(sim, metrics: dict, path: str | Path) -> Path:
+def render_html(data: dict, view: str = "2d") -> str:
+    """Fill a viewer template with the shared core and the replay data."""
+    if view not in TEMPLATES:
+        raise ValueError(f"view must be one of {tuple(TEMPLATES)}")
+    html = TEMPLATES[view].read_text(encoding="utf-8")
+    html = html.replace("/*__VIEWER_CORE_CSS__*/", CORE_CSS.read_text(encoding="utf-8"))
+    html = html.replace("/*__VIEWER_CORE_JS__*/", CORE_JS.read_text(encoding="utf-8"))
+    payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
+    return html.replace("__REPLAY_DATA__", payload)
+
+
+def export_html(sim, metrics: dict, path: str | Path, view: str = "2d") -> Path:
+    """Write a self-contained replay (``view`` selects the viewer template)."""
     if sim.trace is None:
         raise ValueError("run the simulation with record_trace=True to export a replay")
-    data = json.dumps(sim.trace.to_dict(metrics), separators=(",", ":"))
-    html = TEMPLATE.read_text(encoding="utf-8").replace("__REPLAY_DATA__", data.replace("</", "<\\/"))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(html, encoding="utf-8")
+    path.write_text(render_html(sim.trace.to_dict(metrics), view), encoding="utf-8")
     return path
 
 

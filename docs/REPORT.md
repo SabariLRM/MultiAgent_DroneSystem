@@ -3,6 +3,13 @@
 **Course:** Foundations of AI · **Artefact:** `dronefleet` (Python, standard library only) ·
 **Reproduce:** `python3 run_experiments.py` (all numbers below come from that script, 10 seeds per configuration)
 
+> **Update: altitude layers and a 3D viewer.** The airspace is now "2.5-D":
+> flight layers stacked above the city, buildings with heights, vertical
+> take-off and landing (§4.5). Sections 6.1–6.5 keep one flight layer, and with
+> one layer the simulator reproduces the original study (every run except two
+> in which a planner bug, now fixed, trapped a drone in a no-fly zone; §9);
+> §6.6 varies the number of layers. Runs can be replayed in 2D or in 3D (§9).
+
 ---
 
 ## 1. Problem
@@ -33,8 +40,8 @@ execution noise, and **decentralised** wherever the information is.
 | | |
 |---|---|
 | **Performance** | on-time delivery rate, delivery time (mean, p95), zero collisions, zero in-flight depletion, energy per delivery |
-| **Environment** | 32×24-cell city (≈3.2×2.4 km); 13 % buildings; 2 hubs, 3 swap stations, 40 customer sites; temporary no-fly zones; wind; 11+ other drones |
-| **Actuators** | move N/S/E/W, hover, take off, land, winch a parcel down, send messages (bid, accept, request swap, yield …) |
+| **Environment** | 32×24-cell city (≈3.2×2.4 km); 13 % buildings with heights; 1–5 flight layers (≈30 m each); 2 hubs, 3 swap stations, 40 customer sites; temporary no-fly zones; wind; 11+ other drones |
+| **Actuators** | move N/S/E/W, climb, descend, hover, take off, land, winch a parcel down, send messages (bid, accept, request swap, yield …) |
 | **Sensors** | own position and battery; messages from the dispatcher, stations and air-traffic control; neighbours' broadcast intents (V2V / ADS-B-like) |
 
 ### 2.2 Environment properties (Russell & Norvig)
@@ -125,7 +132,9 @@ feed its wait estimate.
 ### 4.1 Route planning: space-time A* with a reservation table
 
 The search state is `(cell, t, airborne)`. Actions per tick: move to one of 4
-neighbours, hover, or, while on a pad, wait on the ground or take off.
+neighbours, hover, or, while on a pad, wait on the ground or take off. (With
+altitude layers the cell gains a height and two more actions, climb and
+descend; see §4.5. Everything in this section carries over unchanged.)
 Cooperative A* (Silver, 2005) plans drones one at a time. Each drone treats
 everyone else's claims as obstacles **in time**:
 
@@ -147,8 +156,9 @@ Three design choices make it both safe and fast:
 3. **Chained waypoints.** `drop` (hover for the winch time, all ticks free) →
    `land`. The whole mission leg is planned and reserved atomically.
 
-In the default scenario a search expands about 18 nodes on average and takes
-0.06–0.3 ms.
+In the default scenario a search expands about 45 nodes on average (all
+expansions / all searches over the 10 runs) and a run's mean search time is
+0.06–0.96 ms (median 0.07 ms).
 
 ### 4.2 Collision avoidance in depth
 
@@ -210,6 +220,57 @@ broadcast status and ETA reservations. Idle drones below 40 % swap
 proactively. The **naive baseline** only follows "accept jobs above 30 %, swap
 below 30 %, divert below 10 %".
 
+### 4.5 Altitude layers ("2.5-D")
+
+Cells become `(x, y, z)`. `z = 0` is the ground, where drones only ever stand
+on a pad; `z = 1..n_layers` are flight layers (`SimConfig.n_layers`, default 3,
+one layer ≈ 30 m).
+
+* **Buildings have heights** of 1..`n_layers` layers and block only the layers
+  at or below their height, so a drone can overfly a low building. Heights are
+  drawn per building block from their own random stream (low-rise more likely
+  than high-rise), so the city's footprint, pads, customers and no-fly zones
+  are identical for every layer count.
+* **Moves per tick:** 4 horizontal moves on the current layer, climb one layer,
+  descend one layer, or hover. Take-off is the vertical move ground → layer 1
+  at a pad. A landing ends at layer 1 over the pad, and the touch-down happens
+  at the end of that tick, exactly as a landing did before. Parcels are lowered
+  from layer 1.
+* **Conflicts:** vertex claims and head-on edge claims are stored per 3-D cell.
+  A climb and a descent through the same two cells in the same tick are a
+  vertical head-on swap. The planner never plans one, the reactive layer stops
+  such a pair, and the collision detector counts it.
+* **Heuristic:** the exact 3-D BFS distance over the move graph (horizontal
+  moves as the layer rule allows, plus climbs and descents, all one tick). The
+  graph is symmetric and every move takes one tick, so this is the exact static
+  distance: admissible, and consistent (neighbouring cells differ by at most 1).
+  A drone on the ground adds 1 for its take-off, as before. The A* budget
+  scales with the number of layers, because the space-time volume does.
+* **Energy:** climbing costs `climb_cost` (1.2) and descending `descend_cost`
+  (0.5) per layer, both scaled by payload like every other action. Bid-time
+  estimates multiply a flight distance in ticks by a per-tick bound,
+  `max(move, (climb + descend)/2, descend)`. It never undercounts a shortest
+  route, because every estimated route ends at layer 1 and so never climbs
+  more than it descends. With the defaults the bound equals `move_cost`. The
+  four battery checks of §4.4 are unchanged; commitment checks use the exact
+  energy of the planned route, climbs included.
+* **No-fly zones** close a range of layers (default: all). With
+  `nfz_ceiling = k` the generated zones close layers 1..k only, and drones can
+  fly over them.
+* **Layer rule.** `layer_rule = "free"` lets any move happen on any layer.
+  `"heading"` is a version of aviation's semicircular rule: east/west flight
+  only on odd layers, north/south flight only on even layers, climbs and
+  descents always. Crossing traffic is then vertically separated, but every
+  turn costs a layer change. With one layer the rule has no even layer to use
+  and falls back to "free".
+
+**One layer reproduces the original model exactly.** Before the change, the
+metrics of seeds 1–3 were recorded. `tests/test_regression.py` re-runs them
+with `n_layers = 1` and requires every metric except timing to match. Beyond
+that test, all 310 runs of the original experiment suite were re-run with one
+layer and compared with the published `results/experiments.json`: 310 of 310
+were identical. (A later, separate bug fix changed 2 of them; see §9.)
+
 ## 5. Experimental method
 
 * **Scenario:**
@@ -222,7 +283,13 @@ below 30 %, divert below 10 %".
   Tables give mean ± standard deviation. Raw per-run metrics are in
   `results/experiments.json`.
 * **Dense scenario:** 24 drones, 0.35 orders/tick.
-* **Runtime:** the whole suite (310 simulations) runs in ≈1 minute on a laptop.
+* **Airspace:** §6.1–6.5 use one flight layer, the original flat model. §6.6
+  varies the number of layers (1, 3, 5) and the layer rule at 24 drones
+  (0.35 orders/tick) and 32 drones (0.47 orders/tick, the same demand per
+  drone), with 6 spare packs per station. §6.4 shows that the swap queue
+  otherwise dominates delivery times at these fleet sizes and would hide what
+  happens in the air.
+* **Runtime:** the whole suite (430 simulations) runs in ≈3 minutes on a laptop.
 
 ## 6. Results
 
@@ -236,7 +303,7 @@ below 30 %, divert below 10 %".
 | reactive only (12 drones) | 0 | 99.7% | 38.9 ±10.1 | 83.7 ±26.0 | 97.4% | 0.4 | 206 |
 | none (12 drones) | 63.2 ±26.7 | 100.0% | 32.6 ±5.0 | 66.5 ±9.7 | 99.1% | 0 | – |
 | cooperative (24 drones) | **0** | 100.0% | 57.9 ±24.6 | 142 ±71 | 86.8% | **0** | 19 |
-| reactive only (24 drones) | 0 | 97.1% | 90.6 ±39.7 | 230 ±112 | 73.1% | 2.5 | 970 |
+| reactive only (24 drones) | 0 | 97.1% | 90.8 ±39.7 | 232 ±112 | 72.9% | 2.5 | 980 |
 | none (24 drones) | 268 ±86 | 100.0% | 49.9 ±20.8 | 123 ±68 | 90.9% | 0 | – |
 
 * **Without coordination, conflicts grow super-linearly with density.** They
@@ -245,7 +312,7 @@ below 30 %, divert below 10 %".
   optimistic lower bound: in reality each conflict is a potential crash.
 * **The reactive layer alone is safe but inefficient.** With no look-ahead,
   drones meet head-on and gridlock at bottlenecks, such as the corridor to a
-  station. At 24 drones delivery time is 56 % worse than cooperative. Some
+  station. At 24 drones delivery time is 57 % worse than cooperative. Some
   drones even run dry while stuck in gridlock (2.5 per run), because the jam
   blocks the emergency diversion too.
 * **Cooperative reservations do both.** They give 0 collisions at a cost of only
@@ -311,11 +378,11 @@ below 30 %, divert below 10 %".
 
 | drones | orders | deliveries/100 ticks | avg time | on time | swap wait | ms per A* |
 |---:|---:|---:|---:|---:|---:|---:|
-| 4 | 24.5 | 4.45 | 35.3 | 99.6% | 0.0 | 0.31 |
+| 4 | 24.5 | 4.45 | 35.3 | 99.6% | 0.0 | 0.32 |
 | 8 | 55.4 | 9.68 | 34.9 | 98.8% | 0.5 | 0.07 |
-| 12 | 84.7 | 15.0 | 34.3 | 99.3% | 2.4 | 0.20 |
+| 12 | 84.7 | 15.0 | 34.3 | 99.3% | 2.4 | 0.21 |
 | 16 | 110 | 19.0 | 31.8 | 99.2% | 6.0 | 0.22 |
-| 24 | 167 | 25.3 | 47.6 | 92.1% | 24.6 | 0.10 |
+| 24 | 167 | 25.3 | 47.6 | 92.1% | 24.6 | 0.11 |
 | 32 | 217 | 28.1 | 73.0 | 80.6% | 59.5 | 0.11 |
 
 Up to 16 drones, throughput scales linearly and service quality is flat. Beyond
@@ -329,7 +396,7 @@ infrastructure at 24 drones:
 | 24 drones | swap wait | max queue | avg time | p95 time | on time |
 |---|---:|---:|---:|---:|---:|
 | 1 bay, 3 spare packs | 28.9 | 7.0 | 57.9 | 142 | 86.8% |
-| 1 bay, 6 spare packs | **0.9** | 2.5 | **29.5** | **55** | **99.9%** |
+| 1 bay, 6 spare packs | **0.85** | 2.3 | **29.6** | **55** | **99.9%** |
 | 2 bays, 3 spare packs | 28.8 | 7.3 | 55.9 | 135 | 88.6% |
 | 2 bays, 6 spare packs | 1.4 | 3.6 | 30.1 | 56 | 99.8% |
 
@@ -358,6 +425,62 @@ absorbs ≈88 % of deviations without a new search. Service degrades gracefully:
 time and energy rise because drones hover and wait, not because anything
 fails.
 
+### 6.6 Altitude layers
+
+Does stacking the airspace add capacity, and does forcing a heading rule help?
+The grid is 1, 3 or 5 flight layers × the `free` or `heading` rule, at 24 and
+32 drones, with 6 spare packs per station so that battery swaps are not the
+bottleneck (§5). With one layer the heading rule has nothing to separate, so its
+rows are identical to "free" by construction; they are kept as a check.
+
+![layers](../results/figures/layers.svg)
+
+| configuration | collisions | avg time | p95 time | reactive holds | yields | energy/delivery | ms per A* | time above layer 1 | NFZ violations |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 layer (24 drones) | **0** | 29.6 ±3.1 | 55.4 | 18.5 | 17.3 | 49.8 | 0.19 | 0 % | 0.2 |
+| 3 layers, free (24) | **0** | 29.8 ±3.3 | 56.0 | 18.4 | 17.3 | 49.9 | 0.64 | 2.1 % | 0.3 |
+| 5 layers, free (24) | **0** | 29.9 ±3.3 | 57.0 | 17.4 | 16.0 | 49.9 | 1.03 | 1.3 % | 0.5 |
+| 3 layers, heading (24) | **0** | 35.5 ±7.3 | 66.4 | 15.5 | 13.2 | 56.6 | 0.77 | 57.8 % | 0 |
+| 5 layers, heading (24) | **0** | 36.7 ±8.2 | 69.1 | 17.6 | 16.3 | 57.1 | 1.31 | 57.5 % | 0 |
+| 1 layer (32 drones) | **0** | 31.5 ±5.4 | 59.8 | 36.4 | 39.8 | 51.4 | 0.25 | 0 % | 0.3 |
+| 3 layers, free (32) | **0** | 30.5 ±5.3 | 58.2 | 31.5 | 33.5 | 50.9 | 0.78 | 2.5 % | 0.4 |
+| 5 layers, free (32) | **0** | 31.2 ±5.2 | 60.3 | 31.8 | 32.6 | 51.2 | 1.24 | 1.8 % | 0.6 |
+| 3 layers, heading (32) | **0** | 41.1 ±10.2 | 79.9 | 26.9 | 25.6 | 58.8 | 0.98 | 58.5 % | 0 |
+| 5 layers, heading (32) | **0** | 42.1 ±10.4 | 80.1 | 31.7 | 32.1 | 59.4 | 1.64 | 58.7 % | 0 |
+
+All 120 runs were collision-free, no drone ran out of battery, and every order
+was delivered.
+
+* **With a free choice, drones stay low.** They spend only 1.3–2.5 % of their
+  flight time above layer 1. The planner minimises arrival time, and a climb
+  plus a descent costs two ticks, so drones use upper layers as passing lanes
+  when layer 1 is booked, not as cruising altitudes.
+* **Extra layers help a little, and only when it is crowded.** At 24 drones
+  nothing changes beyond noise (29.6 → 29.8 → 29.9 ticks on average). At 32
+  drones, 3 layers cut reactive holds by 13 % (36.4 → 31.5) and yields by 16 %
+  (39.8 → 33.5), and average delivery time falls by 1 tick (31.5 → 30.5), well
+  inside the seed-to-seed spread (±5.3). A 5th layer adds nothing. With
+  cooperative reservations, one layer of a 32×24 city is not yet the
+  bottleneck for 32 drones.
+* **The heading rule separates traffic but costs time and energy.** At 3
+  layers it gives the fewest holds and yields in the table (24 drones: 15.5
+  and 13.2; 32 drones: 26.9 and 25.6), because crossing traffic is on
+  different layers. But every turn is now a layer change: drones climb about
+  3.2–3.4 times per delivery and spend 58 % of their flight time above layer 1.
+  At 3 layers, average delivery time rises by 20 % (24 drones) and 30 % (32
+  drones) over one layer, and energy per delivery by 14 %. The extra energy
+  means more swaps (e.g. 104 vs 90 per run at 24 drones). With 5 layers the
+  rule is no better: holds rise again and time and energy grow slightly.
+* **Planning cost grows with the airspace but stays small.** Mean time per
+  search rises from 0.19 ms (1 layer) to 0.64 ms (3) and 1.03 ms (5) at 24
+  drones, and from 0.25 to 1.24 ms at 32 drones. That is still roughly four
+  orders of magnitude below the 10-second tick.
+* **No-fly-zone violations** are the few ticks a drone needs to leave a zone
+  that started while traffic held it inside its footprint (at most 3 ticks in
+  any run). Before the planner could plan such an escape, one drone in the
+  "5 layers, free, 24 drones" runs hovered in a zone until its battery ran out.
+  That planner bug is fixed in this version (§9).
+
 ## 7. Discussion: what the case study shows about AI techniques
 
 * **Search is the workhorse.** A* with an admissible, domain-exact heuristic,
@@ -378,12 +501,19 @@ fails.
 * **Multi-agent systems have emergent bottlenecks.** No single agent is "wrong"
   at 32 drones; the shared charging resource saturates. Systematic experiments
   (same seeds, one factor at a time) are how such properties are found.
+* **More state space is not automatically more capacity.** Adding altitude to
+  the state (`(x, y, z, t)`) kept every guarantee (the heuristic stays exact,
+  conflicts stay vertex + edge), but with cooperative reservations the extra
+  layers were barely used. A structural rule like the heading rule trades
+  efficiency for fewer interactions. Whether that pays off depends on how many
+  conflicts there are to remove, which is again an empirical question.
 
 ## 8. Limitations and future work
 
 | limitation | possible extension |
 |---|---|
-| 2-D grid, one altitude | altitude layers by heading (as in UTM concepts): a 3-D state space multiplies capacity |
+| Layers are used only as passing lanes (§6.6); the heading rule costs 20–30 % in delivery time | layer assignment by trip length or direction with a turn allowance; test at higher densities and with the reactive-only baseline, where conflicts are more frequent |
+| A drone caught by a newly active no-fly zone needs a few ticks to leave it (§6.6) | announce zones with a clearance margin, or plan the exit before activation |
 | Plans are sequential (Cooperative A*): fast but not optimal, and priority-order dependent | Conflict-Based Search or windowed WHCA* with rolling horizons for larger fleets |
 | The reservation table is a shared service (a UTM provider) | fully peer-to-peer claims with gossip and conflict resolution under message loss |
 | Perfect, lossless communication | message loss and latency; heartbeat time-outs; re-auction on silence |
@@ -394,15 +524,54 @@ fails.
 ## 9. How to reproduce
 
 ```bash
-python3 -m unittest discover -s tests -t .      # 47 tests: planner, reservations, traffic, agents, system
+python3 -m unittest discover -s tests -t .      # 78 tests: planner, reservations, traffic, agents, layers, replay, system, regression
 python3 run_experiments.py --seeds 10           # tables -> results/experiments.md, charts -> results/figures/
-python3 run_simulation.py                       # one run -> results/replay.html (interactive)
+python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D)
+python3 run_simulation.py --view 3d             # the same run in 3D -> results/replay_3d.html
 ```
+
+**Replay viewers.** Both viewers share one core, so the timeline, playback
+controls, fleet list, follow card and plain-language event log are identical.
+
+* The **2D viewer** is a top-down map in a single self-contained file that
+  works offline. In stacked airspace each drone's label shows its layer ("L2"),
+  buildings are shaded by height, and drones stacked over the same spot are
+  drawn side by side.
+* The **3D viewer** (`--view 3d`) draws the same run with three.js (a pinned
+  r147 build and its OrbitControls, loaded from cdn.jsdelivr.net, so it needs
+  an internet connection):
+  * buildings at their real height (vertical scale exaggerated about 2×), with
+    labelled hub and station pads and customer order rings;
+  * quadcopters coloured by the same state palette, with a battery ring, a
+    parcel and a line down to the ground;
+  * booked routes as 3-D lines, no-fly zones as translucent red volumes over
+    the layers they close, and collision flashes.
+
+  You can orbit, zoom and pan. Clicking a drone follows it with a chase camera
+  and opens the follow card. Instanced meshes keep 32 drones at a handful of
+  draw calls, the camera fits the city to the screen at phone width, and both
+  viewers have light and dark themes.
+
+**Fix found by the layer experiment.** A drone held by traffic inside a
+zone's footprint when the zone started could not plan at all. Every zone cell,
+its own included, was forbidden, so it hovered until the zone lifted. The
+planner now lets such a drone fly out by the quickest route: the zone's cells
+cost 1000 per tick instead of being forbidden. A drone outside every active
+zone plans exactly as before. Of the 310 runs behind §6.1–6.5, only the two
+with a trapped drone changed (55 and 56 violation-ticks became 2 each). The
+affected rows moved slightly: in §6.1 (reactive only, 24 drones) average
+delivery time went from 90.6 to 90.8 ticks, and in §6.4 (1 bay, 6 spare packs)
+from 29.5 to 29.6. The tables above show the current values.
 
 The system-level tests encode the headline guarantees on three seeds: no
 collisions, no depletion, every order delivered, no no-fly-zone violations,
 battery packs conserved, determinism. They also check that the baselines fail
 as expected: uncoordinated flight collides, and the reactive layer alone does not.
+`tests/test_layers.py` checks the same guarantees with 3 and 5 layers (free and
+heading), plus the 3-D planning rules: vertical moves, overflying low but not
+tall buildings, no vertical head-on swaps, climb energy, and estimates that
+never undercount a route. `tests/test_regression.py` checks that one layer
+reproduces the metrics recorded before layers were added.
 
 ## References
 

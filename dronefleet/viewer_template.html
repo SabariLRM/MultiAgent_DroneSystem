@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drone Fleet Replay</title>
+<style>
+/* Layout: map + controls on the left, "follow a drone" + fleet + log on the right; one column on phones. */
+:root {
+  color-scheme: light;
+  --bg: #f6f6f3; --surface: #fcfcfb; --raised: #f0efeb; --ink: #0b0b0b; --ink2: #4d4c49; --muted: #85837d;
+  --grid: #ecebe6; --base: #c3c2b7; --building: #d6d4cb; --border: rgba(11,11,11,.11);
+  --c-pickup: #2a78d6; --c-parcel: #eb6834; --c-energy: #1baf7a; --c-idle: #8c8a84;
+  --good: #0ca30c; --warning: #fab219; --critical: #d03b3b; --accent: #2a78d6;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f0f0e; --surface: #1a1a19; --raised: #242422; --ink: #ffffff; --ink2: #c9c8be; --muted: #8f8d86;
+    --grid: #242422; --base: #3a3a37; --building: #3b3b37; --border: rgba(255,255,255,.11);
+    --c-pickup: #3987e5; --c-parcel: #d95926; --c-energy: #199e70; --c-idle: #8f8d86; --accent: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0f0e; --surface: #1a1a19; --raised: #242422; --ink: #ffffff; --ink2: #c9c8be; --muted: #8f8d86;
+  --grid: #242422; --base: #3a3a37; --building: #3b3b37; --border: rgba(255,255,255,.11);
+  --c-pickup: #3987e5; --c-parcel: #d95926; --c-energy: #199e70; --c-idle: #8f8d86; --accent: #3987e5;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 14px/1.5 var(--font); }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 13px; font-weight: 700; margin: 0 0 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.chip { background: var(--raised); color: var(--ink2); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+button:hover, select:hover { border-color: var(--base); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-width: 0; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* guide */
+.guide summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.guide .rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 8px 24px; margin-top: 12px; }
+.guide .row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; color: var(--ink2); font-size: 13px; }
+.guide .row b { color: var(--ink); font-weight: 600; }
+.guide svg { width: 30px; height: 24px; display: block; }
+.guide .tip-line { margin: 12px 0 0; color: var(--ink); font-weight: 600; font-size: 13px; }
+
+/* now + kpis */
+.now { font-size: 15px; margin: 0 0 12px; color: var(--ink); max-width: 90ch; }
+.now b { font-weight: 650; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(104px, 100%), 1fr)); gap: 8px; margin-bottom: 12px; }
+.kpi { background: var(--bg); border-radius: 10px; padding: 7px 11px; }
+.kpi .label { font-size: 12px; color: var(--muted); }
+.kpi .value { font-size: 20px; font-weight: 650; line-height: 1.25; }
+.kpi .value small { font-size: 12px; color: var(--ink2); font-weight: 500; }
+#mapWrap { width: 100%; position: relative; }
+#map { display: block; margin: 0 auto; border-radius: 6px; cursor: default; }
+.controls { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.controls input[type=range] { flex: 1; min-width: 140px; accent-color: var(--accent); }
+.tlabel { font-variant-numeric: tabular-nums; color: var(--ink2); min-width: 64px; text-align: right; }
+.toggles { display: flex; gap: 6px 16px; flex-wrap: wrap; margin-top: 10px; color: var(--ink2); font-size: 13px; }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.tl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+#timeline { width: 100%; height: 130px; display: block; cursor: crosshair; }
+.tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 6px 20px rgba(0,0,0,.14); z-index: 5;
+  max-width: 280px; font-variant-numeric: tabular-nums; }
+.tip b { font-weight: 650; }
+.tip .why { color: var(--ink2); }
+
+/* follow card */
+.follow .hint { color: var(--ink2); margin: 0; }
+.follow-mini { display: none; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--raised);
+  font-size: 13px; align-items: center; gap: 10px; }
+.follow-mini .badge { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none; }
+.follow-mini span.txt { flex: 1; min-width: 0; }
+.follow-mini button { font-size: 12px; padding: 3px 9px; }
+@media (max-width: 1000px) { .follow-mini:not([hidden]) { display: flex; } }
+.fhead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.fhead .badge { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.fhead b { font-size: 16px; }
+.fhead button { margin-left: auto; font-size: 12px; padding: 3px 9px; }
+.fnow { font-size: 15px; font-weight: 600; margin: 4px 0 2px; }
+.fwhy { color: var(--ink2); margin: 0 0 8px; font-size: 13px; }
+.facts { display: grid; grid-template-columns: 76px 1fr; gap: 5px 10px; margin: 10px 0 0; font-size: 13px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; font-variant-numeric: tabular-nums; }
+.facts .bar { display: inline-block; vertical-align: middle; width: 90px; height: 8px; border-radius: 4px; background: var(--grid); position: relative; overflow: hidden; margin-right: 8px; }
+.facts .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+.follow h3 { font-size: 12px; color: var(--muted); font-weight: 600; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .05em; }
+.mini-log { list-style: none; margin: 0; padding: 0; font-size: 12.5px; display: grid; gap: 4px; }
+.mini-log .t { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+
+/* fleet */
+.fleet { display: grid; gap: 2px; }
+.frow { display: grid; grid-template-columns: 26px minmax(0, 1fr) 54px; gap: 10px; align-items: center; text-align: left;
+  border: 0; border-radius: 8px; padding: 5px 6px; background: transparent; width: 100%; }
+.frow:hover { background: var(--raised); }
+.frow.sel { background: var(--raised); box-shadow: inset 0 0 0 1px var(--base); }
+.fid { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; }
+.ftext { font-size: 12.5px; line-height: 1.35; min-width: 0; }
+.ftext small { display: block; color: var(--muted); font-size: 11.5px; }
+.fbat { display: grid; gap: 2px; justify-items: end; font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.fbat .bar { width: 100%; height: 6px; border-radius: 3px; background: var(--grid); position: relative; overflow: hidden; }
+.fbat .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+
+.stations { display: grid; gap: 10px; }
+.station { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; font-size: 13px; }
+.station .meta { color: var(--ink2); font-size: 12px; }
+.packs { display: flex; gap: 3px; grid-column: 1 / -1; align-items: center; font-size: 11px; color: var(--muted); }
+.packs i { width: 14px; height: 8px; border-radius: 2px; background: var(--grid); }
+.packs i.full { background: var(--c-energy); }
+.packs span { margin-left: 6px; }
+
+.loghead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.loghead label { font-size: 12px; color: var(--ink2); display: inline-flex; gap: 5px; align-items: center; }
+#log { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; font-size: 12.5px; }
+#log li { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--ink2); }
+#log li .t { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+#log li.alert { color: var(--critical); font-weight: 600; }
+#log li.good { color: var(--ink); }
+details.sum summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+table.metrics { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+table.metrics td { padding: 3px 0; border-bottom: 1px solid var(--border); }
+table.metrics td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+table.metrics td:first-child { color: var(--ink2); }
+.foot { color: var(--muted); font-size: 12px; margin-top: 16px; }
+kbd { font: 11px ui-monospace, monospace; background: var(--raised); border-radius: 4px; padding: 1px 5px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Drone fleet replay</h1>
+    <div class="chips" id="chips"></div>
+    <button id="theme" title="Switch colour theme">Theme: auto</button>
+  </header>
+
+  <details class="card guide" id="guide" open>
+    <summary>How to read this replay</summary>
+    <div class="rows">
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-pickup)"/></svg><span><b>Blue drone</b>: flying to a warehouse (hub) to collect a parcel, or loading it</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-parcel)"/><rect x="19" y="3" width="7" height="7" rx="1.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/></svg><span><b>Orange drone</b>: carrying a parcel to a customer (black square = parcel on board, diamond = express)</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-energy)"/></svg><span><b>Green drone</b>: going to a swap station for a fresh battery, or being swapped</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-idle)"/></svg><span><b>Grey drone</b>: free, parked at a hub or flying back to one</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="7" fill="var(--c-idle)"/><circle cx="15" cy="12" r="10" fill="none" stroke="var(--grid)" stroke-width="2.5"/><path d="M15 2 A10 10 0 1 1 5.5 15" fill="none" stroke="var(--good)" stroke-width="2.5"/></svg><span><b>Ring</b> around a drone is its battery: green above 50 %, amber 25–50 %, red below 25 %</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><path d="M2 20 L10 20 L10 8 L26 8" fill="none" stroke="var(--c-parcel)" stroke-width="2" stroke-dasharray="4 3"/></svg><span><b>Dashed line</b>: the route the drone has booked. Routes are booked in space <i>and time</i>, so two routes can cross without the drones ever meeting</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="11" cy="12" r="6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5"/><text x="19" y="16" font-size="9" font-weight="700" fill="var(--ink)">#</text></svg><span><b>Ring with a number</b>: a customer waiting for that order. Grey = no drone yet, blue = a drone is collecting it, orange = on its way</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><rect x="3" y="4" width="11" height="16" rx="3" fill="var(--ink)"/><text x="5.5" y="15.5" font-size="9" font-weight="700" fill="var(--surface)">H</text><rect x="16.5" y="5.5" width="11" height="13" rx="3" fill="var(--surface)" stroke="var(--c-energy)" stroke-width="2"/><path d="M23 7.5 L19.5 12.5 L22 12.5 L21 16.5 L25 11 L22.5 11 Z" fill="var(--c-energy)"/></svg><span><b>H</b> = warehouse (hub) where parcels are loaded. <b>Lightning</b> = battery-swap station. Red hatched area = temporary no-fly zone</span></div>
+    </div>
+    <p class="tip-line">Click any drone, on the map or in the fleet list, to follow it and see what it is doing and why.</p>
+  </details>
+
+  <div class="layout" style="margin-top:16px">
+    <main class="stack">
+      <section class="card">
+        <p class="now" id="now"></p>
+        <div class="kpis" id="kpis"></div>
+        <div id="mapWrap"><canvas id="map" aria-label="City map with drones; click a drone to follow it"></canvas></div>
+        <div class="controls">
+          <button id="play" aria-label="Play">▶ Play</button>
+          <button id="back" aria-label="Step back one tick">◀</button>
+          <button id="fwd" aria-label="Step forward one tick">▶</button>
+          <select id="speed" aria-label="Playback speed">
+            <option value="2">0.5×</option><option value="4" selected>1×</option><option value="8">2×</option>
+            <option value="16">4×</option><option value="32">8×</option>
+          </select>
+          <input id="slider" type="range" min="0" value="0" step="1" aria-label="Time">
+          <span class="tlabel" id="tlabel">t = 0</span>
+        </div>
+        <div class="toggles">
+          <label><input type="checkbox" id="optTags" checked> What each drone is doing</label>
+          <label><input type="checkbox" id="optPaths" checked> Booked routes</label>
+          <label><input type="checkbox" id="optOrders" checked> Customers waiting</label>
+          <label><input type="checkbox" id="optGround" checked> Parked drones</label>
+        </div>
+        <div class="follow-mini" id="followMini" hidden></div>
+      </section>
+
+      <section class="card">
+        <div class="tl-head">
+          <h2>Orders over time</h2>
+          <div class="legend">
+            <span><i class="sw" style="background:var(--c-pickup)"></i>waiting for a drone</span>
+            <span><i class="sw" style="background:var(--c-parcel)"></i>being delivered</span>
+          </div>
+        </div>
+        <canvas id="timeline" aria-label="Orders waiting and being delivered over time; click to jump"></canvas>
+      </section>
+    </main>
+
+    <aside class="stack">
+      <section class="card follow" id="follow"></section>
+      <section class="card">
+        <h2>Fleet: what every drone is doing</h2>
+        <div class="fleet" id="fleet"></div>
+      </section>
+      <section class="card">
+        <h2>Battery swap stations</h2>
+        <div class="stations" id="stations"></div>
+      </section>
+      <section class="card">
+        <div class="loghead"><h2>What just happened</h2><label id="logFilterWrap" hidden><input type="checkbox" id="logFilter" checked> <span id="logFilterLabel">only this drone</span></label></div>
+        <ul id="log"></ul>
+      </section>
+      <section class="card">
+        <details class="sum"><summary>Run summary</summary><table class="metrics" id="metrics"></table></details>
+      </section>
+    </aside>
+  </div>
+  <p class="foot"><kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> one tick · <kbd>Shift</kbd>+arrows ten ticks · <kbd>Esc</kbd> stop following · one tick ≈ 10 seconds of real time.</p>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DATA = __REPLAY_DATA__;
+(() => {
+  "use strict";
+  const W = DATA.world.w, H = DATA.world.h;
+  const frames = DATA.frames, LAST = frames.length - 1;
+  const N = frames[0].d.length;
+  const STATES = DATA.states;
+  const enc = (x, y) => y * W + x;
+  const blocked = new Set(DATA.world.blocked);
+  const hubs = DATA.world.hubs, stations = DATA.world.stations, customers = DATA.world.customers;
+  const FLAG = { NONE: 0, WIND: 1, GIVE_WAY: 2, HOLDING: 3, LOWERING: 4 };
+  const TRIP = { NONE: 0, LOW: 1, BEFORE_JOB: 2, EMERGENCY: 3, AFTER: 4 };
+  const GROUP = { idle: "idle", returning: "idle", to_pickup: "pickup", loading: "pickup",
+                  to_customer: "parcel", to_station: "energy", queued: "energy", swapping: "energy", dead: "dead" };
+
+  // ------------------------------------------------------------ tokens
+  const TOKENS = ["surface", "ink", "ink2", "muted", "grid", "base", "building", "c-pickup", "c-parcel",
+                  "c-energy", "c-idle", "good", "warning", "critical", "bg", "accent", "raised"];
+  let T = {};
+  function readTokens() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of TOKENS) T[k] = cs.getPropertyValue("--" + k).trim();
+    staticLayer = null;
+  }
+  const groupColor = g => g === "dead" ? T.critical : T["c-" + g];
+  const colorOf = d => groupColor(GROUP[STATES[d[3]]]);
+  const socColor = s => s >= 50 ? T.good : s >= 25 ? T.warning : T.critical;
+  function textOn(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return "#fff";
+    const n = parseInt(m[1], 16);
+    const L = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
+    return .2126 * L[0] + .7152 * L[1] + .0722 * L[2] > .3 ? "#0b0b0b" : "#ffffff";
+  }
+  const esc = s => String(s).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+
+  // ------------------------------------------------------------ places
+  const placeByEnc = new Map();
+  hubs.forEach(([x, y], i) => placeByEnc.set(enc(x, y), `Hub ${i}`));
+  stations.forEach(([x, y], i) => placeByEnc.set(enc(x, y), `Station ${i}`));
+  const placeName = e => placeByEnc.get(e) || "the customer";
+  const decode = e => [e % W, (e / W) | 0];
+
+  // ------------------------------------------------------------ orders
+  const orders = DATA.orders.map(o => ({ oid: o[0], hub: o[1], x: o[2], y: o[3], created: o[4], deadline: o[5],
+                                         delivered: o[6], express: !!o[7], drone: o[8], status: o[9], weight: o[10] }));
+  const orderById = new Map(orders.map(o => [o.oid, o]));
+
+  // ------------------------------------------------------------ events
+  const flashes = [];
+  const byDrone = Array.from({ length: N }, () => []);
+  frames.forEach((f, i) => f.e.forEach(e => {
+    const m = /COLLISION.*at \((\d+), (\d+)\)/.exec(e);
+    if (m) flashes.push({ i, x: +m[1], y: +m[2] });
+    const seen = new Set();
+    for (const mm of e.matchAll(/Drone (\d+)(?!\d)/g)) seen.add(+mm[1]);
+    const cm = /drones ([\d and]+) (are|fly)/.exec(e);
+    if (cm) for (const x of cm[1].split(" and ")) seen.add(+x);
+    for (const k of seen) if (k < N) byDrone[k].push([i, f.t, e]);
+  }));
+
+  // ------------------------------------------------------------ language
+  function describe(d) {
+    const st = STATES[d[3]], oid = d[5], air = !!d[2], flag = d[9], reason = d[10];
+    const tgt = d[8] >= 0 ? placeName(d[8]) : null;
+    const here = placeByEnc.get(enc(d[0], d[1]));
+    const o = orderById.get(oid);
+    const ex = o && o.express ? " (express)" : "";
+    let text = "", tag = "";
+    switch (st) {
+      case "idle":
+        text = air ? "Hovering with nothing to do" : `Parked at ${here || "a pad"}, ready for the next order`;
+        tag = air ? "free" : ""; break;
+      case "to_pickup":
+        text = air ? `Flying to ${tgt} to collect order #${oid}${ex}` : `Taking off for ${tgt} to collect order #${oid}`;
+        tag = `→ ${tgt} for #${oid}`; break;
+      case "loading":
+        text = `Loading order #${oid}${ex} at ${tgt}`; tag = `loading #${oid}`; break;
+      case "to_customer":
+        if (flag === FLAG.LOWERING) { text = `Lowering order #${oid} to the customer on a winch`; tag = `lowering #${oid}`; }
+        else if (!air) { text = `Taking off with order #${oid}${ex}`; tag = ""; }
+        else { text = `Carrying order #${oid}${ex} to the customer`; tag = `#${oid} → customer`; }
+        break;
+      case "returning":
+        text = `Flying back to ${tgt} to wait for the next order`; tag = `→ ${tgt}`; break;
+      case "to_station":
+        if (reason === TRIP.BEFORE_JOB) { text = `Flying to ${tgt} for a fresh battery before collecting order #${oid}`; tag = `→ ${tgt} battery`; }
+        else if (reason === TRIP.EMERGENCY) { text = `Battery emergency: diverting to ${tgt}` + (d[6] ? ` with order #${oid} on board` : ""); tag = `EMERGENCY → ${tgt}`; }
+        else if (reason === TRIP.AFTER) { text = `Parcel delivered; flying to ${tgt} to swap its battery (${d[4]}% left)`; tag = `→ ${tgt} battery`; }
+        else { text = `Battery low (${d[4]}%): flying to ${tgt} for a swap`; tag = `→ ${tgt} battery`; }
+        if (!air) text = text.replace("Flying", "Taking off").replace("flying", "taking off");
+        break;
+      case "queued":
+        text = `Waiting in line at ${tgt} for a battery swap` + (oid >= 0 ? `, then collects order #${oid}` : ""); break;
+      case "swapping":
+        text = `Getting a fresh battery at ${tgt}` + (oid >= 0 ? `, then collects order #${oid}` : ""); break;
+      case "dead":
+        text = "Ran out of battery in flight and was lost"; tag = "LOST"; break;
+    }
+    const why = flag === FLAG.WIND ? "Held back one tick by a wind gust"
+              : flag === FLAG.GIVE_WAY ? "Paused to give way to another drone"
+              : flag === FLAG.HOLDING ? "Hovering in place until its route is clear" : "";
+    const whyTag = flag === FLAG.WIND ? "wind" : flag === FLAG.GIVE_WAY ? "giving way" : flag === FLAG.HOLDING ? "waiting" : "";
+    return { text, why, tag: tag && whyTag ? `${tag} · ${whyTag}` : tag };
+  }
+
+  // ------------------------------------------------------------- header
+  const meta = DATA.meta;
+  const ALLOC = { cnp: "Parcels assigned by auction", nearest: "Parcels go to the nearest free drone", round_robin: "Parcels assigned in turn" };
+  const COORD = { cooperative: "Routes booked in space and time", reactive: "No route booking: drones give way on sight", none: "No collision avoidance" };
+  const BATT = { predictive: "Energy-aware battery swaps", naive: "Naive battery rule (swap below 30 %)" };
+  document.getElementById("chips").innerHTML = [`${meta.n_drones} drones`, ALLOC[meta.allocation], COORD[meta.coordination],
+    BATT[meta.battery_policy], `Wind gusts ${(meta.gust_prob * 100).toFixed(0)} %`, `Seed ${meta.seed}`]
+    .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join("");
+
+  const themeBtn = document.getElementById("theme");
+  const THEMES = ["auto", "light", "dark"];
+  let themeIdx = 0;
+  try { const saved = localStorage.getItem("dronefleet-theme"); if (saved) themeIdx = Math.max(0, THEMES.indexOf(saved)); } catch (e) {}
+  function applyTheme() {
+    const th = THEMES[themeIdx];
+    if (th === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", th);
+    themeBtn.textContent = "Theme: " + th;
+    try { localStorage.setItem("dronefleet-theme", th); } catch (e) {}
+    readTokens(); lastUi = -1; render();
+  }
+  themeBtn.onclick = () => { themeIdx = (themeIdx + 1) % 3; applyTheme(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readTokens(); lastUi = -1; render(); });
+  try { if (localStorage.getItem("dronefleet-guide") === "closed") document.getElementById("guide").open = false; } catch (e) {}
+  document.getElementById("guide").addEventListener("toggle", ev => {
+    try { localStorage.setItem("dronefleet-guide", ev.target.open ? "open" : "closed"); } catch (e) {}
+  });
+
+  // ------------------------------------------------------------- canvas
+  const mapWrap = document.getElementById("mapWrap");
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+  let cell = 20, dpr = 1, staticLayer = null;
+  let hits = [];                 // [{k, x, y, r}] drawn drones, for hover/click
+  let selected = -1;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    cell = Math.max(9, Math.floor(mapWrap.clientWidth / W));
+    const cw = cell * W, ch = cell * H;
+    canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
+    canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+    staticLayer = null;
+    sizeTimeline();
+    render();
+  }
+  function rr(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function buildStatic() {
+    const off = document.createElement("canvas");
+    off.width = canvas.width; off.height = canvas.height;
+    const c = off.getContext("2d");
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = T.surface; c.fillRect(0, 0, W * cell, H * cell);
+    c.strokeStyle = T.grid; c.lineWidth = 1; c.beginPath();
+    for (let x = 0; x <= W; x++) { c.moveTo(x * cell + .5, 0); c.lineTo(x * cell + .5, H * cell); }
+    for (let y = 0; y <= H; y++) { c.moveTo(0, y * cell + .5); c.lineTo(W * cell, y * cell + .5); }
+    c.stroke();
+    c.fillStyle = T.building;
+    for (const b of blocked) { const [x, y] = decode(b); rr(c, x * cell + 1, y * cell + 1, cell - 2, cell - 2, 2); c.fill(); }
+    c.fillStyle = T.base;
+    for (const [x, y] of customers) { c.beginPath(); c.arc((x + .5) * cell, (y + .5) * cell, Math.max(1.5, cell * .08), 0, 7); c.fill(); }
+    staticLayer = off;
+  }
+
+  const FONT = getComputedStyle(document.body).fontFamily;
+  function haloText(txt, x, y, opts = {}) {
+    ctx.font = `${opts.weight || 600} ${opts.size || 11}px ${FONT}`;
+    ctx.textAlign = opts.align || "center"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 3.5; ctx.strokeStyle = T.surface; ctx.lineJoin = "round"; ctx.strokeText(txt, x, y);
+    ctx.fillStyle = opts.color || T.ink; ctx.fillText(txt, x, y);
+  }
+
+  function drawPads(fr) {
+    const s = cell * .84;
+    hubs.forEach(([x, y], i) => {
+      rr(ctx, x * cell + (cell - s) / 2, y * cell + (cell - s) / 2, s, s, 4);
+      ctx.fillStyle = T.ink; ctx.fill();
+      ctx.fillStyle = T.surface; ctx.font = `700 ${Math.round(cell * .5)}px ${FONT}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("H", (x + .5) * cell, (y + .54) * cell);
+      padLabel(`Hub ${i}`, x, y);
+    });
+    stations.forEach(([x, y], i) => {
+      rr(ctx, x * cell + (cell - s) / 2, y * cell + (cell - s) / 2, s, s, 4);
+      ctx.fillStyle = T.surface; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = T["c-energy"]; ctx.stroke();
+      const cx = (x + .5) * cell, cy = (y + .5) * cell, k = cell * .3;
+      ctx.beginPath(); ctx.moveTo(cx + k * .15, cy - k); ctx.lineTo(cx - k * .55, cy + k * .12); ctx.lineTo(cx - k * .02, cy + k * .12);
+      ctx.lineTo(cx - k * .2, cy + k); ctx.lineTo(cx + k * .55, cy - k * .15); ctx.lineTo(cx + k * .02, cy - k * .15); ctx.closePath();
+      ctx.fillStyle = T["c-energy"]; ctx.fill();
+      const q = fr.s[i][0];
+      padLabel(`Station ${i}` + (q ? ` · ${q} waiting` : ""), x, y);
+    });
+  }
+  function padLabel(txt, x, y) {
+    const below = y < H - 2;
+    haloText(txt, (x + .5) * cell, below ? (y + 1.55) * cell : (y - .55) * cell, { size: Math.max(10, Math.min(12, cell * .5)), weight: 700 });
+  }
+
+  function drawZones(t) {
+    for (const z of DATA.world.nfz) {
+      const [x0, y0, x1, y1] = z.rect;
+      const px = x0 * cell, py = y0 * cell, pw = (x1 - x0 + 1) * cell, ph = (y1 - y0 + 1) * cell;
+      if (t >= z.start && t < z.end) {
+        ctx.save();
+        ctx.globalAlpha = .12; ctx.fillStyle = T.critical; ctx.fillRect(px, py, pw, ph);
+        ctx.globalAlpha = .35; ctx.strokeStyle = T.critical; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip(); ctx.beginPath();
+        for (let d = -ph; d < pw; d += 8) { ctx.moveTo(px + d, py + ph); ctx.lineTo(px + d + ph, py); }
+        ctx.stroke(); ctx.restore();
+        ctx.strokeStyle = T.critical; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
+        haloText(`No-fly zone until t=${z.end}`, px + 4, py + 9, { align: "left", size: 11, color: T.critical, weight: 700 });
+      } else if (t >= z.announce && t < z.start) {
+        ctx.save(); ctx.setLineDash([6, 4]); ctx.strokeStyle = T.critical; ctx.lineWidth = 2;
+        ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2); ctx.restore();
+        haloText(`No-fly zone from t=${z.start}`, px + 4, py + 9, { align: "left", size: 11, color: T.critical, weight: 700 });
+      }
+    }
+  }
+
+  function orderStates(fr) {
+    const m = new Map();
+    fr.d.forEach((d, k) => { if (d[5] >= 0) m.set(d[5], { k, carrying: !!d[6] }); });
+    return m;
+  }
+  function drawOrders(t, fr) {
+    const held = orderStates(fr);
+    const r = cell * .38;
+    for (const o of orders) {
+      if (o.created > t) continue;
+      const open = o.delivered >= 0 ? t < o.delivered : o.status !== "failed";
+      if (!open) continue;
+      const h = held.get(o.oid);
+      const col = !h ? T.muted : h.carrying ? T["c-parcel"] : T["c-pickup"];
+      const cx = (o.x + .5) * cell, cy = (o.y + .5) * cell;
+      const dim = selected >= 0 && (!h || h.k !== selected);
+      ctx.globalAlpha = dim ? .45 : 1;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7);
+      ctx.lineWidth = o.express ? 3 : 2; ctx.strokeStyle = col; ctx.stroke();
+      if (o.express) { ctx.beginPath(); ctx.arc(cx, cy, r * .32, 0, 7); ctx.fillStyle = col; ctx.fill(); }
+      haloText(`#${o.oid}`, cx + r + 2, cy, { align: "left", size: 10.5, weight: o.express ? 800 : 600 });
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  const lerp = (a, b, f) => a + (b - a) * f;
+  function planAt(did, t) {
+    const arr = DATA.plans[did];
+    if (!arr || !arr.length) return null;
+    let lo = 0, hi = arr.length - 1, best = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid][0] <= t) { best = mid; lo = mid + 1; } else hi = mid - 1; }
+    return best < 0 ? null : arr[best];
+  }
+
+  function drawDrones(i, f, t, opts) {
+    const A = frames[i], B = frames[Math.min(i + 1, LAST)];
+    const r = Math.max(5, cell * .36);
+    const grounded = new Map(), air = [];
+    hits = [];
+    for (let k = 0; k < N; k++) {
+      const a = A.d[k], b = B.d[k], st = STATES[a[3]];
+      if (st === "dead") { air.push({ k, a, dead: true, x: a[0], y: a[1] }); continue; }
+      if (!a[2] && !(b[2] && f > .5)) {
+        const key = a[0] + "," + a[1];
+        if (!grounded.has(key)) grounded.set(key, []);
+        grounded.get(key).push(k);
+        continue;
+      }
+      const bx = b[2] ? b[0] : a[0], by = b[2] ? b[1] : a[1];
+      air.push({ k, a, x: lerp(a[0], bx, f), y: lerp(a[1], by, f) });
+    }
+    // booked routes (the followed drone's route is drawn last, solid and thick)
+    if (opts.paths) {
+      for (const pass of [0, 1]) {
+        for (const d of air) {
+          if (d.dead) continue;
+          const isSel = d.k === selected;
+          if ((pass === 1) !== isSel) continue;
+          const p = planAt(d.k, t);
+          if (!p) continue;
+          const idx = t - p[0], cells = p[1];
+          if (idx < 0 || idx >= cells.length || cells[idx] !== enc(d.a[0], d.a[1])) continue;
+          ctx.save();
+          ctx.strokeStyle = colorOf(d.a); ctx.lineCap = "round"; ctx.lineJoin = "round";
+          ctx.lineWidth = isSel ? 3.5 : 2;
+          ctx.globalAlpha = selected < 0 ? .65 : isSel ? .95 : .2;
+          if (!isSel) ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.moveTo((d.x + .5) * cell, (d.y + .5) * cell);
+          let lx = null, ly = null;
+          for (let j = idx + 1; j < cells.length; j++) {
+            const [cx, cy] = decode(cells[j]);
+            if (cx === lx && cy === ly) continue;
+            ctx.lineTo((cx + .5) * cell, (cy + .5) * cell); lx = cx; ly = cy;
+          }
+          ctx.stroke(); ctx.restore();
+        }
+      }
+    }
+    // parked drones around their pad
+    if (opts.ground) {
+      for (const [key, ks] of grounded) {
+        const [gx, gy] = key.split(",").map(Number);
+        const rs = Math.max(4, cell * .24), rad = cell * .66;
+        ks.forEach((k, j) => {
+          const ang = -Math.PI * .75 + j * 2 * Math.PI / Math.max(ks.length, 7);
+          const cx = (gx + .5) * cell + Math.cos(ang) * rad, cy = (gy + .5) * cell + Math.sin(ang) * rad;
+          const d = A.d[k], col = colorOf(d);
+          ctx.globalAlpha = selected >= 0 && selected !== k ? .45 : 1;
+          ctx.beginPath(); ctx.arc(cx, cy, rs, 0, 7); ctx.fillStyle = col; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = T.surface; ctx.stroke();
+          if (rs >= 6) { ctx.fillStyle = textOn(col); ctx.font = `700 ${Math.round(rs * 1.05)}px ${FONT}`;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(k), cx, cy + .5); }
+          ctx.globalAlpha = 1;
+          if (k === selected) { ctx.beginPath(); ctx.arc(cx, cy, rs + 5, 0, 7); ctx.lineWidth = 2; ctx.strokeStyle = T.ink; ctx.stroke(); }
+          hits.push({ k, x: cx, y: cy, r: rs + 4 });
+        });
+      }
+    }
+    // airborne drones
+    const tags = [];
+    for (const d of air) {
+      const cx = (d.x + .5) * cell, cy = (d.y + .5) * cell;
+      hits.push({ k: d.k, x: cx, y: cy, r: r + 5 });
+      const dim = selected >= 0 && selected !== d.k;
+      ctx.globalAlpha = dim ? .5 : 1;
+      if (d.dead) {
+        const q = r * .75; ctx.strokeStyle = T.critical; ctx.lineWidth = 3; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(cx - q, cy - q); ctx.lineTo(cx + q, cy + q); ctx.moveTo(cx + q, cy - q); ctx.lineTo(cx - q, cy + q); ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (opts.tags) tags.push({ k: d.k, cx, cy, text: `Drone ${d.k} LOST`, col: T.critical, alert: true });
+        continue;
+      }
+      const a = d.a, col = colorOf(a);
+      const rw = Math.max(1.5, Math.min(3, cell * .12));
+      ctx.lineWidth = rw; ctx.lineCap = "butt";
+      ctx.beginPath(); ctx.arc(cx, cy, r + rw, 0, 7); ctx.strokeStyle = T.grid; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r + rw, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * a[4] / 100);
+      ctx.strokeStyle = socColor(a[4]); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fillStyle = col; ctx.fill();
+      ctx.fillStyle = textOn(col); ctx.font = `700 ${Math.round(r * 1.02)}px ${FONT}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(d.k), cx, cy + .5);
+      if (a[6]) {
+        const s = Math.max(4, r * .62), px = cx + r * .78, py = cy - r * .78;
+        ctx.beginPath();
+        if (a[7]) { ctx.moveTo(px, py - s * .75); ctx.lineTo(px + s * .75, py); ctx.lineTo(px, py + s * .75); ctx.lineTo(px - s * .75, py); ctx.closePath(); }
+        else rr(ctx, px - s / 2, py - s / 2, s, s, 1.5);
+        ctx.fillStyle = T.ink; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = T.surface; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      if (d.k === selected) { ctx.beginPath(); ctx.arc(cx, cy, r + rw + 5, 0, 7); ctx.lineWidth = 2.5; ctx.strokeStyle = T.ink; ctx.stroke(); }
+      if (opts.tags) {
+        const desc = describe(a);
+        if (desc.tag) tags.push({ k: d.k, cx, cy, text: desc.tag, col, alert: a[10] === TRIP.EMERGENCY && STATES[a[3]] === "to_station" });
+      }
+    }
+    // the followed drone's destination: corner brackets
+    if (selected >= 0) {
+      const d = A.d[selected];
+      if (d[8] >= 0 && STATES[d[3]] !== "dead") {
+        const [tx, ty] = decode(d[8]);
+        const cx = (tx + .5) * cell, cy = (ty + .5) * cell, q = cell * .72;
+        ctx.strokeStyle = T.ink; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          ctx.moveTo(cx + sx * q, cy + sy * q * .45); ctx.lineTo(cx + sx * q, cy + sy * q); ctx.lineTo(cx + sx * q * .45, cy + sy * q);
+        }
+        ctx.stroke();
+      }
+    }
+    drawTags(tags, r);
+    // collision flashes
+    for (const fl of flashes) {
+      const age = i - fl.i;
+      if (age < 0 || age > 3) continue;
+      const cx = (fl.x + .5) * cell, cy = (fl.y + .5) * cell;
+      ctx.beginPath(); ctx.arc(cx, cy, r * (1.5 + age * .6), 0, 7);
+      ctx.lineWidth = 3; ctx.strokeStyle = T.critical; ctx.globalAlpha = 1 - age / 4; ctx.stroke(); ctx.globalAlpha = 1;
+      if (age === 0) haloText("COLLISION", cx, cy - r * 2.4, { color: T.critical, weight: 800, size: 11 });
+    }
+  }
+
+  function drawTags(tags, r) {
+    const placed = [];
+    const font = `600 11px ${FONT}`;
+    ctx.font = font;
+    // the followed drone's label is placed first so it is never hidden
+    tags.sort((a, b) => (b.k === selected) - (a.k === selected));
+    for (const tg of tags) {
+      ctx.font = font;
+      const w = ctx.measureText(tg.text).width + 12, h = 18;
+      const cands = [[tg.cx + r + 6, tg.cy - h / 2], [tg.cx - r - 6 - w, tg.cy - h / 2], [tg.cx - w / 2, tg.cy - r - 6 - h], [tg.cx - w / 2, tg.cy + r + 6]];
+      let spot = null;
+      for (const [x, y] of cands) {
+        if (x < 0 || y < 0 || x + w > W * cell || y + h > H * cell) continue;
+        if (placed.every(p => x + w < p.x || p.x + p.w < x || y + h < p.y || p.y + p.h < y)) { spot = [x, y]; break; }
+      }
+      if (!spot && tg.k === selected) spot = cands.find(([x, y]) => x >= 0 && y >= 0 && x + w <= W * cell && y + h <= H * cell) || cands[0];
+      if (!spot) continue;
+      const [x, y] = spot;
+      placed.push({ x, y, w, h });
+      const dim = selected >= 0 && selected !== tg.k;
+      ctx.globalAlpha = dim ? .45 : 1;
+      rr(ctx, x, y, w, h, 9); ctx.fillStyle = T.surface; ctx.fill();
+      ctx.lineWidth = tg.k === selected ? 2 : 1.5; ctx.strokeStyle = tg.alert ? T.critical : tg.col; ctx.stroke();
+      ctx.fillStyle = tg.alert ? T.critical : T.ink; ctx.font = font; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(tg.text, x + 6, y + h / 2 + .5);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // --------------------------------------------------------- side panels
+  const nowEl = document.getElementById("now"), kpis = document.getElementById("kpis"), fleet = document.getElementById("fleet"),
+        stEl = document.getElementById("stations"), logEl = document.getElementById("log"), followEl = document.getElementById("follow"),
+        logFilterWrap = document.getElementById("logFilterWrap"), logFilter = document.getElementById("logFilter"),
+        logFilterLabel = document.getElementById("logFilterLabel");
+
+  function summary(fr) {
+    const c = { pickup: 0, parcel: 0, energyAir: 0, returning: 0, parked: 0, atStation: 0, lost: 0, loading: 0 };
+    for (const d of fr.d) {
+      const st = STATES[d[3]];
+      if (st === "dead") c.lost++;
+      else if (st === "to_pickup" && d[2]) c.pickup++;
+      else if (st === "to_customer" && d[2]) c.parcel++;
+      else if (st === "to_station" && d[2]) c.energyAir++;
+      else if (st === "returning" || (st === "idle" && d[2])) c.returning++;
+      else if (st === "queued" || st === "swapping" || st === "to_station") c.atStation++;
+      else if (st === "loading" || st === "to_pickup" || st === "to_customer") c.loading++;
+      else c.parked++;
+    }
+    const flying = c.pickup + c.parcel + c.energyAir + c.returning;
+    const parts = [];
+    if (c.parcel) parts.push(`<b>${c.parcel}</b> carrying parcels`);
+    if (c.pickup) parts.push(`<b>${c.pickup}</b> going to collect one`);
+    if (c.energyAir) parts.push(`<b>${c.energyAir}</b> heading for a battery swap`);
+    if (c.returning) parts.push(`<b>${c.returning}</b> returning to a hub`);
+    const ground = [];
+    if (c.loading) ground.push(`${c.loading} loading at a hub`);
+    if (c.atStation) ground.push(`${c.atStation} at a swap station`);
+    if (c.parked) ground.push(`${c.parked} parked and free`);
+    if (c.lost) ground.push(`<b style="color:var(--critical)">${c.lost} lost</b>`);
+    const waiting = fr.o[0];
+    let s = `<b>t = ${fr.t}</b> · ${flying ? `${flying} of ${N} drones flying: ${parts.join(", ")}.` : "No drones in the air."}`;
+    if (ground.length) s += ` On the ground: ${ground.join(", ")}.`;
+    s += waiting ? ` <b>${waiting}</b> order${waiting > 1 ? "s" : ""} waiting for a drone.` : " No order is waiting for a drone.";
+    return s;
+  }
+
+  function renderUi(i) {
+    const fr = frames[i];
+    nowEl.innerHTML = summary(fr);
+    const created = orders.filter(o => o.created <= fr.t).length;
+    kpis.innerHTML = [
+      ["Delivered", `${fr.o[2]} <small>of ${created}</small>`],
+      ["Being delivered", fr.o[1]],
+      ["Waiting for a drone", fr.o[0]],
+      ["Collisions", fr.c],
+    ].map(([l, v]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
+
+    fleet.innerHTML = fr.d.map((d, k) => {
+      const col = colorOf(d), desc = describe(d);
+      return `<button class="frow${k === selected ? " sel" : ""}" data-k="${k}" aria-pressed="${k === selected}">` +
+        `<span class="fid" style="background:${col};color:${textOn(col)}">${k}</span>` +
+        `<span class="ftext">${esc(desc.text)}${desc.why ? `<small>${esc(desc.why)}</small>` : ""}</span>` +
+        `<span class="fbat" title="battery ${d[4]}%">${d[4]}%<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span></span></button>`;
+    }).join("");
+
+    stEl.innerHTML = fr.s.map((s, j) => {
+      const [q, act, charged, total] = s;
+      const packs = Array.from({ length: total }, (_, p) => `<i class="${p < charged ? "full" : ""}"></i>`).join("");
+      const here = enc(stations[j][0], stations[j][1]);
+      const swapping = [], queued = [];
+      fr.d.forEach((d, k) => { if (d[8] === here) { if (STATES[d[3]] === "swapping") swapping.push(k); else if (STATES[d[3]] === "queued") queued.push(k); } });
+      const line = [swapping.length ? `swapping drone ${swapping.join(", ")}` : "",
+                    queued.length ? `drone ${queued.join(", ")} waiting` : ""].filter(Boolean).join(" · ") || "free";
+      return `<div class="station"><div><b>Station ${j}</b></div><div class="meta">${line}</div>` +
+             `<div class="packs" title="${charged} of ${total} spare packs fully charged">${packs}<span>${charged} of ${total} spare packs charged</span></div></div>`;
+    }).join("");
+
+    renderFollow(i);
+    renderLog(i);
+  }
+
+  const followMini = document.getElementById("followMini");
+  function renderFollow(i) {
+    const fr = frames[i];
+    followMini.hidden = selected < 0;
+    if (selected >= 0) {
+      const d = fr.d[selected], col = colorOf(d), desc = describe(d);
+      const eta = d[12] >= 0 && d[12] > fr.t ? ` · arrives t=${d[12]}` : "";
+      followMini.innerHTML = `<span class="badge" style="background:${col};color:${textOn(col)}">${selected}</span>` +
+        `<span class="txt"><b>Drone ${selected}</b>: ${esc(desc.text)}${eta} · battery ${d[4]}%${desc.why ? ` · ${esc(desc.why.toLowerCase())}` : ""}</span>` +
+        `<button id="unfollowMini">Stop</button>`;
+      document.getElementById("unfollowMini").onclick = () => select(-1);
+    }
+    if (selected < 0) {
+      followEl.innerHTML = `<h2>Follow a drone</h2><p class="hint">Click a drone on the map or in the fleet list. You will see what it is doing, why, where it is going and when it gets there.</p>`;
+      return;
+    }
+    const d = fr.d[selected], col = colorOf(d), desc = describe(d);
+    const o = orderById.get(d[5]);
+    const facts = [];
+    facts.push(["Battery", `<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span>${d[4]}%`]);
+    if (o) facts.push(["Order", `#${o.oid} · ${o.weight != null ? o.weight.toFixed(1) + " kg" : ""}${o.express ? " · express" : ""} · due t=${o.deadline}` +
+                               (d[6] ? " · on board" : " · not collected yet")]);
+    const st = STATES[d[3]];
+    if (d[8] >= 0 && st !== "queued" && st !== "swapping" && st !== "loading")
+      facts.push(["Going to", placeByEnc.has(d[8]) ? placeName(d[8]) : `the customer (ring #${d[5]} on the map)`]);
+    if (d[12] >= 0 && d[12] > fr.t) facts.push(["Arrives", `t=${d[12]} (in ${d[12] - fr.t} tick${d[12] - fr.t === 1 ? "" : "s"})`]);
+    if (d[11] >= 0) facts.push(["After that", `lands at ${placeName(d[11])}`]);
+    const recent = byDrone[selected].filter(([fi]) => fi <= i).slice(-6).reverse();
+    followEl.innerHTML =
+      `<div class="fhead"><span class="badge" style="background:${col};color:${textOn(col)}">${selected}</span><b>Drone ${selected}</b>` +
+      `<button id="unfollow">Stop following</button></div>` +
+      `<p class="fnow">${esc(desc.text)}</p>${desc.why ? `<p class="fwhy">${esc(desc.why)}</p>` : ""}` +
+      `<dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>` +
+      `<h3>Recent activity</h3><ul class="mini-log">${recent.length ? recent.map(([, t, e]) => `<li><span class="t">t=${t}</span>${esc(e.replace(/^!! /, ""))}</li>`).join("") : "<li>Nothing yet.</li>"}</ul>`;
+    document.getElementById("unfollow").onclick = () => select(-1);
+  }
+
+  function renderLog(i) {
+    const only = selected >= 0 && logFilter.checked;
+    logFilterWrap.hidden = selected < 0;
+    logFilterLabel.textContent = `only Drone ${selected}`;
+    const lines = [];
+    if (only) {
+      const arr = byDrone[selected];
+      for (let j = arr.length - 1; j >= 0 && lines.length < 80; j--) if (arr[j][0] <= i) lines.push([arr[j][1], arr[j][2]]);
+    } else {
+      for (let j = i; j >= 0 && lines.length < 80; j--) {
+        const f = frames[j];
+        for (let e = f.e.length - 1; e >= 0 && lines.length < 80; e--) lines.push([f.t, f.e[e]]);
+      }
+    }
+    logEl.innerHTML = lines.map(([t, e]) => {
+      const cls = /!!|LOST|EMERGENCY|COLLISION|LATE/.test(e) ? "alert" : /delivers order/.test(e) ? "good" : "";
+      return `<li class="${cls}"><span class="t">t=${t}</span>${esc(e.replace(/^!! /, ""))}</li>`;
+    }).join("") || "<li>Nothing has happened yet.</li>";
+  }
+  logFilter.onchange = () => { lastUi = -1; render(); };
+
+  fleet.addEventListener("click", ev => {
+    const b = ev.target.closest(".frow");
+    if (b) select(Number(b.dataset.k) === selected ? -1 : Number(b.dataset.k));
+  });
+  function select(k) { selected = k; lastUi = -1; render(); }
+
+  // ------------------------------------------------------------ map pointer
+  const tip = document.getElementById("tip");
+  function hitAt(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+    let best = null, bd = Infinity;
+    for (const h of hits) { const dd = Math.hypot(h.x - x, h.y - y); if (dd <= h.r && dd < bd) { best = h; bd = dd; } }
+    return best;
+  }
+  canvas.addEventListener("mousemove", ev => {
+    const h = hitAt(ev);
+    canvas.style.cursor = h ? "pointer" : "default";
+    if (!h) { tip.hidden = true; return; }
+    const d = frames[Math.min(LAST, Math.floor(pos))].d[h.k], desc = describe(d);
+    tip.innerHTML = `<b>Drone ${h.k}</b> · battery ${d[4]}%<br>${esc(desc.text)}${desc.why ? `<br><span class="why">${esc(desc.why)}</span>` : ""}<br><span class="why">Click to follow</span>`;
+    tip.hidden = false;
+    tip.style.left = Math.min(ev.clientX + 14, innerWidth - 290) + "px"; tip.style.top = (ev.clientY + 14) + "px";
+  });
+  canvas.addEventListener("mouseleave", () => { tip.hidden = true; });
+  canvas.addEventListener("click", ev => { const h = hitAt(ev); select(h ? (h.k === selected ? -1 : h.k) : -1); });
+
+  // -------------------------------------------------------------- metrics
+  const M = DATA.metrics || {};
+  const fmt1 = v => v != null ? v.toFixed(1) : null;
+  document.getElementById("metrics").innerHTML = [
+    ["Orders delivered", M.delivered != null ? `${M.delivered} of ${M.orders}` : null],
+    ["Average delivery time", M.avg_delivery_time != null ? `${fmt1(M.avg_delivery_time)} ticks` : null],
+    ["Slowest 5 % took at least", M.p95_delivery_time != null ? `${M.p95_delivery_time} ticks` : null],
+    ["Delivered on time", M.on_time_rate != null ? `${(M.on_time_rate * 100).toFixed(1)} %` : null],
+    ["Collisions", M.collisions], ["Drones lost", M.dead_drones],
+    ["Battery swaps", M.swaps], ["Battery emergencies", M.emergencies],
+    ["Energy per delivery", fmt1(M.energy_per_delivery)],
+    ["Time drones spent busy", M.utilisation != null ? `${(M.utilisation * 100).toFixed(1)} %` : null],
+    ["Routes planned / shifted after wind", M.replans != null ? `${M.replans} / ${M.plan_repairs}` : null],
+    ["Times a drone gave way", M.forced_holds], ["Auctions held", M.auction_rounds],
+  ].filter(r => r[1] != null).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+
+  // ------------------------------------------------------------- timeline
+  const tl = document.getElementById("timeline"), tctx = tl.getContext("2d");
+  let tlW = 600;
+  const tlH = 130;
+  const PAD = { l: 34, r: 10, t: 8, b: 20 };
+  const maxY = Math.max(4, ...frames.map(f => Math.max(f.o[0], f.o[1])));
+  const yStep = Math.max(1, Math.ceil(maxY / 4)), yMax = yStep * 4;
+  function sizeTimeline() {
+    tlW = tl.clientWidth || 600;
+    tl.width = Math.round(tlW * dpr); tl.height = Math.round(tlH * dpr);
+    tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  const tx = i => PAD.l + (tlW - PAD.l - PAD.r) * i / Math.max(1, LAST);
+  const ty = v => tlH - PAD.b - (tlH - PAD.t - PAD.b) * v / yMax;
+  function drawTimeline(p) {
+    const c = tctx;
+    c.clearRect(0, 0, tlW, tlH);
+    c.font = `11px ${FONT}`; c.fillStyle = T.muted; c.textAlign = "right"; c.textBaseline = "middle";
+    c.strokeStyle = T.grid; c.lineWidth = 1;
+    for (let v = 0; v <= yMax; v += yStep) {
+      const y = Math.round(ty(v)) + .5;
+      c.beginPath(); c.moveTo(PAD.l, y); c.lineTo(tlW - PAD.r, y); c.stroke(); c.fillText(String(v), PAD.l - 6, y);
+    }
+    c.textAlign = "center"; c.textBaseline = "top";
+    const tStep = Math.max(50, Math.ceil(frames[LAST].t / 8 / 50) * 50);
+    for (let t = 0; t <= frames[LAST].t; t += tStep) c.fillText(String(t), tx(t), tlH - PAD.b + 5);
+    const series = [[0, T["c-pickup"]], [1, T["c-parcel"]]];
+    for (const [k, col] of series) {
+      c.beginPath(); c.lineWidth = 2; c.lineJoin = "round"; c.strokeStyle = col;
+      frames.forEach((f, i) => { const x = tx(i), y = ty(f.o[k]); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+      c.stroke();
+    }
+    const x = tx(p);
+    c.strokeStyle = T.ink2; c.lineWidth = 1; c.beginPath(); c.moveTo(x + .5, PAD.t); c.lineTo(x + .5, tlH - PAD.b); c.stroke();
+    const f = frames[Math.round(p)];
+    for (const [k, col] of series) { c.beginPath(); c.arc(x, ty(f.o[k]), 4, 0, 7); c.fillStyle = col; c.fill(); c.lineWidth = 2; c.strokeStyle = T.surface; c.stroke(); }
+  }
+  function frameFromEvent(ev) {
+    const rect = tl.getBoundingClientRect();
+    return Math.max(0, Math.min(LAST, Math.round((ev.clientX - rect.left - PAD.l) / (tlW - PAD.l - PAD.r) * LAST)));
+  }
+  tl.addEventListener("mousemove", ev => {
+    const f = frames[frameFromEvent(ev)];
+    tip.innerHTML = `<b>t = ${f.t}</b><br>waiting for a drone: ${f.o[0]}<br>being delivered: ${f.o[1]}<br>delivered so far: ${f.o[2]}`;
+    tip.hidden = false;
+    tip.style.left = Math.min(ev.clientX + 14, innerWidth - 200) + "px"; tip.style.top = (ev.clientY - 10) + "px";
+  });
+  tl.addEventListener("mouseleave", () => { tip.hidden = true; });
+  tl.addEventListener("click", ev => seek(frameFromEvent(ev)));
+
+  // ------------------------------------------------------------- playback
+  const slider = document.getElementById("slider"), tlabel = document.getElementById("tlabel"),
+        playBtn = document.getElementById("play"), speedSel = document.getElementById("speed");
+  slider.max = LAST;
+  const opt = id => document.getElementById(id).checked;
+  let pos = 0, playing = false, lastTs = null, lastUi = -1;
+
+  function render() {
+    if (!T.surface) return;
+    const i = Math.min(LAST, Math.floor(pos)), f = pos - i, t = frames[i].t;
+    if (!staticLayer) buildStatic();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(staticLayer, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawZones(t);
+    if (opt("optOrders")) drawOrders(t, frames[i]);
+    drawPads(frames[i]);
+    drawDrones(i, f, t, { paths: opt("optPaths"), tags: opt("optTags"), ground: opt("optGround") });
+    drawTimeline(pos);
+    if (i !== lastUi) { renderUi(i); lastUi = i; slider.value = i; tlabel.textContent = `t = ${t}`; }
+  }
+  function seek(i) { pos = Math.max(0, Math.min(LAST, i)); lastUi = -1; render(); }
+  function setPlaying(p) {
+    playing = p; playBtn.textContent = p ? "❚❚ Pause" : "▶ Play"; playBtn.setAttribute("aria-label", p ? "Pause" : "Play");
+    if (p && pos >= LAST) pos = 0;
+    lastTs = null; if (p) requestAnimationFrame(loop);
+  }
+  function loop(ts) {
+    if (!playing) return;
+    if (lastTs !== null) {
+      pos += (ts - lastTs) / 1000 * Number(speedSel.value);
+      if (pos >= LAST) { pos = LAST; render(); setPlaying(false); return; }
+    }
+    lastTs = ts; render(); requestAnimationFrame(loop);
+  }
+  playBtn.onclick = () => setPlaying(!playing);
+  document.getElementById("back").onclick = () => { setPlaying(false); seek(Math.ceil(pos) - 1); };
+  document.getElementById("fwd").onclick = () => { setPlaying(false); seek(Math.floor(pos) + 1); };
+  slider.oninput = () => { setPlaying(false); seek(Number(slider.value)); };
+  for (const id of ["optPaths", "optOrders", "optTags", "optGround"]) document.getElementById(id).onchange = render;
+  addEventListener("keydown", ev => {
+    if (ev.target.tagName === "SELECT") return;
+    if (ev.target.tagName === "INPUT" && ev.target.type !== "checkbox" && ev.target.type !== "range") return;
+    if (ev.code === "Space") { ev.preventDefault(); setPlaying(!playing); }
+    else if (ev.key === "ArrowRight") { ev.preventDefault(); setPlaying(false); seek(Math.floor(pos) + (ev.shiftKey ? 10 : 1)); }
+    else if (ev.key === "ArrowLeft") { ev.preventDefault(); setPlaying(false); seek(Math.ceil(pos) - (ev.shiftKey ? 10 : 1)); }
+    else if (ev.key === "Escape") select(-1);
+  });
+  new ResizeObserver(() => resize()).observe(mapWrap);
+  // open on a busy moment in the first half rather than an empty t = 0
+  const airborne = f => f.d.filter(d => d[2]).length;
+  let busiest = 0;
+  for (let i = 0; i < LAST * .5; i++) if (airborne(frames[i]) > airborne(frames[busiest])) busiest = i;
+  pos = busiest;
+  applyTheme();
+  resize();
+})();
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ Examples
     python3 run_simulation.py --coordination none          # watch the collisions
     python3 run_simulation.py --battery naive --seed 1     # watch drones run dry
     python3 run_simulation.py --layers 5 --layer-rule heading   # stacked airspace
+    python3 run_simulation.py --view 3d                    # 3-D replay (loads three.js online)
 """
 
 from __future__ import annotations
@@ -38,7 +39,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--layer-rule", choices=LAYER_RULES, default=SimConfig.layer_rule,
                     help="heading: east/west traffic on odd layers, north/south on even layers")
     ap.add_argument("--no-nfz", action="store_true", help="disable temporary no-fly zones")
-    ap.add_argument("--out", default="results/replay.html", help="HTML replay path ('' to skip)")
+    ap.add_argument("--out", default=None,
+                    help="HTML replay path ('' to skip; default results/replay.html, or results/replay_3d.html for --view 3d)")
+    ap.add_argument("--view", choices=("2d", "3d", "both"), default="2d",
+                    help="replay viewer: 2d (works offline), 3d (needs internet for three.js) or both")
     ap.add_argument("--metrics-json", default="", help="also write metrics to this JSON file")
     ap.add_argument("--map", action="store_true", help="print the ASCII city map")
     ap.add_argument("--events", type=int, default=0, help="print the first N event-log lines")
@@ -46,13 +50,26 @@ def parse_args(argv=None) -> argparse.Namespace:
     return ap.parse_args(argv)
 
 
+def replay_paths(out: str | None, view: str) -> list[tuple[str, Path]]:
+    """(view, path) pairs to export; ``both`` writes the 3-D replay next to the 2-D one as *_3d.html."""
+    if out == "":
+        return []
+    if out is None:
+        out = "results/replay_3d.html" if view == "3d" else "results/replay.html"
+    path = Path(out)
+    if view == "both":
+        return [("2d", path), ("3d", path.with_name(path.stem + "_3d" + path.suffix))]
+    return [(view, path)]
+
+
 def main(argv=None) -> int:
     a = parse_args(argv)
+    replays = replay_paths(a.out, a.view)
     cfg = dataclasses.replace(
         SimConfig(), seed=a.seed, n_drones=a.drones, order_rate=a.rate, max_ticks=a.ticks,
         allocation=a.allocation, coordination=a.coordination, battery_policy=a.battery,
         gust_prob=a.gust, auto_nfz=not a.no_nfz, n_layers=a.layers, layer_rule=a.layer_rule,
-        record_trace=bool(a.out),
+        record_trace=bool(replays),
     )
     sim = Simulation(cfg)
     w = sim.world
@@ -72,9 +89,10 @@ def main(argv=None) -> int:
             print(f"[t={t:4d}] {e}")
     print("\nResults")
     print(format_metrics(metrics))
-    if a.out:
-        path = export_html(sim, metrics, a.out)
-        print(f"\nReplay written to {path}  (open it in a browser)")
+    for view, out in replays:
+        path = export_html(sim, metrics, out, view=view)
+        note = "" if view == "2d" else "; the 3-D view loads three.js from cdn.jsdelivr.net"
+        print(f"\nReplay ({view.upper()}) written to {path}  (open it in a browser{note})")
     if a.metrics_json:
         Path(a.metrics_json).parent.mkdir(parents=True, exist_ok=True)
         Path(a.metrics_json).write_text(json.dumps(metrics, indent=2))

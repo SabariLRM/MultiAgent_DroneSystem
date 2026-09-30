@@ -11,6 +11,7 @@ Examples
     python3 run_simulation.py --view 3d                    # 3-D replay (loads three.js online)
     python3 run_simulation.py --motion continuous          # metres and seconds, ORCA, wind field
     python3 run_simulation.py --motion continuous --wind strong --tactical none
+    python3 run_simulation.py --motion continuous --drones 32 --rate 0.47 --spare-packs 6
 """
 
 from __future__ import annotations
@@ -43,6 +44,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--layer-rule", choices=LAYER_RULES, default=SimConfig.layer_rule,
                     help="heading: east/west traffic on odd layers, north/south on even layers")
     ap.add_argument("--no-nfz", action="store_true", help="disable temporary no-fly zones")
+    ap.add_argument("--spare-packs", type=int, default=SimConfig.station_spare_packs,
+                    help="charged spare battery packs per swap station")
     ap.add_argument("--motion", choices=MOTION_MODES, default=SimConfig.motion,
                     help="grid: cell hopping (default) | continuous: metres and seconds, ORCA, wind field")
     ap.add_argument("--wind", choices=tuple(WIND_PRESETS), default=None,
@@ -79,7 +82,7 @@ def main(argv=None) -> int:
         SimConfig(), seed=a.seed, n_drones=a.drones, order_rate=a.rate, max_ticks=a.ticks,
         allocation=a.allocation, coordination=a.coordination, battery_policy=a.battery,
         gust_prob=a.gust, auto_nfz=not a.no_nfz, n_layers=a.layers, layer_rule=a.layer_rule,
-        record_trace=bool(replays), motion=a.motion, tactical=a.tactical,
+        record_trace=bool(replays), motion=a.motion, tactical=a.tactical, station_spare_packs=a.spare_packs,
     )
     if a.wind:
         cfg = dataclasses.replace(cfg, wind_mean=WIND_PRESETS[a.wind][0], wind_gust=WIND_PRESETS[a.wind][1])

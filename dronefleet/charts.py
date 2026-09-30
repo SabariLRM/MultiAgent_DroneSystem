@@ -154,7 +154,8 @@ def grouped_columns(title: str, subtitle: str, panels: list[dict], groups: list[
 
 
 def line_panels(title: str, subtitle: str, xs: list[float], xlabel: str, panels: list[dict]) -> str:
-    """panels: [{title, series: {name: [(mean, std), ...]}, pct}] - one y-scale per panel."""
+    """panels: [{title, series: {name: [(mean, std), ...]}, pct, ymax}] - one y-scale per panel
+    (``ymax`` optionally fixes the top of the axis, e.g. 1.0 for a share)."""
     pw, ph = 300, 180
     top, left, gap = 108, 44, 30
     W = left + len(panels) * (pw + gap)
@@ -175,7 +176,7 @@ def line_panels(title: str, subtitle: str, xs: list[float], xlabel: str, panels:
     for pi, p in enumerate(panels):
         x0 = left + pi * (pw + gap)
         vmax = max(m + s for vals in p["series"].values() for m, s in vals)
-        amax, step = _nice_max(max(vmax, 1e-9) * 1.08)
+        amax, step = (p["ymax"], p["ymax"] / 4) if p.get("ymax") else _nice_max(max(vmax, 1e-9) * 1.08)
         sy = ph / amax
         sx = lambda x: x0 + 10 + (x - xmin) / ((xmax - xmin) or 1) * (pw - 20)  # noqa: E731
         parts.append(f'<text class="ptitle" x="{x0}" y="{top - 14}">{escape(p["title"])}</text>')
@@ -351,7 +352,7 @@ def write_charts(results: dict, outdir: str | Path) -> list[Path]:
         panels = []
         for key, title, pct in [("avg_delivery_time", "Average delivery time (ticks)", False),
                                 ("energy_per_delivery", "Energy per delivery", False),
-                                ("delivery_rate", "Orders delivered", True)]:
+                                ("swaps", "Battery swaps per run", False)]:
             panels.append({"title": title, "pct": pct, "values": {
                 ("12 drones", n): _get(results, "motion", m, key) for m, n in zip(modes, names)}})
         svg = grouped_columns("Grid cells vs continuous flight (default configuration)",
@@ -368,7 +369,7 @@ def write_charts(results: dict, outdir: str | Path) -> list[Path]:
                           "Headwinds cost energy and the airspeed limit slows drones; the energy check keeps every "
                           "drone safe by refusing what it cannot price within its battery.",
                           xs, "mean wind at 30 m (m/s)",
-                          [{"title": "Orders delivered", "pct": True, "series": {"fleet": ser("delivery_rate")}},
+                          [{"title": "Orders delivered", "pct": True, "ymax": 1.0, "series": {"fleet": ser("delivery_rate")}},
                            {"title": "Energy per delivery", "series": {"fleet": ser("energy_per_delivery")}},
                            {"title": "Flight hours per run", "series": {"fleet": ser("flight_hours")}}])
         written.append(_write(out / "wind.svg", svg))

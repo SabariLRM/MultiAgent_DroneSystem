@@ -5,9 +5,15 @@ Every configuration is run on the same set of random seeds (same cities, same
 order streams, same gusts) so differences come from the strategy alone.
 Results are written as Markdown tables + JSON, plus SVG charts for the report.
 
-    python3 run_experiments.py              # 10 seeds, a few minutes
+    python3 run_experiments.py              # 10 seeds, about 15 minutes
     python3 run_experiments.py --seeds 3    # quick look
     python3 run_experiments.py --only layers
+    python3 run_experiments.py --only tactical motion wind --jobs 8
+
+With ``--only`` the named sections replace their old results in
+``experiments.md`` / ``experiments.json`` and every other section is kept as
+it was, so one experiment can be re-run without re-running (and re-timing)
+the rest. Only the charts of the experiments that ran are rewritten.
 """
 
 from __future__ import annotations
@@ -15,12 +21,15 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import re
 import statistics
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from dronefleet import SimConfig, Simulation
+from dronefleet.wind import WIND_PRESETS
 
 # The original experiments use one flight layer: with n_layers=1 the simulator
 # reproduces the flat-airspace study exactly (tests/test_regression.py).
@@ -31,6 +40,25 @@ DENSE = dict(n_drones=24, order_rate=0.35)
 # does not mask what happens in the airspace.
 LAYER_FLEETS = ((24, 0.35), (32, 0.47))
 LAYER_INFRA = dict(station_spare_packs=6)
+# Continuous flight (docs/continuous_design.md) uses the default configuration,
+# 3 flight layers. As in the layer experiment, 24 drones get 6 spare packs per
+# station so the battery-swap queue does not mask what happens in the air.
+CONT = dict(motion="continuous", n_layers=3)
+TACTICAL = (("reservations only", dict(tactical="none")),
+            ("ORCA only", dict(coordination="none")),
+            ("reservations + ORCA", dict()))
+TACTICAL_FLEETS = ((12, dict()), (24, dict(n_drones=24, order_rate=0.35, **LAYER_INFRA)))
+TACTICAL_WINDS = ("calm", "moderate", "strong")
+FLEET32 = dict(n_drones=32, order_rate=0.47, **LAYER_INFRA)
+
+
+def wind(name: str) -> dict:
+    mean, gust = WIND_PRESETS[name]
+    return dict(wind_mean=mean, wind_gust=gust)
+
+
+def tactical_label(strategy: str, wind_name: str, drones: int) -> str:
+    return f"{strategy}, {wind_name} wind ({drones} drones)"
 
 
 def layer_label(layers: int, rule: str, drones: int) -> str:
@@ -106,15 +134,55 @@ def experiments() -> dict[str, dict]:
             "metrics": ["collisions", "avg_delivery_time", "p95_delivery_time", "forced_holds", "yields",
                         "energy_per_delivery", "planner_ms_per_search", "upper_layer_share", "nfz_violations"],
         },
+        "tactical": {
+            "question": "Continuous flight: what do strategic reservations and tactical ORCA each contribute?",
+            "note": "Continuous flight (metres and seconds), default configuration with 3 flight layers. "
+                    "Wind presets: calm 0 m/s; moderate 5 m/s mean, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s. "
+                    "24 drones: 0.35 orders/tick and 6 spare packs per station. "
+                    "LoS = loss of separation (closer than 40 m horizontally and 15 m vertically).",
+            "variants": [(tactical_label(strategy, w, n), dict(**CONT, **fleet, **wind(w), **ov))
+                         for n, fleet in TACTICAL_FLEETS for w in TACTICAL_WINDS for strategy, ov in TACTICAL],
+            "metrics": ["collisions", "separation_losses", "separation_loss_s", "min_separation_m",
+                        "avg_delivery_time", "on_time_rate", "energy_per_delivery", "wall_time_s"],
+            "extra": ["delivery_rate", "delivered", "orders", "failed", "orca_per_drone_hour", "tracking_error_mean_m",
+                      "tracking_error_p95_m", "building_intrusions", "stall_replans", "emergencies", "flight_hours",
+                      "p95_delivery_time", "swaps"],
+        },
+        "motion": {
+            "question": "Grid cells or continuous flight, at the default configuration?",
+            "note": "Default configuration (12 drones, 3 flight layers, 0.16 orders/tick); 32 drones fly with "
+                    "0.47 orders/tick and 6 spare packs per station. The grid model's wind is a 3 % chance per "
+                    "move of being held back a tick; continuous flight uses the wind field.",
+            "variants": [("grid (default)", dict(n_layers=3)),
+                         ("continuous, calm", dict(**CONT, **wind("calm"))),
+                         ("continuous, moderate wind (default)", dict(**CONT)),
+                         ("grid, 32 drones", dict(n_layers=3, **FLEET32)),
+                         ("continuous, moderate wind, 32 drones", dict(**CONT, **FLEET32))],
+            "metrics": ["delivery_rate", "avg_delivery_time", "p95_delivery_time", "on_time_rate",
+                        "energy_per_delivery", "swaps", "collisions", "wall_time_s"],
+            "extra": ["delivered", "orders", "failed", "cells_flown", "hover_ticks"],
+        },
+        "wind": {
+            "question": "Continuous flight: how much wind can the energy-safe fleet fly in?",
+            "note": "Reservations + ORCA, default configuration (12 drones). Mean wind at 30 m and RMS gusts: calm "
+                    "0/0, moderate 5/1.5, strong 8/2.5, severe 10/3 m/s.",
+            "variants": [(f"{w} wind", dict(**CONT, **wind(w))) for w in WIND_PRESETS],
+            "metrics": ["delivery_rate", "avg_delivery_time", "energy_per_delivery", "flight_hours",
+                        "separation_losses", "min_separation_m", "tracking_error_mean_m", "emergencies"],
+            "extra": ["delivered", "orders", "failed", "swaps", "orca_per_drone_hour", "tracking_error_p95_m",
+                      "on_time_rate", "building_intrusions"],
+        },
     }
 
 
-def run_variant(overrides: dict, seeds: list[int]) -> list[dict]:
-    out = []
-    for s in seeds:
-        sim = Simulation(dataclasses.replace(BASE, seed=s, **overrides))
-        out.append(sim.run())
-    return out
+def run_one(job: tuple[dict, int]) -> dict:
+    overrides, seed = job
+    return Simulation(dataclasses.replace(BASE, seed=seed, **overrides)).run()
+
+
+def run_variant(overrides: dict, seeds: list[int], pool=None) -> list[dict]:
+    jobs = [(overrides, s) for s in seeds]
+    return list(pool.map(run_one, jobs)) if pool else [run_one(j) for j in jobs]
 
 
 def summarise(runs: list[dict], keys: list[str]) -> dict:
@@ -136,6 +204,9 @@ LABELS = {
     "replans": "plans", "planner_ms_per_search": "ms/A*", "wall_time_s": "wall s",
     "deviations": "deviations", "plan_repairs": "repairs", "yields": "yields",
     "max_station_queue": "max queue", "upper_layer_share": "above layer 1", "nfz_violations": "NFZ violations",
+    "separation_losses": "LoS events", "separation_loss_s": "LoS pair-s", "min_separation_m": "min sep (m)",
+    "orca_per_drone_hour": "ORCA / drone-h", "tracking_error_mean_m": "track err (m)",
+    "flight_hours": "flight h",
 }
 PERCENT = {"delivery_rate", "on_time_rate", "utilisation", "upper_layer_share"}
 
@@ -151,8 +222,9 @@ def fmt(k: str, s: dict) -> str:
 
 def to_markdown(name: str, exp: dict, rows: list[tuple[str, dict]], n_seeds: int) -> str:
     keys = exp["metrics"]
+    note = f" {exp['note']}" if exp.get("note") else ""
     lines = [f"### {name.capitalize()}: {exp['question']}", "",
-             f"Mean ± standard deviation over {n_seeds} seeds.", "",
+             f"Mean ± standard deviation over {n_seeds} seeds.{note}", "",
              "| configuration | " + " | ".join(LABELS.get(k, k) for k in keys) + " |",
              "|---|" + "---:|" * len(keys)]
     for label, summ in rows:
@@ -160,48 +232,82 @@ def to_markdown(name: str, exp: dict, rows: list[tuple[str, dict]], n_seeds: int
     return "\n".join(lines) + "\n"
 
 
+def header(seeds: list[int]) -> list[str]:
+    return ["# Experiment results", "",
+            f"Seeds {seeds[0]}..{seeds[-1]}; default scenario: {BASE.width}x{BASE.height} city, "
+            f"{BASE.n_hubs} hubs, {BASE.n_stations} swap stations, {BASE.n_drones} drones, "
+            f"{BASE.order_rate} orders/tick for {BASE.order_until} ticks, gust p={BASE.gust_prob}, "
+            f"{BASE.n_layers} flight layer (the layer experiment varies it; the continuous-flight sections, "
+            f"tactical, motion and wind, use the default 3 layers). Times are in ticks (1 tick ~ 10 s).", ""]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seeds", type=int, default=10)
-    ap.add_argument("--only", nargs="*", help="run only these experiments")
+    ap.add_argument("--only", nargs="*", help="run only these experiments (the others keep their results)")
     ap.add_argument("--out", default="results")
     ap.add_argument("--no-charts", action="store_true")
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="parallel worker processes (results are identical; timings are per process)")
     a = ap.parse_args(argv)
 
     seeds = list(range(1, a.seeds + 1))
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    md = ["# Experiment results", "",
-          f"Seeds {seeds[0]}..{seeds[-1]}; default scenario: {BASE.width}x{BASE.height} city, "
-          f"{BASE.n_hubs} hubs, {BASE.n_stations} swap stations, {BASE.n_drones} drones, "
-          f"{BASE.order_rate} orders/tick for {BASE.order_until} ticks, gust p={BASE.gust_prob}, "
-          f"{BASE.n_layers} flight layer (the layer experiment varies it). "
-          f"Times are in ticks (1 tick ~ 10 s).", ""]
+    catalogue = experiments()
+    unknown = set(a.only or ()) - set(catalogue)
+    if unknown:
+        ap.error(f"unknown experiment(s): {', '.join(sorted(unknown))}")
+
+    # keep the sections that are not re-run (and their compute time)
     all_results: dict = {}
-    t0 = time.perf_counter()
-    for name, exp in experiments().items():
-        if a.only and name not in a.only:
-            continue
-        print(f"== {name}: {exp['question']}", flush=True)
-        rows = []
-        all_results[name] = {"question": exp["question"], "variants": []}
-        for label, ov in exp["variants"]:
-            runs = run_variant(ov, seeds)
-            summ = summarise(runs, sorted(set(exp["metrics"]) | {"collisions", "delivery_rate",
-                                                                  "avg_delivery_time", "dead_drones"}))
-            rows.append((label, summ))
-            all_results[name]["variants"].append({"label": label, "overrides": ov, "summary": summ,
-                                                  "runs": runs})
-            print(f"   {label:30s} " + "  ".join(f"{LABELS.get(k, k)}={fmt(k, summ[k])}"
-                                                  for k in exp["metrics"][:5]), flush=True)
-        md.append(to_markdown(name, exp, rows, len(seeds)))
-    md.append(f"_Total compute: {time.perf_counter() - t0:.1f} s._\n")
-    (out / "experiments.md").write_text("\n".join(md))
-    (out / "experiments.json").write_text(json.dumps(all_results, indent=1))
-    print(f"\nWrote {out / 'experiments.md'} and {out / 'experiments.json'}")
+    earlier_seconds = 0.0
+    jpath, mpath = out / "experiments.json", out / "experiments.md"
+    if a.only and jpath.exists():
+        all_results = {k: v for k, v in json.loads(jpath.read_text()).items() if k in catalogue}
+        untimed = [k for k, v in all_results.items() if "seconds" not in v]
+        m = re.search(r"_Total compute: ([\d.]+) s", mpath.read_text()) if mpath.exists() else None
+        if untimed and m and not set(untimed) & set(a.only):
+            earlier_seconds = float(m.group(1)) - sum(v.get("seconds", 0.0) for v in all_results.values())
+
+    pool = ProcessPoolExecutor(a.jobs) if a.jobs > 1 else None
+    try:
+        for name, exp in catalogue.items():
+            if a.only and name not in a.only:
+                continue
+            print(f"== {name}: {exp['question']}", flush=True)
+            t_exp = time.perf_counter()
+            res = {"question": exp["question"], "variants": []}
+            keys = sorted(set(exp["metrics"]) | set(exp.get("extra", ())) |
+                          {"collisions", "delivery_rate", "avg_delivery_time", "dead_drones"})
+            for label, ov in exp["variants"]:
+                runs = run_variant(ov, seeds, pool)
+                summ = summarise(runs, keys)
+                res["variants"].append({"label": label, "overrides": ov, "summary": summ, "runs": runs})
+                print(f"   {label:30s} " + "  ".join(f"{LABELS.get(k, k)}={fmt(k, summ[k])}"
+                                                      for k in exp["metrics"][:5]), flush=True)
+            res["seconds"] = time.perf_counter() - t_exp
+            all_results[name] = res
+    finally:
+        if pool:
+            pool.shutdown()
+
+    md = header(seeds)
+    for name, exp in catalogue.items():
+        if name in all_results:
+            res = all_results[name]
+            rows = [(v["label"], v["summary"]) for v in res["variants"]]
+            md.append(to_markdown(name, exp, rows, len(res["variants"][0]["runs"])))
+    total = earlier_seconds + sum(v.get("seconds", 0.0) for v in all_results.values())
+    md.append(f"_Total compute: {total:.1f} s._\n")
+    mpath.write_text("\n".join(md))
+    ordered = {name: all_results[name] for name in catalogue if name in all_results}
+    jpath.write_text(json.dumps(ordered, indent=1))
+    print(f"\nWrote {mpath} and {jpath}")
     if not a.no_charts:
         from dronefleet.charts import write_charts
-        for p in write_charts(all_results, out / "figures"):
+        ran = {k: v for k, v in ordered.items() if not a.only or k in a.only}
+        for p in write_charts(ran, out / "figures"):
             print(f"chart: {p}")
     return 0
 

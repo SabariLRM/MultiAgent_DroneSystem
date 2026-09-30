@@ -86,14 +86,15 @@ def _legend(series: list[str], x: float, y: float, classes: list[str] = SERIES) 
 
 
 def grouped_columns(title: str, subtitle: str, panels: list[dict], groups: list[str], series: list[str],
-                    classes: list[str] = SERIES, values: bool = True) -> str:
+                    classes: list[str] = SERIES, values: bool = True, pw: int = 300) -> str:
     """panels: [{title, pct, values: {(group, series): (mean, std)}}]
 
     ``classes`` picks the colour slots (categorical by default, ``ORDINAL`` for
     ordered series); ``values=False`` drops the per-bar value labels when bars
-    are too narrow for them (the tooltips and the report's table carry the numbers).
+    are too narrow for them (the tooltips and the report's table carry the numbers);
+    ``pw`` is the width of one panel.
     """
-    pw, ph = 300, 190
+    ph = 190
     top, left, gap = 108, 44, 26
     W = left + len(panels) * (pw + gap)
     H = top + ph + 52
@@ -326,6 +327,51 @@ def write_charts(results: dict, outdir: str | Path) -> list[Path]:
                               "on even). With one layer the heading rule has no effect.",
                               panels, groups_l, layers, classes=ORDINAL, values=False)
         written.append(_write(out / "layers.svg", svg))
+
+    if "tactical" in results:
+        strategies = ["reservations only", "ORCA only", "reservations + ORCA"]
+        winds = ["calm", "moderate", "strong"]
+        groups_t = [f"{w} {n}" for n in (12, 24) for w in winds]
+        lab = lambda g, s: f"{s}, {g.split()[0]} wind ({g.split()[1]} drones)"  # noqa: E731
+        panels = []
+        for key, title, pct in [("separation_losses", "Losses of separation per run", False),
+                                ("min_separation_m", "Closest approach in a run (m)", False),
+                                ("avg_delivery_time", "Average delivery time (ticks)", False)]:
+            panels.append({"title": title, "pct": pct, "values": {
+                (g, s): _get(results, "tactical", lab(g, s), key) for g in groups_t for s in strategies}})
+        svg = grouped_columns("Continuous flight: strategic reservations vs tactical ORCA",
+                              "Groups: wind (calm, moderate 5 m/s, strong 8 m/s) and fleet size. A loss of separation "
+                              "is two drones closer than 40 m horizontally and 15 m vertically.",
+                              panels, groups_t, strategies, values=False, pw=430)
+        written.append(_write(out / "tactical.svg", svg))
+
+    if "motion" in results:
+        modes = ["grid (default)", "continuous, calm", "continuous, moderate wind (default)"]
+        names = ["grid cells", "continuous, calm", "continuous, moderate wind"]
+        panels = []
+        for key, title, pct in [("avg_delivery_time", "Average delivery time (ticks)", False),
+                                ("energy_per_delivery", "Energy per delivery", False),
+                                ("delivery_rate", "Orders delivered", True)]:
+            panels.append({"title": title, "pct": pct, "values": {
+                ("12 drones", n): _get(results, "motion", m, key) for m, n in zip(modes, names)}})
+        svg = grouped_columns("Grid cells vs continuous flight (default configuration)",
+                              "Same seeds, cities and orders; continuous flight adds real take-offs, landings, "
+                              "acceleration, avoidance and wind.",
+                              panels, ["12 drones"], names)
+        written.append(_write(out / "motion.svg", svg))
+
+    if "wind" in results:
+        vs = results["wind"]["variants"]
+        xs = [v["overrides"].get("wind_mean", 0.0) for v in vs]
+        ser = lambda key: [(v["summary"][key]["mean"], v["summary"][key]["std"]) for v in vs]  # noqa: E731
+        svg = line_panels("Continuous flight in wind (reservations + ORCA, 12 drones)",
+                          "Headwinds cost energy and the airspeed limit slows drones; the energy check keeps every "
+                          "drone safe by refusing what it cannot price within its battery.",
+                          xs, "mean wind at 30 m (m/s)",
+                          [{"title": "Orders delivered", "pct": True, "series": {"fleet": ser("delivery_rate")}},
+                           {"title": "Energy per delivery", "series": {"fleet": ser("energy_per_delivery")}},
+                           {"title": "Flight hours per run", "series": {"fleet": ser("flight_hours")}}])
+        written.append(_write(out / "wind.svg", svg))
     return written
 
 

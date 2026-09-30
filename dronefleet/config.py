@@ -8,6 +8,13 @@ Units: one grid cell is ~100 m, one tick is ~10 s, so a drone cruises at one
 cell per tick (~36 km/h). One altitude layer is ~30 m and a drone climbs or
 descends one layer per tick. Battery energy is expressed in abstract "energy
 units" where flying one empty cell costs ``move_cost``.
+
+With ``motion = "continuous"`` those scales become exact (``cell_m``,
+``layer_m``, ``tick_s``): drones move in metres and seconds under speed,
+acceleration and wind, and energy comes from a power model calibrated to the
+same units (see ``docs/continuous_design.md``). The grid-only fields
+(``gust_prob``, ``move_cost``, ...) are then unused by the physics, and the
+continuous-only fields are ignored in grid mode.
 """
 
 from __future__ import annotations
@@ -18,6 +25,8 @@ ALLOCATION_STRATEGIES = ("cnp", "nearest", "round_robin")
 COORDINATION_MODES = ("cooperative", "reactive", "none")
 BATTERY_POLICIES = ("predictive", "naive")
 LAYER_RULES = ("free", "heading")
+MOTION_MODES = ("grid", "continuous")
+TACTICAL_MODES = ("orca", "none")
 
 
 @dataclass
@@ -91,6 +100,54 @@ class SimConfig:
     hold_escalation: int = 4        # failed plans before priority escalation
     reservation_hold: int = 3       # ticks a stuck drone reserves its cell
 
+    # --- continuous flight (motion = "continuous"; see docs/continuous_design.md)
+    motion: str = "grid"            # "grid": cell hopping | "continuous": metres, seconds, ORCA
+    cell_m: float = 100.0           # size of one grid cell
+    layer_m: float = 30.0           # height of flight layer 1 (layer z flies at z * layer_m)
+    tick_s: float = 10.0            # one agent decision tick
+    physics_dt: float = 0.5         # physics / tactical sub-step
+    drone_radius_m: float = 0.6
+    max_speed_h: float = 15.0       # horizontal speed limit (the plan assumes cell_m / tick_s = 10 m/s)
+    max_climb: float = 3.0
+    max_descent: float = 2.0
+    max_accel: float = 4.0
+    track_gain: float = 0.4         # path follower: position gain (1/s), horizontal
+    track_gain_v: float = 0.5       # ... and vertical
+    brake_decel: float = 3.0        # deceleration used to stop at pads and customers (m/s^2)
+    smoothing: bool = True          # any-angle line-of-sight shortcutting of the planned route
+    smooth_tol: float = 0.36        # max distance from the planned cell at every half tick (cells)
+    building_margin_m: float = 10.0 # clearance kept from building boxes by smoothed routes
+    track_tol_h: float = 40.0       # "on plan" at a tick: within this of the planned cell ...
+    track_tol_v: float = 12.0       # ... horizontally and vertically (m)
+    land_ticks: int = 0             # extra ticks over the pad reserved for the vertical landing (continuous only)
+    takeoff_window_s: float = 3.0   # a take-off must start this soon after its planned time, else it waits
+    pad_spots: int = 4              # touchdown spots per hub/station (1-4), each with its own column
+    pad_spot_offset_m: float = 25.0 # spots sit at (+-offset, +-offset) from the pad centre (50 m apart)
+    tactical: str = "orca"          # "orca" | "none" (strategic reservations only)
+    sep_h: float = 40.0             # separation bubble: horizontal ...
+    sep_v: float = 15.0             # ... and vertical (m)
+    sense_radius_m: float = 300.0   # neighbour sensing radius (spatial-hash bucket size)
+    orca_horizon_s: float = 8.0
+    orca_margin: float = 1.45       # ORCA radius = orca_margin * sep_h in bubble-scaled space (>= sqrt 2 covers the cylinder)
+    orca_max_neighbors: int = 8
+    stall_s: float = 30.0           # off plan this long without progress -> hand back to the planner
+    wind_mean: float = 5.0          # mean wind at wind_ref_height_m (m/s); presets in wind.py
+    wind_dir_deg: float = 30.0      # direction the air moves toward (0 = +x, 90 = +y)
+    wind_gust: float = 1.5          # RMS gust speed (m/s)
+    wind_ref_height_m: float = 30.0
+    wind_shear: float = 0.14        # power-law exponent of the wind profile
+    wind_modes: int = 8             # sinusoidal gust modes
+    wind_response: float = 0.25     # drag coupling of the drone's velocity to the air (1/s)
+    wind_estimator_s: float = 3.0   # time constant of the on-board wind estimate
+    max_airspeed: float = 20.0      # horizontal airspeed limit (slows the drone in a headwind)
+    base_mass_kg: float = 6.0
+    hover_power: float = 0.07       # energy units per second hovering at base mass
+    drag_power: float = 3.0e-5      # energy units per second per (m/s)^3 of airspeed
+    climb_power: float = 2.83e-4    # energy units per joule of lift work (m * g * v_z)
+    min_power_fraction: float = 0.4 # power never drops below this share of hover power
+    energy_margin: float = 1.0      # planning prices x this (> 1 adds slack for catch-up and avoidance)
+    trace_dt: float = 2.0           # replay: continuous positions sampled every trace_dt seconds
+
     # --- output ----------------------------------------------------------
     record_trace: bool = True
 
@@ -111,6 +168,21 @@ class SimConfig:
             raise ValueError(f"layer_rule must be one of {LAYER_RULES}")
         if self.nfz_ceiling is not None and self.nfz_ceiling < 1:
             raise ValueError("nfz_ceiling must be None (all layers) or >= 1")
+        if self.motion not in MOTION_MODES:
+            raise ValueError(f"motion must be one of {MOTION_MODES}")
+        if self.tactical not in TACTICAL_MODES:
+            raise ValueError(f"tactical must be one of {TACTICAL_MODES}")
+        if self.motion == "continuous":
+            steps = self.tick_s / self.physics_dt
+            if self.physics_dt <= 0 or abs(steps - round(steps)) > 1e-9:
+                raise ValueError("physics_dt must divide tick_s")
+            every = self.trace_dt / self.physics_dt
+            if abs(every - round(every)) > 1e-9 or round(every) < 1:
+                raise ValueError("trace_dt must be a multiple of physics_dt")
+            if not 1 <= self.pad_spots <= 4:
+                raise ValueError("pad_spots must be 1..4")
+            if self.max_speed_h < self.cell_m / self.tick_s:
+                raise ValueError("max_speed_h must allow the planned cruise speed cell_m / tick_s")
         return self
 
     def to_dict(self) -> dict:

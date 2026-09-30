@@ -32,6 +32,10 @@
 .camctl { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .camctl button { font-size: 12px; padding: 3px 9px; background: var(--surface); }
 .camctl button[aria-pressed="true"] { border-color: var(--ink2); font-weight: 650; }
+.wind3d { position: absolute; left: 8px; top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink2);
+  background: var(--surface); border-radius: 8px; padding: 3px 8px 3px 4px; opacity: .94; pointer-events: none; }
+.wind3d svg { width: 30px; height: 30px; }
+.lbl.los { color: var(--critical); background: var(--surface); border-color: var(--critical); font-weight: 800; }
 .hint3d { position: absolute; left: 8px; bottom: 8px; font-size: 11.5px; color: var(--ink2); background: var(--surface);
   border-radius: 6px; padding: 2px 7px; opacity: .92; pointer-events: none; }
 @media (max-width: 600px) { .hint3d { display: none; } }
@@ -60,6 +64,8 @@
       <div class="row"><svg viewBox="0 0 30 24"><path d="M3 20 L10 20 L10 13 L18 13 L18 6 L27 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/></svg><span><b>Line</b>: the route the drone has booked, climbs and descents included. Routes are booked in space <i>and time</i>, so lines can cross without the drones ever meeting</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="4" y="12" width="8" height="10" fill="var(--building)"/><rect x="15" y="4" width="8" height="18" fill="var(--building)"/><line x1="8" y1="3" x2="8" y2="12" stroke="var(--muted)" stroke-dasharray="2 2"/><circle cx="8" cy="3" r="2.5" fill="var(--c-pickup)"/></svg><span><b>Altitude</b>: buildings have their real height, and a drone can fly over one on any layer above it. <b>L2</b> in a label is the flight layer (about 30 m each; height is exaggerated). The thin line drops from each drone to the ground</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><rect x="4" y="4" width="22" height="16" fill="var(--critical)" fill-opacity=".18" stroke="var(--critical)" stroke-width="1.5"/></svg><span><b>Red box</b>: a no-fly zone and the layers it closes (dashed outline = announced, not active yet). <b>Rings</b> on the ground are customers waiting for an order</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><ellipse cx="15" cy="12" rx="12" ry="7" fill="var(--muted)" fill-opacity=".18" stroke="var(--muted)"/><rect x="12" y="10" width="6" height="4" rx="1" fill="var(--c-idle)"/></svg><span><b>Bubble</b> (optional): the separation minimum around a drone, 40 m sideways and 15 m up and down. It turns red, and a <b>red line</b> joins the two drones, when another drone is inside it</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><rect x="3" y="10" width="7" height="4" rx="1" fill="var(--c-parcel)"/><path d="M10 12 L26 12 M26 12 L21 8.5 M26 12 L21 15.5" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/></svg><span><b>Arrow</b> (optional): where the drone will be in 8 seconds at its current velocity. The compass at the top left shows the wind</span></div>
     </div>
     <p class="tip-line">Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom. Click a drone to follow it: the camera chases it.</p>
   </details>
@@ -77,6 +83,11 @@
             <button id="camChase" aria-pressed="false" hidden title="Keep the camera on the followed drone">Chase camera</button>
           </div>
           <div class="hint3d">drag to orbit · right-drag to pan · scroll to zoom · click a drone</div>
+          <div class="wind3d" id="wind3d" data-continuous hidden aria-label="Wind at the city centre">
+            <svg viewBox="-15 -15 30 30"><circle r="13" fill="none" stroke="var(--grid)" stroke-width="1.5"/>
+              <g id="windArrow"><path d="M0 9 L0 -9 M0 -9 L-4 -3 M0 -9 L4 -3" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"/></g></svg>
+            <span id="windText">wind</span>
+          </div>
         </div>
         <div class="controls">
           <button id="play" aria-label="Play">▶ Play</button>
@@ -95,6 +106,8 @@
           <label><input type="checkbox" id="optOrders" data-opt checked> Customers waiting</label>
           <label><input type="checkbox" id="optGround" data-opt checked> Parked drones</label>
           <label><input type="checkbox" id="optStalks" data-opt checked> Altitude lines</label>
+          <label data-continuous hidden><input type="checkbox" id="optArrows" data-opt> Velocity arrows</label>
+          <label data-continuous hidden><input type="checkbox" id="optBubbles" data-opt> Separation bubbles</label>
         </div>
         <div class="follow-mini" id="followMini" hidden></div>
       </section>
@@ -182,6 +195,10 @@ startReplay(DATA, (() => {
     sel: new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide }),
     beam: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .12, depthWrite: false }),
     flash: new THREE.MeshBasicMaterial({ color: 0xd03b3b, transparent: true, opacity: 1, side: THREE.DoubleSide, depthWrite: false }),
+    arrow: new THREE.LineBasicMaterial({ color: 0x555555 }),
+    arrowTip: new THREE.MeshBasicMaterial({ color: 0x555555 }),
+    bubble: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .28, depthWrite: false, side: THREE.DoubleSide }),
+    los: new THREE.LineBasicMaterial({ color: 0xd03b3b }),
   };
   const routeMats = [];              // one per drone (colour follows its state)
   let selTubeMat;
@@ -189,6 +206,7 @@ startReplay(DATA, (() => {
   // ------------------------------------------------------------- scene objects
   let buildingMesh, customerMesh, bodies, arms, blades, discs, halos, shadows, parcels, expressParcels, orderRings, orderDots;
   let stalks, stalkPos, stalkCol, selRing, beam, beamRing, routeLines = [], selTube = null, selTubeKey = "";
+  let arrows, arrowPos, arrowTips, bubbles, losLines, losPos, lastWind = [0, 0];
   const zones = [], flashMeshes = [], pads = [];
   const ringGeo = new THREE.RingGeometry(.3, .38, 32).rotateX(-Math.PI / 2);
 
@@ -285,6 +303,20 @@ startReplay(DATA, (() => {
     sg.setAttribute("position", new THREE.BufferAttribute(stalkPos, 3)); sg.setAttribute("color", new THREE.BufferAttribute(stalkCol, 3));
     stalks = new THREE.LineSegments(sg, mat.stalk); stalks.frustumCulled = false; scene.add(stalks);
 
+    // continuous flight: velocity arrows, separation bubbles, loss-of-separation links
+    if (A.CONT) {
+      arrowPos = new Float32Array(N * 6);
+      const ag = new THREE.BufferGeometry(); ag.setAttribute("position", new THREE.BufferAttribute(arrowPos, 3));
+      arrows = new THREE.LineSegments(ag, mat.arrow); arrows.frustumCulled = false; scene.add(arrows);
+      arrowTips = inst(new THREE.ConeGeometry(.06, .16, 10), mat.arrowTip, N);
+      const [sepH, sepV] = A.TRACK.sep;
+      bubbles = inst(new THREE.CylinderGeometry(sepH / A.CELL_M, sepH / A.CELL_M, 2 * sepV / A.TRACK.layer_m * LH, 32, 1, true), mat.bubble, N);
+      for (let k = 0; k < N; k++) bubbles.setColorAt(k, C("#888"));
+      losPos = new Float32Array(N * 6);
+      const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.BufferAttribute(losPos, 3));
+      losLines = new THREE.LineSegments(lg, mat.los); losLines.frustumCulled = false; scene.add(losLines);
+    }
+
     // booked routes: one polyline per drone (the followed drone also gets a tube)
     for (let k = 0; k < N; k++) {
       const m = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: .6 });
@@ -337,6 +369,7 @@ startReplay(DATA, (() => {
     mat.shadow.opacity = dark ? .35 : .16;
     for (const m of [mat.zoneFill, mat.zoneEdge, mat.zoneDash]) m.color.set(T.critical);
     flashMeshes.forEach(m => m.material.color.set(T.critical));
+    mat.arrow.color.set(T.ink); mat.arrowTip.color.set(T.ink); mat.los.color.set(T.critical);
     for (const p of pads) {
       if (p.top.map) p.top.map.dispose();
       p.top.map = padTexture(p.kind); p.top.needsUpdate = true;
@@ -361,14 +394,21 @@ startReplay(DATA, (() => {
     const sel = A.selected, spin = A.playing ? performance.now() / 1000 * 38 : 0;
     const Fa = frames[i], Fb = frames[Math.min(i + 1, LAST)];
     const showGround = A.opt("optGround"), showTags = A.opt("optTags"), showStalks = A.opt("optStalks");
+    const sec = (t + f) * A.TICK_S;
     const items = [];
     const parked = new Map();
     for (let k = 0; k < N; k++) {
       const a = Fa.d[k], b = Fb.d[k], st = STATES[a[3]];
       const dead = st === "dead";
-      let x, zc, y, air = !!a[2];
+      let x, zc, y, air = !!a[2], vel = null;
+      const p = A.CONT && !dead ? A.trackAt(k, sec) : null;
       if (dead) { x = a[0] + .5; zc = a[1] + .5; y = .06; air = false; }
-      else if (!a[2] && !(b[2] && f > 0)) {          // on the ground: park around the pad
+      else if (p && p.air) {                          // continuous flight: the recorded position
+        x = p.x + .5; zc = p.y + .5; y = Math.max(.09, p.z * LH); air = true;
+        vel = [p.vx, p.vy, p.vz];
+        if (Math.hypot(p.vx, p.vy) > .5) yaw[k] = Math.atan2(p.vx, p.vy);
+      }
+      else if (p ? true : !a[2] && !(b[2] && f > 0)) {  // on the ground: park around the pad
         const key = a[0] + "," + a[1];
         if (!parked.has(key)) parked.set(key, []);
         const j = parked.get(key).push(k) - 1;
@@ -382,7 +422,7 @@ startReplay(DATA, (() => {
         if (bx !== a[0] || by !== a[1]) yaw[k] = Math.atan2(bx - a[0], by - a[1]);
       }
       const shown = dead || air || showGround;
-      worldPos[k] = { x, y, z: zc, air, dead, shown, d: a };
+      worldPos[k] = { x, y, z: zc, air, dead, shown, d: a, vel };
       const col = C(A.colorOf(a)), dim = sel >= 0 && sel !== k;
       if (dim) col.lerp(C(T.sky), .45);
       bodies.setColorAt(k, col);
@@ -420,7 +460,8 @@ startReplay(DATA, (() => {
       // labels
       if (shown) {
         const desc = A.describe(a), isSel = k === sel;
-        const text = showTags && desc.label ? desc.label : "";
+        let text = showTags && desc.label ? desc.label : "";
+        if (text && p && p.air) text = text.replace(/\bL\d+\b/, `${Math.round(p.zm)} m`);
         if (air || dead || isSel) {
           const alert = dead || (a[10] === A.TRIP.EMERGENCY && st === "to_station");
           items.push({ key: "d" + k, pos: new THREE.Vector3(x, y + .28, zc), prio: isSel ? 0 : 2,
@@ -430,6 +471,7 @@ startReplay(DATA, (() => {
         }
       }
     }
+    if (A.CONT) drawContinuous(sec, items);
     for (const im of [bodies, arms, blades, discs, halos, shadows, parcels, expressParcels]) im.instanceMatrix.needsUpdate = true;
     bodies.instanceColor.needsUpdate = true; halos.instanceColor.needsUpdate = true;
     stalks.geometry.attributes.position.needsUpdate = true; stalks.geometry.attributes.color.needsUpdate = true;
@@ -539,6 +581,57 @@ startReplay(DATA, (() => {
     dirty = true;
   }
 
+  /* Continuous flight: velocity arrows and bubbles (optional), loss-of-separation links, wind. */
+  function drawContinuous(sec, items) {
+    const showArrows = A.opt("optArrows"), showBubbles = A.opt("optBubbles");
+    const los = A.losAt(sec), inLos = new Set();
+    for (const l of los) { inLos.add(l.i); inLos.add(l.j); }
+    const AHEAD = 8;                                   // seconds of travel shown by an arrow
+    for (let k = 0; k < N; k++) {
+      const w = worldPos[k], on = w.air && !w.dead && w.vel;
+      const ax = on ? w.vel[0] * AHEAD / A.CELL_M : 0, ay = on ? w.vel[2] * AHEAD / A.TRACK.layer_m * LH : 0, az = on ? w.vel[1] * AHEAD / A.CELL_M : 0;
+      const long = on && showArrows && Math.hypot(ax, az) > .05;
+      arrowPos.set(long ? [w.x, w.y, w.z, w.x + ax, w.y + ay, w.z + az] : [0, 0, 0, 0, 0, 0], 6 * k);
+      if (long) {
+        O.position.set(w.x + ax, w.y + ay, w.z + az);
+        O.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), V.set(ax, ay, az).normalize());
+        O.scale.setScalar(1); O.updateMatrix(); arrowTips.setMatrixAt(k, O.matrix);
+        O.rotation.set(0, 0, 0);
+      } else arrowTips.setMatrixAt(k, hidden);
+      if (w.air && !w.dead && (showBubbles || inLos.has(k))) {
+        place(bubbles, k, w.x, w.y, w.z, 0);
+        bubbles.setColorAt(k, C(inLos.has(k) ? T.critical : T.ink2));
+      } else bubbles.setMatrixAt(k, hidden);
+    }
+    arrows.geometry.attributes.position.needsUpdate = true;
+    arrowTips.instanceMatrix.needsUpdate = true;
+    bubbles.instanceMatrix.needsUpdate = true; bubbles.instanceColor.needsUpdate = true;
+    let n = 0;
+    for (const l of los) {
+      const a = worldPos[l.i], b = worldPos[l.j];
+      if (!a || !b || !a.air || !b.air || n >= N) continue;
+      losPos.set([a.x, a.y, a.z, b.x, b.y, b.z], 6 * n++);
+      if (l.live) items.push({ key: "los" + l.i + "_" + l.j, pos: new THREE.Vector3((a.x + b.x) / 2, (a.y + b.y) / 2 + .35, (a.z + b.z) / 2), prio: 0,
+                               cls: "lbl los", html: `too close: ${l.dmin.toFixed(0)} m`, w: 100 });
+    }
+    losLines.geometry.setDrawRange(0, 2 * n);
+    losLines.geometry.attributes.position.needsUpdate = true;
+    lastWind = A.windAt(sec);
+  }
+
+  const windArrow = document.getElementById("windArrow"), windText = document.getElementById("windText");
+  function updateWind() {
+    if (!A.CONT) return;
+    const [wx, wy] = lastWind, sp = Math.hypot(wx, wy);
+    windText.textContent = `wind ${sp.toFixed(1)} m/s`;
+    if (sp < .05) return;
+    // where the wind vector points on screen, from the centre of the city
+    const c = new THREE.Vector3(W / 2, 0, H / 2), tip = c.clone().add(new THREE.Vector3(wx / sp, 0, wy / sp));
+    c.project(camera); tip.project(camera);
+    const ang = Math.atan2(tip.x - c.x, tip.y - c.y) * 180 / Math.PI;
+    windArrow.setAttribute("transform", `rotate(${ang.toFixed(1)})`);
+  }
+
   // ------------------------------------------------------------- labels overlay
   const labelPool = new Map();
   function layoutLabels() {
@@ -634,6 +727,7 @@ startReplay(DATA, (() => {
     controls.update();                 // aims the camera at its target (also before the first animation frame)
     renderer.render(scene, camera);
     layoutLabels();
+    updateWind();
     dirty = false;
   }
 

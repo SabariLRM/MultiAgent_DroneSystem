@@ -8,6 +8,14 @@ CDN).
 Cells are encoded as integers ``(z * H + y) * W + x``; sites such as pads,
 customers and building footprints have ``z = 0``, so their code is the plain
 2-D one.
+
+Continuous-flight runs add a ``track``: every drone's position every
+``trace_dt`` seconds (2 s), in whole metres, as one flat integer array per
+drone (the first sample absolute, then differences, which keeps the numbers
+short). Losses of separation, ORCA interventions and collisions are lists of
+intervals or events, and the wind at the city centre is sampled with the
+positions. The per-tick frames stay as they are (they drive the side panels),
+so a grid replay simply has no track.
 """
 
 from __future__ import annotations
@@ -125,11 +133,17 @@ class TraceRecorder:
                   for o in sorted(sim.dispatcher.orders.values(), key=lambda o: o.oid)]
         cfg = sim.cfg
         blocked = sorted(w.blocked, key=self._enc)
+        meta = {"seed": cfg.seed, "allocation": cfg.allocation, "coordination": cfg.coordination,
+                "battery_policy": cfg.battery_policy, "n_drones": cfg.n_drones,
+                "gust_prob": cfg.gust_prob, "capacity": cfg.battery_capacity,
+                "n_layers": w.n_layers, "layer_rule": w.layer_rule, "layer_m": LAYER_METRES}
+        extra = {}
+        if getattr(sim, "flight", None) is not None:
+            meta.update(motion="continuous", tactical=cfg.tactical, tick_s=cfg.tick_s, cell_m=cfg.cell_m,
+                        layer_m=cfg.layer_m, wind=[cfg.wind_mean, cfg.wind_dir_deg, cfg.wind_gust])
+            extra["track"] = sim.flight.trace(sim.t * cfg.tick_s)
         return {
-            "meta": {"seed": cfg.seed, "allocation": cfg.allocation, "coordination": cfg.coordination,
-                     "battery_policy": cfg.battery_policy, "n_drones": cfg.n_drones,
-                     "gust_prob": cfg.gust_prob, "capacity": cfg.battery_capacity,
-                     "n_layers": w.n_layers, "layer_rule": w.layer_rule, "layer_m": LAYER_METRES},
+            "meta": meta,
             "world": {"w": w.width, "h": w.height, "layers": w.n_layers, "layer_rule": w.layer_rule,
                       "blocked": [self._enc(c) for c in blocked], "heights": [w.heights[c] for c in blocked],
                       "hubs": w.hubs, "stations": w.stations, "customers": w.customers,
@@ -141,6 +155,7 @@ class TraceRecorder:
             "orders": orders,
             "metrics": metrics or {},
             "states": STATE_NAMES,
+            **extra,
         }
 
 

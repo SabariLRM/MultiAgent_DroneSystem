@@ -30,7 +30,7 @@ body { font: 14px/1.5 var(--font); }
 header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
 h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.01em; }
 h2 { font-size: 13px; font-weight: 700; margin: 0 0 10px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 260px; min-width: 0; }
 .chip { background: var(--raised); color: var(--ink2); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
 button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 5px 10px; cursor: pointer; }
@@ -138,3 +138,6 @@ kbd { font: 11px ui-monospace, monospace; background: var(--raised); border-radi
 .offline { display: grid; place-items: center; text-align: center; padding: 32px 16px; color: var(--ink2); background: var(--raised);
   border-radius: 8px; min-height: 220px; }
 .offline b { color: var(--ink); }
+
+/* continuous flight: the wind tile's arrow */
+.kpi .windk { width: 18px; height: 18px; margin-right: 5px; vertical-align: -2px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }

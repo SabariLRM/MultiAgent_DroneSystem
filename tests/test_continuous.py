@@ -368,5 +368,60 @@ class ContinuousSystemTests(unittest.TestCase):
         self.assertNotIn("separation_losses", m)
 
 
+class ContinuousReplayTests(unittest.TestCase):
+    """The trace of a continuous run and its 2-D / 3-D replays."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.sim = Simulation(SimConfig(motion="continuous", seed=2, max_ticks=120, order_until=80))
+        cls.metrics = cls.sim.run()
+        cls.data = cls.sim.trace.to_dict(cls.metrics)
+
+    def positions(self, k):
+        """Decode drone k's delta-encoded track into absolute (x, y, z) metres."""
+        arr, out, acc = self.data["track"]["pos"][k], [], [0, 0, 0]
+        for j in range(0, len(arr), 3):
+            acc = [acc[0] + arr[j], acc[1] + arr[j + 1], acc[2] + arr[j + 2]]
+            out.append(tuple(acc))
+        return out
+
+    def test_track_samples_every_two_seconds(self):
+        tr = self.data["track"]
+        self.assertEqual(tr["dt"], 2.0)
+        self.assertEqual(tr["n"], int(self.sim.t * self.sim.cfg.tick_s / tr["dt"]) + 1)
+        self.assertEqual(len(tr["pos"]), self.sim.cfg.n_drones)
+        self.assertTrue(all(len(p) == 3 * tr["n"] and all(isinstance(v, int) for v in p) for p in tr["pos"]))
+        self.assertEqual(len(tr["wind"]), 2 * tr["n"])
+        self.assertEqual(self.data["meta"]["motion"], "continuous")
+
+    def test_track_matches_the_physics(self):
+        for k, b in enumerate(self.sim.flight.bodies):
+            last = self.positions(k)[-1]
+            self.assertLessEqual(math.dist(last, (b.x, b.y, 0.0 if b.ground else b.z)), 1.0)
+            steps = [math.dist(p, q) for p, q in zip(self.positions(k), self.positions(k)[1:])]
+            self.assertLessEqual(max(steps), 2.0 * (CALM.max_speed_h + 10.0))    # smooth: no jumps
+        flying = [p for k in range(self.sim.cfg.n_drones) for p in self.positions(k) if p[2] > 0]
+        self.assertTrue(any(25 <= p[2] <= 35 for p in flying), "cruising at layer 1 (30 m)")
+
+    def test_replays_are_small_and_self_contained(self):
+        import re
+        from dronefleet.replay import render_html
+        full = Simulation(SimConfig(motion="continuous", seed=1))
+        data = full.trace.to_dict(full.run())
+        html2, html3 = render_html(data, "2d"), render_html(data, "3d")
+        for html in (html2, html3):
+            self.assertLess(len(html.encode()), 5_000_000)
+            self.assertIn("function trackAt", html)
+        self.assertIsNone(re.search(r"<script[^>]+src=", html2), "the 2-D viewer must work offline")
+        self.assertIn('id="optBubbles"', html3)
+        self.assertIn('id="optArrows"', html3)
+
+    def test_grid_replays_have_no_track(self):
+        grid = Simulation(SimConfig(max_ticks=40, order_until=30, seed=2))
+        data = grid.trace.to_dict(grid.run())
+        self.assertNotIn("track", data)
+        self.assertNotIn("motion", data["meta"])
+
+
 if __name__ == "__main__":
     unittest.main()

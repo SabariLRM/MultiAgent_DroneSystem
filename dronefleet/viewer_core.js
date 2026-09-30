@@ -10,6 +10,10 @@
      view.draw(i, f, t)     draw frame i (+ fraction f towards frame i + 1) at tick t
      view.theme()           colour tokens changed (api.T)
      view.selected(k)       the followed drone changed (-1 = none)
+
+   Continuous-flight replays (DATA.track) also carry every drone's position
+   every few seconds; api.trackAt(k, seconds) interpolates it, and
+   api.losAt / api.windAt give the losses of separation and the wind.
 */
 function startReplay(DATA, view) {
   "use strict";
@@ -26,6 +30,43 @@ function startReplay(DATA, view) {
   const GROUP = { idle: "idle", returning: "idle", to_pickup: "pickup", loading: "pickup",
                   to_customer: "parcel", to_station: "energy", queued: "energy", swapping: "energy", dead: "dead" };
   const altOf = d => d[13] || 0;                  // flight layer, 0 = on the ground
+
+  // ------------------------------------------------------------ continuous track
+  const TRACK = DATA.track || null, CONT = !!TRACK;
+  const TICK_S = (DATA.meta && DATA.meta.tick_s) || 10;
+  const CELL_M = (TRACK && TRACK.cell_m) || 100, TRACK_LAYER_M = (TRACK && TRACK.layer_m) || LAYER_M;
+  const TD = TRACK ? TRACK.dt : 1, NS = TRACK ? TRACK.n : 0;
+  // positions come as whole metres, first sample absolute then differences: rebuild absolute arrays
+  const track = TRACK ? TRACK.pos.map(arr => {
+    const out = new Float32Array(arr.length);
+    let x = 0, y = 0, z = 0;
+    for (let j = 0; j < arr.length; j += 3) { x += arr[j]; y += arr[j + 1]; z += arr[j + 2]; out[j] = x; out[j + 1] = y; out[j + 2] = z; }
+    return out;
+  }) : null;
+  /* Drone k at time `sec`: x, y in cell units (cell centres at integer + .5, like the grid views),
+     z in flight layers, zm in metres, velocity in m/s, and whether it is off the ground. */
+  function trackAt(k, sec) {
+    const a = track[k];
+    let s = Math.max(0, Math.min(NS - 1, sec / TD));
+    const j = Math.max(0, Math.min(NS - 2, Math.floor(s))), f = NS > 1 ? s - j : 0, i0 = 3 * j, i1 = NS > 1 ? 3 * j + 3 : 3 * j;
+    const xm = a[i0] + (a[i1] - a[i0]) * f, ym = a[i0 + 1] + (a[i1 + 1] - a[i0 + 1]) * f, zm = a[i0 + 2] + (a[i1 + 2] - a[i0 + 2]) * f;
+    return { x: xm / CELL_M - .5, y: ym / CELL_M - .5, z: zm / TRACK_LAYER_M, zm,
+             vx: (a[i1] - a[i0]) / TD, vy: (a[i1 + 1] - a[i0 + 1]) / TD, vz: (a[i1 + 2] - a[i0 + 2]) / TD, air: zm > 0.3 };
+  }
+  /* Losses of separation going on at `sec` (kept on screen `hold` seconds longer): [{i, j, dmin}] */
+  function losAt(sec, hold = 2) {
+    const out = [];
+    if (!TRACK) return out;
+    for (const [i, j, t0, t1, dmin] of TRACK.los) if (t0 <= sec && sec <= t1 + hold) out.push({ i, j, dmin, live: sec <= t1 });
+    return out;
+  }
+  /* Wind at the city centre, [wx, wy] in m/s (grid axes). */
+  function windAt(sec) {
+    if (!TRACK || !TRACK.wind.length) return [0, 0];
+    const w = TRACK.wind, n = w.length / 2, s = Math.max(0, Math.min(n - 1, sec / TD)), j = Math.min(n - 2, Math.floor(s)), f = n > 1 ? s - j : 0;
+    if (n < 2) return [w[0] / 10, w[1] / 10];
+    return [(w[2 * j] + (w[2 * j + 2] - w[2 * j]) * f) / 10, (w[2 * j + 1] + (w[2 * j + 3] - w[2 * j + 1]) * f) / 10];
+  }
 
   // ------------------------------------------------------------ tokens
   const TOKENS = ["surface", "ink", "ink2", "muted", "grid", "base", "building", "c-pickup", "c-parcel",
@@ -112,15 +153,20 @@ function startReplay(DATA, view) {
         text = "Ran out of battery in flight and was lost"; tag = "LOST"; break;
     }
     const why = flag === FLAG.WIND ? "Held back one tick by a wind gust"
-              : flag === FLAG.GIVE_WAY ? "Paused to give way to another drone"
+              : flag === FLAG.GIVE_WAY ? (CONT ? "Steering around another drone (collision avoidance)" : "Paused to give way to another drone")
               : flag === FLAG.HOLDING ? "Hovering in place until its route is clear" : "";
-    const whyTag = flag === FLAG.WIND ? "wind" : flag === FLAG.GIVE_WAY ? "giving way" : flag === FLAG.HOLDING ? "waiting" : "";
+    const whyTag = flag === FLAG.WIND ? "wind" : flag === FLAG.GIVE_WAY ? (CONT ? "avoiding" : "giving way") : flag === FLAG.HOLDING ? "waiting" : "";
     // the map label: what + (in stacked airspace) which layer + why it paused
     const alt = L > 1 && air && st !== "dead" ? `L${altOf(d)}` : "";
     const label = tag ? [tag, alt, whyTag].filter(Boolean).join(" · ") : "";
     return { text, why, tag: tag && whyTag ? `${tag} · ${whyTag}` : tag, label, alt };
   }
-  function altitudeText(d) {
+  function altitudeText(d, k = -1) {
+    if (CONT && k >= 0) {                 // the recorded height, even mid take-off or landing
+      const p = trackAt(k, pos * TICK_S);
+      if (!p.air) return "on the ground";
+      return `${Math.round(p.zm)} m up` + (d[2] ? ` (layer ${altOf(d)} of ${L})` : p.vz < 0 ? " (landing)" : " (taking off)");
+    }
     if (!d[2]) return "on the ground";
     const z = altOf(d);
     return `layer ${z} of ${L} (about ${z * LAYER_M} m up)`;
@@ -132,10 +178,14 @@ function startReplay(DATA, view) {
   const COORD = { cooperative: "Routes booked in space and time", reactive: "No route booking: drones give way on sight", none: "No collision avoidance" };
   const BATT = { predictive: "Energy-aware battery swaps", naive: "Naive battery rule (swap below 30 %)" };
   const layersChip = L > 1 ? `${L} flight layers` + (DATA.world.layer_rule === "heading" ? " · east/west odd, north/south even" : "") : "One flight layer";
-  document.getElementById("chips").innerHTML = [`${meta.n_drones} drones`, layersChip, ALLOC[meta.allocation], COORD[meta.coordination],
-    BATT[meta.battery_policy], `Wind gusts ${(meta.gust_prob * 100).toFixed(0)} %`, `Seed ${meta.seed}`]
+  const windChip = CONT ? `Wind ${meta.wind[0].toFixed(0)} m/s, gusts ${meta.wind[2].toFixed(1)} m/s` : `Wind gusts ${(meta.gust_prob * 100).toFixed(0)} %`;
+  const motionChip = CONT ? "Continuous flight" + (meta.tactical === "orca" ? " · ORCA collision avoidance" : " · no tactical avoidance") : "";
+  document.getElementById("chips").innerHTML = [`${meta.n_drones} drones`, layersChip, motionChip, ALLOC[meta.allocation], COORD[meta.coordination],
+    BATT[meta.battery_policy], windChip, `Seed ${meta.seed}`]
     .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join("");
   document.querySelectorAll("[data-layers]").forEach(el => { el.hidden = L === 1; });
+  document.querySelectorAll("[data-continuous]").forEach(el => { el.hidden = !CONT; });
+  document.querySelectorAll("[data-grid]").forEach(el => { el.hidden = CONT; });
 
   const themeBtn = document.getElementById("theme");
   const THEMES = ["auto", "light", "dark"];
@@ -203,12 +253,19 @@ function startReplay(DATA, view) {
     const fr = frames[i];
     nowEl.innerHTML = summary(fr);
     const created = orders.filter(o => o.created <= fr.t).length;
-    kpis.innerHTML = [
+    const tiles = [
       ["Delivered", `${fr.o[2]} <small>of ${created}</small>`],
       ["Being delivered", fr.o[1]],
       ["Waiting for a drone", fr.o[0]],
       ["Collisions", fr.c],
-    ].map(([l, v]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
+    ];
+    if (CONT && view.windTile) {
+      // wind at the city centre, the arrow drawn in map orientation (x right, y down)
+      const [wx, wy] = windAt(fr.t * TICK_S), sp = Math.hypot(wx, wy), ang = Math.atan2(wx, -wy) * 180 / Math.PI;
+      tiles.push(["Wind", `<svg class="windk" viewBox="-8 -8 16 16" style="transform:rotate(${ang.toFixed(0)}deg)" aria-hidden="true">` +
+                          `<path d="M0 6 L0 -6 M0 -6 L-3.5 -2 M0 -6 L3.5 -2"/></svg>${sp.toFixed(1)} <small>m/s</small>`]);
+    }
+    kpis.innerHTML = tiles.map(([l, v]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
 
     fleet.innerHTML = fr.d.map((d, k) => {
       const col = colorOf(d), desc = describe(d);
@@ -256,7 +313,11 @@ function startReplay(DATA, view) {
     const o = orderById.get(d[5]);
     const facts = [];
     facts.push(["Battery", `<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span>${d[4]}%`]);
-    if (L > 1 && STATES[d[3]] !== "dead") facts.push(["Altitude", `<span class="alt">${desc.alt ? desc.alt + " · " : ""}${altitudeText(d)}</span>`]);
+    if ((L > 1 || CONT) && STATES[d[3]] !== "dead") facts.push(["Altitude", `<span class="alt">${desc.alt && !CONT ? desc.alt + " · " : ""}${altitudeText(d, selected)}</span>`]);
+    if (CONT && STATES[d[3]] !== "dead") {
+      const p = trackAt(selected, pos * TICK_S);
+      if (p.air) facts.push(["Speed", `${Math.hypot(p.vx, p.vy).toFixed(1)} m/s` + (Math.abs(p.vz) > .3 ? `, ${p.vz > 0 ? "climbing" : "descending"} ${Math.abs(p.vz).toFixed(1)} m/s` : "")]);
+    }
     if (o) facts.push(["Order", `#${o.oid} · ${o.weight != null ? o.weight.toFixed(1) + " kg" : ""}${o.express ? " · express" : ""} · due t=${o.deadline}` +
                                (d[6] ? " · on board" : " · not collected yet")]);
     const st = STATES[d[3]];
@@ -289,7 +350,7 @@ function startReplay(DATA, view) {
       }
     }
     logEl.innerHTML = lines.map(([t, e]) => {
-      const cls = /!!|LOST|EMERGENCY|COLLISION|LATE/.test(e) ? "alert" : /delivers order/.test(e) ? "good" : "";
+      const cls = /!!|LOST|EMERGENCY|COLLISION|LATE|Loss of separation/.test(e) ? "alert" : /delivers order/.test(e) ? "good" : "";
       return `<li class="${cls}"><span class="t">t=${t}</span>${esc(e.replace(/^!! /, ""))}</li>`;
     }).join("") || "<li>Nothing has happened yet.</li>";
   }
@@ -323,11 +384,15 @@ function startReplay(DATA, view) {
     ["Slowest 5 % took at least", M.p95_delivery_time != null ? `${M.p95_delivery_time} ticks` : null],
     ["Delivered on time", M.on_time_rate != null ? `${(M.on_time_rate * 100).toFixed(1)} %` : null],
     ["Collisions", M.collisions], ["Drones lost", M.dead_drones],
+    ["Losses of separation", CONT && M.separation_losses != null ? `${M.separation_losses} (${fmt1(M.separation_loss_s)} pair-seconds)` : null],
+    ["Closest two drones came", CONT && M.min_separation_m != null ? `${fmt1(M.min_separation_m)} m` : null],
+    ["Distance from the planned track", CONT && M.tracking_error_mean_m != null ? `${fmt1(M.tracking_error_mean_m)} m on average, 95 % within ${M.tracking_error_p95_m} m` : null],
+    ["Avoidance manoeuvres (ORCA)", CONT && M.orca_interventions != null ? `${M.orca_interventions} (${fmt1(M.orca_per_drone_hour)} per flight hour)` : null],
     ["Battery swaps", M.swaps], ["Battery emergencies", M.emergencies],
     ["Energy per delivery", fmt1(M.energy_per_delivery)],
     ["Time drones spent busy", M.utilisation != null ? `${(M.utilisation * 100).toFixed(1)} %` : null],
     ["Routes planned / shifted after wind", M.replans != null ? `${M.replans} / ${M.plan_repairs}` : null],
-    ["Times a drone gave way", M.forced_holds], ["Auctions held", M.auction_rounds],
+    ["Times a drone gave way", CONT ? null : M.forced_holds], ["Auctions held", M.auction_rounds],
     ["Climbs / descents", L > 1 && M.climbs != null ? `${M.climbs} / ${M.descents}` : null],
     ["Flight time above layer 1", L > 1 && M.upper_layer_share != null ? `${(M.upper_layer_share * 100).toFixed(1)} %` : null],
   ].filter(r => r[1] != null).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
@@ -452,6 +517,7 @@ function startReplay(DATA, view) {
 
   const api = {
     W, H, L, frames, LAST, N, STATES, FLAG, TRIP, T, FONT, DATA, enc, decode, altOf, heights, hubs, stations,
+    CONT, TICK_S, CELL_M, TRACK, trackAt, losAt, windAt,
     describe, colorOf, socColor, textOn, esc, placeName, placeByEnc, orders, orderById, flashes, byDrone,
     routeAhead, opt, select, showTip, hideTip, droneTip, render,
     get selected() { return selected; }, get pos() { return pos; }, get playing() { return playing; },

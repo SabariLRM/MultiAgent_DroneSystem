@@ -29,6 +29,8 @@
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="11" cy="12" r="6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5"/><text x="19" y="16" font-size="9" font-weight="700" fill="var(--ink)">#</text></svg><span><b>Ring with a number</b>: a customer waiting for that order. Grey = no drone yet, blue = a drone is collecting it, orange = on its way</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><rect x="3" y="4" width="11" height="16" rx="3" fill="var(--ink)"/><text x="5.5" y="15.5" font-size="9" font-weight="700" fill="var(--surface)">H</text><rect x="16.5" y="5.5" width="11" height="13" rx="3" fill="var(--surface)" stroke="var(--c-energy)" stroke-width="2"/><path d="M23 7.5 L19.5 12.5 L22 12.5 L21 16.5 L25 11 L22.5 11 Z" fill="var(--c-energy)"/></svg><span><b>H</b> = warehouse (hub) where parcels are loaded. <b>Lightning</b> = battery-swap station. Red hatched area = temporary no-fly zone</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="2" y="6" width="8" height="12" rx="2" fill="var(--building)"/><rect x="11" y="6" width="8" height="12" rx="2" fill="var(--building)"/><rect x="11" y="6" width="8" height="12" rx="2" fill="var(--ink)" fill-opacity=".22"/><rect x="20" y="6" width="8" height="12" rx="2" fill="var(--building)"/><rect x="20" y="6" width="8" height="12" rx="2" fill="var(--ink)" fill-opacity=".44"/></svg><span><b>Altitude</b>: <b>L2</b> in a label is the drone's flight layer (1 = lowest, about 30 m each). Darker buildings are taller; a drone can fly over a building on any layer above its height. Drones stacked over the same spot are drawn side by side</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><circle cx="8" cy="12" r="5" fill="var(--c-parcel)"/><circle cx="22" cy="12" r="5" fill="var(--c-idle)"/><line x1="8" y1="12" x2="22" y2="12" stroke="var(--critical)" stroke-width="2.5"/></svg><span><b>Red line between two drones</b>: a loss of separation, closer than 40 m horizontally and 15 m vertically at the same time. Drones fly continuously here: labels show their height in metres</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="10" fill="none" stroke="var(--grid)" stroke-width="2"/><path d="M8 16 L21 8 M21 8 L15 8.5 M21 8 L18.5 13.5" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/></svg><span><b>Wind</b> (the tile above the map): where the wind blows on the map and how fast, at the centre of the city</span></div>
     </div>
     <p class="tip-line">Click any drone, on the map or in the fleet list, to follow it and see what it is doing and why.</p>
   </details>
@@ -55,6 +57,7 @@
           <label><input type="checkbox" id="optPaths" data-opt checked> Booked routes</label>
           <label><input type="checkbox" id="optOrders" data-opt checked> Customers waiting</label>
           <label><input type="checkbox" id="optGround" data-opt checked> Parked drones</label>
+          <label data-continuous hidden><input type="checkbox" id="optBubbles" data-opt> Separation bubbles</label>
         </div>
         <div class="follow-mini" id="followMini" hidden></div>
       </section>
@@ -249,18 +252,28 @@ startReplay(DATA, (() => {
     drawZones(t);
     if (A.opt("optOrders")) drawOrders(t, frames[i]);
     drawPads(frames[i]);
-    drawDrones(i, f, t, { paths: A.opt("optPaths"), tags: A.opt("optTags"), ground: A.opt("optGround") });
+    drawDrones(i, f, t, { paths: A.opt("optPaths"), tags: A.opt("optTags"), ground: A.opt("optGround"), bubbles: A.opt("optBubbles") });
   }
+
 
   function drawDrones(i, f, t, opts) {
     const sel = A.selected;
     const Fa = frames[i], Fb = frames[Math.min(i + 1, LAST)];
     const r = Math.max(5, cell * .36);
     const grounded = new Map(), air = [];
+    const sec = (t + f) * A.TICK_S;
     hits = [];
     for (let k = 0; k < N; k++) {
       const a = Fa.d[k], b = Fb.d[k], st = STATES[a[3]];
       if (st === "dead") { air.push({ k, a, dead: true, x: a[0], y: a[1], z: 0, dx: 0 }); continue; }
+      if (A.CONT) {                    // continuous flight: the recorded position, interpolated
+        const p = A.trackAt(k, sec);
+        if (p.air) { air.push({ k, a, x: p.x, y: p.y, z: A.altOf(a), zm: p.zm, dx: 0 }); continue; }
+        const key = a[0] + "," + a[1];
+        if (!grounded.has(key)) grounded.set(key, []);
+        grounded.get(key).push(k);
+        continue;
+      }
       if (!a[2] && !(b[2] && f > .5)) {
         const key = a[0] + "," + a[1];
         if (!grounded.has(key)) grounded.set(key, []);
@@ -270,7 +283,7 @@ startReplay(DATA, (() => {
       const bx = b[2] ? b[0] : a[0], by = b[2] ? b[1] : a[1];
       air.push({ k, a, x: lerp(a[0], bx, f), y: lerp(a[1], by, f), z: A.altOf(a), dx: 0 });
     }
-    unstack(air, r);
+    if (!A.CONT) unstack(air, r);
     // booked routes (the followed drone's route is drawn last, solid and thick)
     if (opts.paths) {
       for (const pass of [0, 1]) {
@@ -350,9 +363,11 @@ startReplay(DATA, (() => {
       if (d.k === sel) { ctx.beginPath(); ctx.arc(cx, cy, r + rw + 5, 0, 7); ctx.lineWidth = 2.5; ctx.strokeStyle = T.ink; ctx.stroke(); }
       if (opts.tags) {
         const desc = A.describe(a);
-        if (desc.label) tags.push({ k: d.k, cx, cy, text: desc.label, col, alert: a[10] === A.TRIP.EMERGENCY && STATES[a[3]] === "to_station" });
+        const text = A.CONT && d.zm != null ? desc.label.replace(/\bL\d+\b/, `${Math.round(d.zm)} m`) : desc.label;
+        if (text) tags.push({ k: d.k, cx, cy, text, col, alert: a[10] === A.TRIP.EMERGENCY && STATES[a[3]] === "to_station" });
       }
     }
+    if (A.CONT) drawSeparation(air, sec, opts.bubbles);
     // the followed drone's destination: corner brackets
     if (sel >= 0) {
       const d = Fa.d[sel];
@@ -376,6 +391,34 @@ startReplay(DATA, (() => {
       ctx.beginPath(); ctx.arc(cx, cy, r * (1.5 + age * .6), 0, 7);
       ctx.lineWidth = 3; ctx.strokeStyle = T.critical; ctx.globalAlpha = 1 - age / 4; ctx.stroke(); ctx.globalAlpha = 1;
       if (age === 0) haloText(L > 1 ? `COLLISION (L${fl.z})` : "COLLISION", cx, cy - r * 2.4, { color: T.critical, weight: 800, size: 11 });
+    }
+  }
+
+  /* Continuous flight: separation bubbles (optional) and losses of separation (always). */
+  function drawSeparation(air, sec, bubbles) {
+    const [sepH] = A.TRACK.sep, rad = sepH / A.CELL_M * cell;
+    const byK = new Map(air.filter(d => !d.dead).map(d => [d.k, d]));
+    const los = A.losAt(sec), inLos = new Set();
+    for (const l of los) { inLos.add(l.i); inLos.add(l.j); }
+    if (bubbles) {
+      for (const d of byK.values()) {
+        const cx = (d.x + .5) * cell, cy = (d.y + .5) * cell;
+        ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 7);
+        ctx.globalAlpha = inLos.has(d.k) ? .9 : .35; ctx.lineWidth = inLos.has(d.k) ? 2 : 1;
+        ctx.strokeStyle = inLos.has(d.k) ? T.critical : T.muted; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    for (const l of los) {
+      const a = byK.get(l.i), b = byK.get(l.j);
+      if (!a || !b) continue;
+      const ax = (a.x + .5) * cell, ay = (a.y + .5) * cell, bx = (b.x + .5) * cell, by = (b.y + .5) * cell;
+      ctx.save(); ctx.globalAlpha = l.live ? 1 : .45;
+      ctx.strokeStyle = T.critical; ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      for (const [x, y] of [[ax, ay], [bx, by]]) { ctx.beginPath(); ctx.arc(x, y, Math.max(8, cell * .5), 0, 7); ctx.lineWidth = 2; ctx.stroke(); }
+      ctx.restore();
+      if (l.live) haloText(`too close: ${l.dmin.toFixed(0)} m`, (ax + bx) / 2, (ay + by) / 2 - 12, { color: T.critical, weight: 800, size: 11 });
     }
   }
 
@@ -439,6 +482,7 @@ startReplay(DATA, (() => {
       new ResizeObserver(() => resize()).observe(mapWrap);
     },
     draw,
+    windTile: true,
     theme() { staticLayer = null; },
     selected() {},
   };

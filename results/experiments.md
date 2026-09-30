@@ -1,6 +1,6 @@
 # Experiment results
 
-Seeds 1..10; default scenario: 32x24 city, 2 hubs, 3 swap stations, 12 drones, 0.16 orders/tick for 500 ticks, gust p=0.03, 1 flight layer (the layer experiment varies it). Times are in ticks (1 tick ~ 10 s).
+Seeds 1..10; default scenario: 32x24 city, 2 hubs, 3 swap stations, 12 drones, 0.16 orders/tick for 500 ticks, gust p=0.03, 1 flight layer (the layer experiment varies it; the continuous-flight sections, tactical, motion and wind, use the default 3 layers). Times are in ticks (1 tick ~ 10 s).
 
 ### Coordination: How should drones avoid each other?
 
@@ -94,4 +94,52 @@ Mean ± standard deviation over 10 seeds.
 | 3 layers, heading (32 drones) | 0.00 ±0.00 | 41.1 ±10.2 | 79.9 ±21.6 | 26.9 ±8.3 | 25.6 ±6.7 | 58.8 ±4.3 | 0.98 ±0.94 | 58.5% ±3.9 | 0.00 ±0.00 |
 | 5 layers, heading (32 drones) | 0.00 ±0.00 | 42.1 ±10.4 | 80.1 ±21.4 | 31.7 ±8.2 | 32.1 ±10.7 | 59.4 ±4.3 | 1.64 ±1.63 | 58.7% ±3.7 | 0.00 ±0.00 |
 
-_Total compute: 167.7 s._
+### Tactical: Continuous flight: what do strategic reservations and tactical ORCA each contribute?
+
+Mean ± standard deviation over 10 seeds. Continuous flight (metres and seconds), default configuration with 3 flight layers. Wind presets: calm 0 m/s; moderate 5 m/s mean, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s. 24 drones: 0.35 orders/tick and 6 spare packs per station. LoS = loss of separation (closer than 40 m horizontally and 15 m vertically).
+
+| configuration | collisions | LoS events | LoS pair-s | min sep (m) | avg time | on time | energy/deliv | wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| reservations only, calm wind (12 drones) | 0.00 ±0.00 | 28.0 ±8.2 | 109 ±40 | 18.6 ±2.1 | 31.2 ±4.5 | 99.3% ±1.2 | 50.5 ±3.3 | 0.51 ±0.16 |
+| ORCA only, calm wind (12 drones) | 0.00 ±0.00 | 0.40 ±0.52 | 2.75 ±4.70 | 20.0 ±10.3 | 31.6 ±5.2 | 99.2% ±0.9 | 50.6 ±3.7 | 0.58 ±0.13 |
+| reservations + ORCA, calm wind (12 drones) | 0.00 ±0.00 | 0.10 ±0.32 | 0.10 ±0.32 | 25.1 ±3.3 | 31.7 ±4.7 | 99.2% ±1.2 | 50.9 ±3.2 | 0.62 ±0.17 |
+| reservations only, moderate wind (12 drones) | 0.00 ±0.00 | 27.5 ±6.6 | 113 ±32 | 18.6 ±2.0 | 31.7 ±4.1 | 99.3% ±0.7 | 58.4 ±4.6 | 0.78 ±0.56 |
+| ORCA only, moderate wind (12 drones) | 0.10 ±0.32 | 0.80 ±0.92 | 8.00 ±13.20 | 15.8 ±13.0 | 31.1 ±4.4 | 99.5% ±0.6 | 58.2 ±4.3 | 0.83 ±0.50 |
+| reservations + ORCA, moderate wind (12 drones) | 0.00 ±0.00 | 0.00 ±0.00 | 0.00 ±0.00 | 25.1 ±4.0 | 32.5 ±5.1 | 99.3% ±0.8 | 59.1 ±4.0 | 0.90 ±0.59 |
+| reservations only, strong wind (12 drones) | 0.00 ±0.00 | 33.4 ±8.2 | 133 ±29 | 18.6 ±1.7 | 29.1 ±8.2 | 99.2% ±1.3 | 67.6 ±7.4 | 0.56 ±0.17 |
+| ORCA only, strong wind (12 drones) | 0.00 ±0.00 | 0.60 ±0.84 | 3.85 ±6.16 | 18.3 ±12.5 | 29.8 ±9.1 | 99.0% ±1.6 | 68.6 ±7.2 | 0.65 ±0.16 |
+| reservations + ORCA, strong wind (12 drones) | 0.00 ±0.00 | 0.10 ±0.32 | 0.20 ±0.63 | 23.4 ±1.9 | 28.5 ±6.7 | 99.1% ±1.6 | 68.1 ±6.7 | 0.66 ±0.17 |
+| reservations only, calm wind (24 drones) | 0.00 ±0.00 | 123 ±32 | 501 ±136 | 15.5 ±1.5 | 28.3 ±4.0 | 99.8% ±0.4 | 49.4 ±3.1 | 1.17 ±0.50 |
+| ORCA only, calm wind (24 drones) | 0.30 ±0.48 | 4.20 ±3.05 | 27.6 ±27.4 | 7.33 ±10.15 | 28.2 ±3.3 | 99.9% ±0.2 | 50.4 ±2.7 | 1.61 ±0.55 |
+| reservations + ORCA, calm wind (24 drones) | 0.00 ±0.00 | 0.30 ±0.48 | 0.40 ±0.74 | 22.4 ±0.6 | 29.4 ±3.3 | 99.9% ±0.2 | 50.9 ±3.0 | 1.70 ±0.57 |
+| reservations only, moderate wind (24 drones) | 0.00 ±0.00 | 126 ±27 | 500 ±112 | 16.4 ±1.9 | 28.7 ±3.4 | 99.9% ±0.2 | 58.1 ±3.9 | 1.44 ±0.52 |
+| ORCA only, moderate wind (24 drones) | 0.20 ±0.42 | 4.10 ±2.42 | 23.9 ±17.9 | 6.79 ±9.23 | 28.0 ±2.8 | 99.9% ±0.2 | 59.1 ±3.3 | 1.75 ±0.44 |
+| reservations + ORCA, moderate wind (24 drones) | 0.00 ±0.00 | 0.80 ±0.79 | 1.05 ±1.32 | 22.2 ±0.6 | 29.9 ±3.6 | 99.9% ±0.2 | 60.0 ±3.7 | 1.93 ±0.51 |
+| reservations only, strong wind (24 drones) | 0.00 ±0.00 | 149 ±29 | 598 ±119 | 16.2 ±3.7 | 27.3 ±4.3 | 99.8% ±0.3 | 66.5 ±4.3 | 1.26 ±0.63 |
+| ORCA only, strong wind (24 drones) | 0.00 ±0.00 | 4.40 ±2.01 | 27.2 ±15.8 | 3.78 ±6.57 | 26.5 ±4.2 | 99.9% ±0.2 | 67.3 ±4.1 | 1.60 ±0.44 |
+| reservations + ORCA, strong wind (24 drones) | 0.00 ±0.00 | 0.60 ±0.70 | 0.75 ±1.11 | 22.1 ±0.4 | 30.8 ±7.4 | 99.4% ±1.0 | 69.8 ±4.8 | 1.66 ±0.28 |
+
+### Motion: Grid cells or continuous flight, at the default configuration?
+
+Mean ± standard deviation over 10 seeds. Default configuration (12 drones, 3 flight layers, 0.16 orders/tick); 32 drones fly with 0.47 orders/tick and 6 spare packs per station. The grid model's wind is a 3 % chance per move of being held back a tick; continuous flight uses the wind field.
+
+| configuration | delivered | avg time | p95 time | on time | energy/deliv | swaps | collisions | wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| grid (default) | 100.0% ±0.0 | 34.6 ±6.9 | 70.4 ±15.9 | 98.8% ±2.0 | 51.4 ±3.4 | 44.6 ±7.4 | 0.00 ±0.00 | 0.24 ±0.30 |
+| continuous, calm | 100.0% ±0.0 | 31.7 ±4.7 | 63.9 ±9.7 | 99.2% ±1.2 | 50.9 ±3.2 | 43.1 ±6.8 | 0.00 ±0.00 | 0.62 ±0.17 |
+| continuous, moderate wind (default) | 100.0% ±0.0 | 32.5 ±5.1 | 68.8 ±11.2 | 99.3% ±0.8 | 59.1 ±4.0 | 54.0 ±8.1 | 0.00 ±0.00 | 0.89 ±0.58 |
+| grid, 32 drones | 100.0% ±0.0 | 30.5 ±5.3 | 58.2 ±13.7 | 99.5% ±0.8 | 50.9 ±3.4 | 124 ±16 | 0.00 ±0.00 | 0.93 ±0.88 |
+| continuous, moderate wind, 32 drones | 100.0% ±0.0 | 34.2 ±6.4 | 66.5 ±19.6 | 98.8% ±2.1 | 63.8 ±2.4 | 158 ±14 | 0.00 ±0.00 | 3.03 ±0.56 |
+
+### Wind: Continuous flight: how much wind can the energy-safe fleet fly in?
+
+Mean ± standard deviation over 10 seeds. Reservations + ORCA, default configuration (12 drones). Mean wind at 30 m and RMS gusts: calm 0/0, moderate 5/1.5, strong 8/2.5, severe 10/3 m/s.
+
+| configuration | delivered | avg time | energy/deliv | flight h | LoS events | min sep (m) | track err (m) | emergencies |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| calm wind | 100.0% ±0.0 | 31.7 ±4.7 | 50.9 ±3.2 | 10.9 ±1.5 | 0.10 ±0.32 | 25.1 ±3.3 | 3.07 ±0.17 | 0.10 ±0.32 |
+| moderate wind | 100.0% ±0.0 | 32.5 ±5.1 | 59.1 ±4.0 | 11.0 ±1.5 | 0.00 ±0.00 | 25.1 ±4.0 | 3.16 ±0.24 | 0.20 ±0.63 |
+| strong wind | 100.0% ±0.0 | 28.5 ±6.7 | 68.1 ±6.7 | 10.3 ±1.4 | 0.10 ±0.32 | 23.4 ±1.9 | 3.91 ±0.33 | 0.10 ±0.32 |
+| severe wind | 20.6% ±12.0 | 93.8 ±73.1 | 49.3 ±10.6 | 1.28 ±0.79 | 0.00 ±0.00 | 65.2 ±33.8 | 6.14 ±1.07 | 0.00 ±0.00 |
+
+_Total compute: 461.9 s._

@@ -39,7 +39,8 @@ from .world import ground
 GROUND, TAKEOFF, FLY, WINCH, LAND, HOLD = range(6)
 MODE_NAMES = ("ground", "takeoff", "fly", "winch", "land", "hold")
 
-KEEP_RIGHT = math.radians(8.0)   # symmetry breaking for head-on ORCA encounters
+KEEP_RIGHT = math.radians(8.0)   # symmetry breaking for head-on ORCA encounters ...
+UNBLOCK = math.radians(75.0)     # ... and, stronger, for a drone that is stuck in front of others
 INTERVENTION = 0.5               # m/s: ORCA "intervened" if it moved the velocity this much
 BUILDING_RANGE = 60.0            # m: buildings closer than this constrain ORCA's velocity ...
 BUILDING_MARGIN = 8.0            # ... so that the drone stays this far from the wall ...
@@ -708,7 +709,8 @@ class FlightLayer:
         px, py, pz = b.px, b.py, b.pz * s
         planes = list(self.vplanes)
         n_fixed = len(planes) + self._building_planes(b, planes)
-        close = False
+        close = ahead = False
+        pn = math.sqrt(px * px + py * py + pz * pz)
         for ds2, j in nb:
             dist = math.sqrt(ds2)
             spj = math.sqrt(j.vx * j.vx + j.vy * j.vy + j.vz * j.vz * s * s)
@@ -717,14 +719,18 @@ class FlightLayer:
             rp = (j.x - b.x, j.y - b.y, (j.z - b.z) * s)
             rv = (b.vx - j.vx, b.vy - j.vy, (b.vz - j.vz) * s)
             planes.append(orca_plane(rp, rv, vi, R, tau, self.dt, 0.5 if j.coop else 1.0))
-            if dist < 2.5 * R and rp[0] * px + rp[1] * py + rp[2] * pz > 0.9 * dist * math.sqrt(px * px + py * py + pz * pz):
-                close = True
+            if dist < 2.5 * R:
+                dot = rp[0] * px + rp[1] * py + rp[2] * pz
+                ahead = ahead or dot > 0.0
+                close = close or dot > 0.9 * dist * pn
         if len(planes) == n_fixed:
             b.cx, b.cy, b.cz = b.px, b.py, b.pz
             self._orca_state(b, False, now)
             return
-        if close:                             # nearly head-on: prefer passing on the right
-            c, sn = math.cos(KEEP_RIGHT), math.sin(KEEP_RIGHT)
+        blocked = ahead and pn > 5.0 and math.hypot(b.vx, b.vy) < 2.0
+        if close or blocked:                  # prefer passing on the right (a roundabout when stuck)
+            ang = UNBLOCK if blocked else KEEP_RIGHT
+            c, sn = math.cos(ang), math.sin(ang)
             px, py = px * c + py * sn, -px * sn + py * c
         v = solve(planes, (px, py, pz), vmax, n_fixed)
         cx, cy, cz = v[0], v[1], v[2] / s

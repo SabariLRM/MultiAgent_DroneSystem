@@ -63,9 +63,15 @@ def orca_plane(rel_pos, rel_vel, v_self, radius: float, tau: float, dt: float, s
             wx, wy, wz = vx - t * px, vy - t * py, vz - t * pz
             wl = math.sqrt(wx * wx + wy * wy + wz * wz)
             if wl < EPS:
-                wx, wy, wz, wl = -px, -py, -pz, math.sqrt(dist_sq)
-            nx, ny, nz = wx / wl, wy / wl, wz / wl
-            k = radius * t - wl
+                # exactly head-on (relative velocity along the line of centres): step out
+                # sideways, to the right; the cone surface is |v| sin(alpha) away
+                hx, hy = py, -px
+                hl = math.hypot(hx, hy)
+                nx, ny, nz = (hx / hl, hy / hl, 0.0) if hl > EPS else (1.0, 0.0, 0.0)
+                k = math.sqrt(vx * vx + vy * vy + vz * vz) * radius / math.sqrt(dist_sq)
+            else:
+                nx, ny, nz = wx / wl, wy / wl, wz / wl
+                k = radius * t - wl
     else:
         # already inside the radius: get out within one time step
         inv_dt = 1.0 / dt

@@ -852,11 +852,13 @@ controls, fleet list, follow card and plain-language event log are identical.
   viewers have light and dark themes.
 * **Continuous-flight replays** add each drone's position every 2 s (whole
   metres, delta-encoded in one integer array per drone), interpolated
-  between samples. The 2D view shows the drones where they really are, with
-  their height in metres, and a wind tile. The 3D view flies them smoothly,
-  turned into their direction of travel, with optional velocity arrows (8 s
-  ahead) and separation bubbles, a compass for the wind, and a red link and
-  "too close" label for every loss of separation. A default continuous
+  between samples. Both views draw a 30-second trail behind every drone
+  (smoothed corners, gusts, avoidance swerves) and an amber ring around any
+  drone ORCA is steering at that moment. The 2D view shows the drones where
+  they really are, with their height in metres, and a wind tile. The 3D view
+  flies them smoothly, turned into their direction of travel, with velocity
+  arrows (8 s ahead), optional separation bubbles, a compass for the wind,
+  and a red link and "too close" label for every loss of separation. A default continuous
   replay is about 0.9 MB, a 32-drone one under 2 MB.
 
 **Fix found by the layer experiment.** A drone held by traffic inside a

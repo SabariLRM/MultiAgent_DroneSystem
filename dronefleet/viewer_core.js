@@ -60,6 +60,29 @@ function startReplay(DATA, view) {
     for (const [i, j, t0, t1, dmin] of TRACK.los) if (t0 <= sec && sec <= t1 + hold) out.push({ i, j, dmin, live: sec <= t1 });
     return out;
   }
+  /* Where drone k flew during the last `span` seconds, oldest first, ending at `sec`:
+     [{x, y, z, air}] in the same units as trackAt. */
+  function trailAt(k, sec, span = 30) {
+    const out = [];
+    if (!TRACK) return out;
+    const a = track[k], j1 = Math.min(NS - 1, Math.floor(sec / TD));
+    for (let j = Math.max(0, Math.floor((sec - span) / TD)); j <= j1; j++) {
+      const zm = a[3 * j + 2];
+      out.push({ x: a[3 * j] / CELL_M - .5, y: a[3 * j + 1] / CELL_M - .5, z: zm / TRACK_LAYER_M, air: zm > .3 });
+    }
+    const p = trackAt(k, sec);
+    out.push({ x: p.x, y: p.y, z: p.z, air: p.air });
+    return out;
+  }
+  /* Drones that ORCA is steering around another drone at `sec` (a Set of ids). */
+  const orcaByDrone = TRACK ? Array.from({ length: N }, () => []) : null;
+  if (TRACK) for (const [k, t0, t1] of TRACK.orca) if (k < N) orcaByDrone[k].push([t0, t1]);
+  function orcaAt(sec) {
+    const out = new Set();
+    if (!TRACK) return out;
+    orcaByDrone.forEach((iv, k) => { if (iv.some(([t0, t1]) => t0 <= sec && sec <= t1 + 1)) out.add(k); });
+    return out;
+  }
   /* Wind at the city centre, [wx, wy] in m/s (grid axes). */
   function windAt(sec) {
     if (!TRACK || !TRACK.wind.length) return [0, 0];
@@ -185,6 +208,13 @@ function startReplay(DATA, view) {
     .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join("");
   document.querySelectorAll("[data-layers]").forEach(el => { el.hidden = L === 1; });
   document.querySelectorAll("[data-continuous]").forEach(el => { el.hidden = !CONT; });
+  if (CONT) {
+    // make it obvious this is not the grid model: title, and the continuous views switched on
+    document.querySelectorAll("[data-cont-default]").forEach(el => { el.checked = true; });
+    const h1 = document.querySelector("header h1");
+    if (h1) h1.textContent += " · continuous flight";
+    document.title += " · continuous flight";
+  }
   document.querySelectorAll("[data-grid]").forEach(el => { el.hidden = CONT; });
 
   const themeBtn = document.getElementById("theme");
@@ -517,7 +547,7 @@ function startReplay(DATA, view) {
 
   const api = {
     W, H, L, frames, LAST, N, STATES, FLAG, TRIP, T, FONT, DATA, enc, decode, altOf, heights, hubs, stations,
-    CONT, TICK_S, CELL_M, TRACK, trackAt, losAt, windAt,
+    CONT, TICK_S, CELL_M, TRACK, trackAt, trailAt, losAt, orcaAt, windAt,
     describe, colorOf, socColor, textOn, esc, placeName, placeByEnc, orders, orderById, flashes, byDrone,
     routeAhead, opt, select, showTip, hideTip, droneTip, render,
     get selected() { return selected; }, get pos() { return pos; }, get playing() { return playing; },

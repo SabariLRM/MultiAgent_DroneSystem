@@ -67,10 +67,12 @@ is pushed by a smooth seeded wind field (`--wind calm | moderate | strong |
 severe`: 0, 5, 8 or 10 m/s mean wind; moderate is the default),
 and draws its battery through a power model calibrated so that one 100 m cell
 at cruise costs the same 1.0 unit as in grid mode. The replay records the
-drones' positions every 2 s: the 2D viewer shows them top-down with their
-height in metres, and the 3D viewer adds optional velocity arrows and
-separation bubbles, highlights every loss of separation in red and shows the
-wind. As before, **3D replays need an internet connection** to load three.js;
+drones' positions every 2 s and is titled "continuous flight": both viewers
+draw a 30-second trail behind each drone (smoothed corners, gusts, avoidance
+swerves), an amber ring around any drone that ORCA is steering right now, a
+red link for every loss of separation, and the wind; the 2D viewer shows
+heights in metres, the 3D viewer adds velocity arrows and optional
+separation bubbles. As before, **3D replays need an internet connection** to load three.js;
 2D replays work offline. Design: [docs/continuous_design.md](docs/continuous_design.md).
 Ready-made continuous replays are in `results/`: `replay_continuous.html`
 (default run; `_3d` for 3D), `replay_continuous_32_drones*.html`, and

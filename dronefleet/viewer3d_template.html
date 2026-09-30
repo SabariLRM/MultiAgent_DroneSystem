@@ -64,6 +64,7 @@
       <div class="row"><svg viewBox="0 0 30 24"><path d="M3 20 L10 20 L10 13 L18 13 L18 6 L27 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/></svg><span><b>Line</b>: the route the drone has booked, climbs and descents included. Routes are booked in space <i>and time</i>, so lines can cross without the drones ever meeting</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="4" y="12" width="8" height="10" fill="var(--building)"/><rect x="15" y="4" width="8" height="18" fill="var(--building)"/><line x1="8" y1="3" x2="8" y2="12" stroke="var(--muted)" stroke-dasharray="2 2"/><circle cx="8" cy="3" r="2.5" fill="var(--c-pickup)"/></svg><span><b>Altitude</b>: buildings have their real height, and a drone can fly over one on any layer above it. <b>L2</b> in a label is the flight layer (about 30 m each; height is exaggerated). The thin line drops from each drone to the ground</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><rect x="4" y="4" width="22" height="16" fill="var(--critical)" fill-opacity=".18" stroke="var(--critical)" stroke-width="1.5"/></svg><span><b>Red box</b>: a no-fly zone and the layers it closes (dashed outline = announced, not active yet). <b>Rings</b> on the ground are customers waiting for an order</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><path d="M2 20 Q10 20 14 13 T24 6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><circle cx="24" cy="6" r="4" fill="var(--c-parcel)"/></svg><span><b>Trail</b>: where the drone actually flew in the last 30 seconds, in 3D: climbs, smoothed corners, gusts and swerves. An <b>amber ring</b> means collision avoidance (ORCA) is steering it around another drone right now</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><ellipse cx="15" cy="12" rx="12" ry="7" fill="var(--muted)" fill-opacity=".18" stroke="var(--muted)"/><rect x="12" y="10" width="6" height="4" rx="1" fill="var(--c-idle)"/></svg><span><b>Bubble</b> (optional): the separation minimum around a drone, 40 m sideways and 15 m up and down. It turns red, and a <b>red line</b> joins the two drones, when another drone is inside it</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><rect x="3" y="10" width="7" height="4" rx="1" fill="var(--c-parcel)"/><path d="M10 12 L26 12 M26 12 L21 8.5 M26 12 L21 15.5" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/></svg><span><b>Arrow</b> (optional): where the drone will be in 8 seconds at its current velocity. The compass at the top left shows the wind</span></div>
     </div>
@@ -106,7 +107,8 @@
           <label><input type="checkbox" id="optOrders" data-opt checked> Customers waiting</label>
           <label><input type="checkbox" id="optGround" data-opt checked> Parked drones</label>
           <label><input type="checkbox" id="optStalks" data-opt checked> Altitude lines</label>
-          <label data-continuous hidden><input type="checkbox" id="optArrows" data-opt> Velocity arrows</label>
+          <label data-continuous hidden><input type="checkbox" id="optTrails" data-opt data-cont-default> Flight trails (30 s)</label>
+          <label data-continuous hidden><input type="checkbox" id="optArrows" data-opt data-cont-default> Velocity arrows</label>
           <label data-continuous hidden><input type="checkbox" id="optBubbles" data-opt> Separation bubbles</label>
         </div>
         <div class="follow-mini" id="followMini" hidden></div>
@@ -199,6 +201,9 @@ startReplay(DATA, (() => {
     arrowTip: new THREE.MeshBasicMaterial({ color: 0x555555 }),
     bubble: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .28, depthWrite: false, side: THREE.DoubleSide }),
     los: new THREE.LineBasicMaterial({ color: 0xd03b3b }),
+    trail: new THREE.LineBasicMaterial({ vertexColors: true }),
+    dot: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    avoid: new THREE.MeshBasicMaterial({ color: 0xd9a400, side: THREE.DoubleSide }),
   };
   const routeMats = [];              // one per drone (colour follows its state)
   let selTubeMat;
@@ -207,6 +212,8 @@ startReplay(DATA, (() => {
   let buildingMesh, customerMesh, bodies, arms, blades, discs, halos, shadows, parcels, expressParcels, orderRings, orderDots;
   let stalks, stalkPos, stalkCol, selRing, beam, beamRing, routeLines = [], selTube = null, selTubeKey = "";
   let arrows, arrowPos, arrowTips, bubbles, losLines, losPos, lastWind = [0, 0];
+  let trails, trailPos, trailCol, trailDots, avoidRings;
+  const TRAIL_SEGS = 16;                // 30 s of 2-s samples, plus the current position
   const zones = [], flashMeshes = [], pads = [];
   const ringGeo = new THREE.RingGeometry(.3, .38, 32).rotateX(-Math.PI / 2);
 
@@ -312,6 +319,14 @@ startReplay(DATA, (() => {
       const [sepH, sepV] = A.TRACK.sep;
       bubbles = inst(new THREE.CylinderGeometry(sepH / A.CELL_M, sepH / A.CELL_M, 2 * sepV / A.TRACK.layer_m * LH, 32, 1, true), mat.bubble, N);
       for (let k = 0; k < N; k++) bubbles.setColorAt(k, C("#888"));
+      trailPos = new Float32Array(N * TRAIL_SEGS * 6); trailCol = new Float32Array(N * TRAIL_SEGS * 6);
+      const tg = new THREE.BufferGeometry();
+      tg.setAttribute("position", new THREE.BufferAttribute(trailPos, 3)); tg.setAttribute("color", new THREE.BufferAttribute(trailCol, 3));
+      trails = new THREE.LineSegments(tg, mat.trail); trails.frustumCulled = false; scene.add(trails);
+      avoidRings = inst(new THREE.RingGeometry(.42, .5, 32).rotateX(-Math.PI / 2), mat.avoid, N);
+      // breadcrumbs at every recorded sample: WebGL lines are one pixel wide, dots stay visible
+      trailDots = inst(new THREE.SphereGeometry(.07, 8, 6), mat.dot, N * TRAIL_SEGS);
+      for (let j = 0; j < N * TRAIL_SEGS; j++) { trailDots.setMatrixAt(j, hidden); trailDots.setColorAt(j, C("#888")); }
       losPos = new Float32Array(N * 6);
       const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.BufferAttribute(losPos, 3));
       losLines = new THREE.LineSegments(lg, mat.los); losLines.frustumCulled = false; scene.add(losLines);
@@ -369,7 +384,7 @@ startReplay(DATA, (() => {
     mat.shadow.opacity = dark ? .35 : .16;
     for (const m of [mat.zoneFill, mat.zoneEdge, mat.zoneDash]) m.color.set(T.critical);
     flashMeshes.forEach(m => m.material.color.set(T.critical));
-    mat.arrow.color.set(T.ink); mat.arrowTip.color.set(T.ink); mat.los.color.set(T.critical);
+    mat.arrow.color.set(T.ink); mat.arrowTip.color.set(T.ink); mat.los.color.set(T.critical); mat.avoid.color.set(T.warning);
     for (const p of pads) {
       if (p.top.map) p.top.map.dispose();
       p.top.map = padTexture(p.kind); p.top.needsUpdate = true;
@@ -583,7 +598,36 @@ startReplay(DATA, (() => {
 
   /* Continuous flight: velocity arrows and bubbles (optional), loss-of-separation links, wind. */
   function drawContinuous(sec, items) {
-    const showArrows = A.opt("optArrows"), showBubbles = A.opt("optBubbles");
+    const showArrows = A.opt("optArrows"), showBubbles = A.opt("optBubbles"), showTrails = A.opt("optTrails");
+    // trails: the last 30 s of each airborne drone, fading into the background
+    const sky = C(T.sky), avoiding = A.orcaAt(sec), sel = A.selected;
+    trailPos.fill(0); trailCol.fill(0);
+    for (let k = 0; k < N; k++) {
+      const w = worldPos[k];
+      if (w.air && !w.dead && avoiding.has(k)) place(avoidRings, k, w.x, w.y - .02, w.z, 0, 1, 1, 1);
+      else avoidRings.setMatrixAt(k, hidden);
+      for (let j = 0; j < TRAIL_SEGS; j++) trailDots.setMatrixAt(k * TRAIL_SEGS + j, hidden);
+      if (!showTrails || !w.air || w.dead) continue;
+      const pts = A.trailAt(k, sec, 30), n = pts.length, base = C(A.colorOf(w.d));
+      if (sel >= 0 && sel !== k) base.lerp(sky, .6);
+      const first = Math.max(1, n - TRAIL_SEGS);
+      for (let j = first; j < n; j++) {
+        const p = pts[j - 1], q = pts[j];
+        if (!p.air || !q.air) continue;
+        const o = 6 * (k * TRAIL_SEGS + (j - first)), fa = .15 + .85 * (j - 1) / n, fb = .15 + .85 * j / n;
+        trailPos.set([p.x + .5, Math.max(.09, p.z * LH), p.y + .5, q.x + .5, Math.max(.09, q.z * LH), q.y + .5], o);
+        const ca = sky.clone().lerp(base, fa), cb = sky.clone().lerp(base, fb);
+        trailCol.set([ca.r, ca.g, ca.b, cb.r, cb.g, cb.b], o);
+        if (j < n - 1) {                  // a dot at each recorded sample (the drone itself marks the present)
+          const di = k * TRAIL_SEGS + (j - first), sc = .5 + .8 * j / n;
+          place(trailDots, di, q.x + .5, Math.max(.09, q.z * LH), q.y + .5, 0, sc, sc, sc);
+          trailDots.setColorAt(di, cb);
+        }
+      }
+    }
+    trails.geometry.attributes.position.needsUpdate = true; trails.geometry.attributes.color.needsUpdate = true;
+    trailDots.instanceMatrix.needsUpdate = true; if (trailDots.instanceColor) trailDots.instanceColor.needsUpdate = true;
+    avoidRings.instanceMatrix.needsUpdate = true;
     const los = A.losAt(sec), inLos = new Set();
     for (const l of los) { inLos.add(l.i); inLos.add(l.j); }
     const AHEAD = 8;                                   // seconds of travel shown by an arrow

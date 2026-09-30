@@ -26,7 +26,7 @@ def compute_metrics(sim) -> dict:
     ps = sim.planner.stats
     vertex = sum(1 for c in sim.collisions if c[1] == "vertex")
     edge = sum(1 for c in sim.collisions if c[1] == "edge")
-    return {
+    m = {
         "ticks": sim.t,
         "orders": len(orders),
         "delivered": len(delivered),
@@ -74,6 +74,11 @@ def compute_metrics(sim) -> dict:
         "failed_awards": sim.dispatcher.failed_awards,
         "wall_time_s": sim.wall_time,
     }
+    flight = getattr(sim, "flight", None)
+    if flight is not None:
+        # continuous flight: physical collisions, separation, tracking and ORCA measures
+        m.update(flight.metrics())
+    return m
 
 
 def format_metrics(m: dict) -> str:
@@ -100,5 +105,14 @@ def format_metrics(m: dict) -> str:
                      f"{m['auction_rounds']} auction rounds"),
         ("Sim", f"{m['ticks']} ticks in {m['wall_time_s']:.2f}s"),
     ]
+    if "separation_losses" in m:
+        rows[4:5] = [
+            ("Collisions", f"{m['collisions']} (3-D distance under 2 x drone radius)   NFZ violations {m['nfz_violations']}"),
+            ("Separation", f"{m['separation_losses']} losses ({m['separation_loss_s']:.0f} pair-seconds), "
+                           f"minimum {m['min_separation_m']:.1f} m"),
+            ("Tracking", f"error mean {m['tracking_error_mean_m']:.1f} m, p95 {m['tracking_error_p95_m']:.0f} m; "
+                         f"{m['orca_interventions']} ORCA interventions ({m['orca_per_drone_hour']:.1f} per drone-hour), "
+                         f"{m['stall_replans']} stall re-plans"),
+        ]
     w = max(len(k) for k, _ in rows)
     return "\n".join(f"  {k:<{w}}  {v}" for k, v in rows)

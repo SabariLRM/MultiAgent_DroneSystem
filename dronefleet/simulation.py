@@ -15,6 +15,11 @@ One tick, in order:
 7. **Physics** - positions (x, y, layer) and batteries update; collisions
    are *detected* independently of how they were avoided.
 8. **Drones observe** - arrivals, drops, landings, deviations from plan.
+
+With ``motion = "continuous"`` steps 6-7 are replaced by the tactical layer
+and continuous physics (:mod:`dronefleet.flight`): 20 sub-steps of path
+following, 3-D ORCA, wind and a power model, after which each drone's
+position is reported back to its agent as a grid cell.
 """
 
 from __future__ import annotations
@@ -27,13 +32,16 @@ from .agents.drone import AIR_STATES, DroneAgent, DroneState
 from .agents.station import SwapStationAgent
 from .config import SimConfig
 from .energy import BatteryPack, EnergyModel
+from .flight import FlightLayer
 from .messages import Message, MessageBus, Performative
 from .metrics import compute_metrics
 from .orders import OrderGenerator
 from .planner import SpaceTimePlanner
+from .power import ContinuousEnergyModel
 from .replay import TraceRecorder
 from .reservation import ReservationTable
 from .traffic import detect_collisions, resolve
+from .wind import WindField
 from .world import generate_world, manhattan
 
 SENSOR_RANGE = 3
@@ -45,8 +53,16 @@ class Simulation:
         self.world = generate_world(cfg)
         self.bus = MessageBus()
         self.res = ReservationTable(enabled=cfg.coordination == "cooperative")
-        self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions)
-        self.energy = EnergyModel(cfg)
+        self.continuous = cfg.motion == "continuous"
+        if self.continuous:
+            self.wind = WindField(cfg)
+            self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions,
+                                            land_dwell=cfg.land_ticks)
+            self.energy = ContinuousEnergyModel(cfg, self.wind)
+        else:
+            self.wind = None
+            self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions)
+            self.energy = EnergyModel(cfg)
         self.dispatcher = DispatcherAgent(cfg, self.bus)
         self.orders = OrderGenerator(cfg, self.world)
         rng = random.Random(cfg.seed * 13 + 1)
@@ -82,6 +98,7 @@ class Simulation:
         self.nfz_violations = 0
         self.events: list[tuple[int, str]] = []
         self.wall_time = 0.0
+        self.flight = FlightLayer(self) if self.continuous else None
         self.trace = TraceRecorder(self) if cfg.record_trace else None
 
     # ------------------------------------------------------------- sensing
@@ -127,6 +144,30 @@ class Simulation:
             for d in pending:
                 d.process_urgent(t)
 
+        if self.flight is not None:
+            self._move_continuous(t, alive, ev)
+        else:
+            self._move_grid(t, alive, ev)
+        for d in alive:
+            if d.airborne and self.world.in_active_nfz(d.pos, self.t):
+                self.nfz_violations += 1
+
+        for d in alive:
+            d.after_move(self.t)
+        if self.flight is not None:
+            self.flight.after_agents(self.t)
+        for d in self.drones:
+            if d.event_log:
+                ev += d.event_log
+                d.event_log.clear()
+
+        self.res.prune(self.t - 1)
+        self.events += [(t, e) for e in ev]
+        if self.trace:
+            self.trace.record(self.t, ev)
+
+    def _move_grid(self, t: int, alive: list, ev: list) -> None:
+        """Intents -> wind gusts -> right-of-way resolution -> cell moves -> collision detector."""
         intents = {}
         for d in alive:
             tc, ta = d.intent(t)
@@ -157,21 +198,17 @@ class Simulation:
             what = "are in the same cell" if kind == "vertex" else "fly through each other head-on"
             ev.append(f"!! COLLISION: drones {' and '.join(map(str, ids))} {what} "
                       f"at ({cell[0]}, {cell[1]}) on layer {cell[2]}")
-        for d in alive:
-            if d.airborne and self.world.in_active_nfz(d.pos, self.t):
-                self.nfz_violations += 1
 
+    def _move_continuous(self, t: int, alive: list, ev: list) -> None:
+        """Physics sub-steps (path following, ORCA, wind, energy), then report cells to the agents."""
+        self.flight.advance(t)
+        self.t = t + 1
         for d in alive:
-            d.after_move(self.t)
-        for d in self.drones:
-            if d.event_log:
-                ev += d.event_log
-                d.event_log.clear()
-
-        self.res.prune(self.t - 1)
-        self.events += [(t, e) for e in ev]
-        if self.trace:
-            self.trace.record(self.t, ev)
+            self.flight.observe(d, self.t)
+        self.last_gusted = set()
+        self.last_forced = self.flight.orca_drones
+        ev += self.flight.events
+        self.flight.events = []
 
     # ---------------------------------------------------------------- run
     def done(self) -> bool:

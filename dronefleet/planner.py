@@ -50,7 +50,7 @@ class PlanStep:
     t: int
     cell: Cell
     airborne: bool
-    tag: str | None = None  # takeoff | drop_start | drop_done | land
+    tag: str | None = None  # takeoff | drop_start | drop_done | land_start (continuous) | land
 
 
 @dataclass
@@ -95,11 +95,19 @@ class PlannerStats:
 
 
 class SpaceTimePlanner:
-    def __init__(self, world: GridWorld, reservations: ReservationTable, max_expansions: int = 40000):
-        """``max_expansions`` is the search budget per flight layer (the airspace grows with the layers)."""
+    def __init__(self, world: GridWorld, reservations: ReservationTable, max_expansions: int = 40000,
+                 land_dwell: int = 0):
+        """``max_expansions`` is the search budget per flight layer (the airspace grows with the layers).
+
+        ``land_dwell`` (continuous flight only; 0 in grid mode) keeps the drone
+        over the pad for that many extra ticks after it arrives, so the pad's
+        layer-1 cell stays reserved while the vertical descent passes through
+        it. The arrival step is tagged ``land_start``.
+        """
         self.world = world
         self.res = reservations
         self.max_expansions = max_expansions * world.n_layers
+        self.land_dwell = land_dwell
         self.stats = PlannerStats()
 
     # ---------------------------------------------------------------- public
@@ -131,7 +139,7 @@ class SpaceTimePlanner:
         try:
             for wp in waypoints:
                 goal = lift(wp.cell)
-                dwell = wp.dwell if wp.kind == "drop" else 0
+                dwell = wp.dwell if wp.kind == "drop" else self.land_dwell
                 seg = self._search(agent, cur, t, goal, dwell, zones, ignore, extra_blocked)
                 if seg is None:
                     self.stats.failures += 1
@@ -148,6 +156,11 @@ class SpaceTimePlanner:
                     steps[-1].tag = "drop_done"
                     cur, t = goal, t_arr + dwell
                 else:
+                    if dwell:
+                        t_arr = steps[-1].t
+                        steps[-1].tag = "land_start"
+                        for k in range(1, dwell + 1):
+                            steps.append(PlanStep(t_arr + k, goal, True))
                     steps[-1].tag = "land"
                     cur, t = ground(goal), steps[-1].t
             return Plan(steps, tuple(waypoints))

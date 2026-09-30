@@ -9,6 +9,8 @@ Examples
     python3 run_simulation.py --battery naive --seed 1     # watch drones run dry
     python3 run_simulation.py --layers 5 --layer-rule heading   # stacked airspace
     python3 run_simulation.py --view 3d                    # 3-D replay (loads three.js online)
+    python3 run_simulation.py --motion continuous          # metres and seconds, ORCA, wind field
+    python3 run_simulation.py --motion continuous --wind strong --tactical none
 """
 
 from __future__ import annotations
@@ -20,9 +22,11 @@ import sys
 from pathlib import Path
 
 from dronefleet import SimConfig, Simulation
-from dronefleet.config import ALLOCATION_STRATEGIES, BATTERY_POLICIES, COORDINATION_MODES, LAYER_RULES
+from dronefleet.config import (ALLOCATION_STRATEGIES, BATTERY_POLICIES, COORDINATION_MODES, LAYER_RULES,
+                               MOTION_MODES, TACTICAL_MODES)
 from dronefleet.metrics import format_metrics
 from dronefleet.replay import export_html
+from dronefleet.wind import WIND_PRESETS
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -39,6 +43,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--layer-rule", choices=LAYER_RULES, default=SimConfig.layer_rule,
                     help="heading: east/west traffic on odd layers, north/south on even layers")
     ap.add_argument("--no-nfz", action="store_true", help="disable temporary no-fly zones")
+    ap.add_argument("--motion", choices=MOTION_MODES, default=SimConfig.motion,
+                    help="grid: cell hopping (default) | continuous: metres and seconds, ORCA, wind field")
+    ap.add_argument("--wind", choices=tuple(WIND_PRESETS), default=None,
+                    help="continuous mode: wind preset (default moderate: 5 m/s, gusts 1.5 m/s RMS)")
+    ap.add_argument("--tactical", choices=TACTICAL_MODES, default=SimConfig.tactical,
+                    help="continuous mode: orca (default) or none (strategic reservations only)")
     ap.add_argument("--out", default=None,
                     help="HTML replay path ('' to skip; default results/replay.html, or results/replay_3d.html for --view 3d)")
     ap.add_argument("--view", choices=("2d", "3d", "both"), default="2d",
@@ -69,8 +79,10 @@ def main(argv=None) -> int:
         SimConfig(), seed=a.seed, n_drones=a.drones, order_rate=a.rate, max_ticks=a.ticks,
         allocation=a.allocation, coordination=a.coordination, battery_policy=a.battery,
         gust_prob=a.gust, auto_nfz=not a.no_nfz, n_layers=a.layers, layer_rule=a.layer_rule,
-        record_trace=bool(replays),
+        record_trace=bool(replays), motion=a.motion, tactical=a.tactical,
     )
+    if a.wind:
+        cfg = dataclasses.replace(cfg, wind_mean=WIND_PRESETS[a.wind][0], wind_gust=WIND_PRESETS[a.wind][1])
     sim = Simulation(cfg)
     w = sim.world
     if not a.quiet:
@@ -79,6 +91,9 @@ def main(argv=None) -> int:
         print(f"Fleet of {cfg.n_drones} drones | allocation={cfg.allocation} "
               f"coordination={cfg.coordination} battery={cfg.battery_policy} gust={cfg.gust_prob} "
               f"layers={cfg.n_layers} rule={w.layer_rule}")
+        if cfg.motion == "continuous":
+            print(f"Continuous flight: tactical={cfg.tactical}, wind {cfg.wind_mean:g} m/s (gusts {cfg.wind_gust:g} m/s RMS), "
+                  f"physics every {cfg.physics_dt:g} s")
     if a.map:
         print(w.ascii())
         print("legend: H hub  S swap station  c customer  "

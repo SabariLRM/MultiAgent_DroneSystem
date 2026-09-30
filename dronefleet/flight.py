@@ -45,6 +45,9 @@ INTERVENTION = 0.5               # m/s: ORCA "intervened" if it moved the veloci
 BUILDING_RANGE = 60.0            # m: buildings closer than this constrain ORCA's velocity ...
 BUILDING_MARGIN = 8.0            # ... so that the drone stays this far from the wall ...
 BUILDING_HORIZON = 4.0           # ... for at least this many seconds
+FLOOR_BELOW_LAYER1 = 8.0         # m: avoidance never pushes traffic lower than this under layer 1 ...
+FLOOR_HORIZON = 2.0              # ... (it may approach that height at most this fast, in seconds)
+TOUCHDOWN_RADIUS = 8.0           # m: a drone only touches down this close to its touchdown spot
 
 
 # ============================================================================
@@ -494,7 +497,8 @@ class FlightLayer:
             b.dist_h += math.sqrt(vx * vx + vy * vy) * dt
             self.flight_time += dt
             if b.z <= 0.05:
-                if b.mode == LAND:
+                if b.mode == LAND and b.spot is not None and math.hypot(
+                        b.x - self.spots[b.spot[0]][b.spot[1]][0], b.y - self.spots[b.spot[0]][b.spot[1]][1]) < TOUCHDOWN_RADIUS:
                     b.ground, b.z = True, 0.0
                     b.vx = b.vy = b.vz = 0.0
                     b.hold = None
@@ -708,6 +712,9 @@ class FlightLayer:
         vi = (b.vx, b.vy, b.vz * s)
         px, py, pz = b.px, b.py, b.pz * s
         planes = list(self.vplanes)
+        # a floor: only a drone descending in its touchdown column goes below layer 1
+        floor = cfg.layer_m - FLOOR_BELOW_LAYER1
+        planes.append((0.0, 0.0, -s * max(0.0, b.z - floor) / FLOOR_HORIZON, 0.0, 0.0, 1.0))
         n_fixed = len(planes) + self._building_planes(b, planes)
         close = ahead = False
         pn = math.sqrt(px * px + py * py + pz * pz)

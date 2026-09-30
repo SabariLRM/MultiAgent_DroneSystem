@@ -64,7 +64,7 @@ class Simulation:
             self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions)
             self.energy = EnergyModel(cfg)
         self.dispatcher = DispatcherAgent(cfg, self.bus)
-        self.orders = OrderGenerator(cfg, self.world)
+        self.orders = OrderGenerator(cfg, self.world, self.energy if self.continuous else None)
         rng = random.Random(cfg.seed * 13 + 1)
         self.gust_rng = random.Random(cfg.seed * 31 + 5)
 

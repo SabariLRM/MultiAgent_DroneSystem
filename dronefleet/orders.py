@@ -59,16 +59,30 @@ def _poisson(rng: random.Random, lam: float) -> int:
 
 
 class OrderGenerator:
-    def __init__(self, cfg, world: GridWorld):
+    def __init__(self, cfg, world: GridWorld, flight_energy=None):
+        """``flight_energy`` (continuous flight only) is the energy model the drones plan
+        with; the service area then also shrinks with the forecast wind."""
         self.cfg = cfg
         self.world = world
+        self.flight_energy = flight_energy
         self.rng = random.Random(cfg.seed * 104729 + 3)
         self._next = 1
         self.generated: list[Order] = []
 
     def _in_range(self, hub: Site, dest: Site, kg: float) -> bool:
         budget = self.cfg.battery_capacity * (0.95 - self.cfg.reserve_fraction)
-        return _in_range_energy(self.cfg, self.world, hub, dest, kg) <= budget
+        if _in_range_energy(self.cfg, self.world, hub, dest, kg) > budget:
+            return False
+        return self.flight_energy is None or self._in_wind_range(hub, dest, kg, budget)
+
+    def _in_wind_range(self, hub: Site, dest: Site, kg: float, budget: float) -> bool:
+        """Could a drone on a fresh pack at the station nearest the hub bid for it?
+        (The drones' own "swap first" estimate, with the forecast wind.)"""
+        e, w, slack = self.flight_energy, self.world, self.cfg.detour_factor
+        fetch = e.estimate(min(w.dist(s, hub) for s in w.stations), 0.0, True, slack=slack)
+        out = e.estimate(w.dist(hub, dest), kg, True, self.cfg.drop_ticks, slack)
+        back = e.estimate(min(w.dist(dest, s) for s in w.stations), 0.0, False, slack=slack)
+        return fetch + out + back <= budget
 
     def tick(self, t: int) -> list[Order]:
         if t > self.cfg.order_until:

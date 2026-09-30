@@ -19,8 +19,9 @@ from __future__ import annotations
 import math
 import random
 
-# name -> (mean m/s, RMS gust m/s)
-WIND_PRESETS = {"calm": (0.0, 0.0), "moderate": (5.0, 1.5), "strong": (10.0, 3.0)}
+# name -> (mean m/s, RMS gust m/s) at 30 m. "severe" is about the limit at which the
+# energy-safe fleet still flies (see docs/REPORT.md)
+WIND_PRESETS = {"calm": (0.0, 0.0), "moderate": (5.0, 1.5), "strong": (8.0, 2.5), "severe": (10.0, 3.0)}
 
 
 class WindField:

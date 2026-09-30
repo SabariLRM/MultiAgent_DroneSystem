@@ -17,8 +17,17 @@ predictive invariant keep their meaning.
 :class:`~dronefleet.energy.EnergyModel` in continuous mode. It prices the
 same actions from the power model and the *forecast* wind (mean wind at the
 flight layer plus the RMS gust), so a planned leg into the wind costs more
-than one with the wind behind it. Fast estimates, which do not know the
-route's direction, use the price averaged over all headings.
+than one with the wind behind it.
+
+Fast estimates (bids, "can I reach a station from there?", "may I fly back
+to a hub?") do not know the route's direction. The agents decide with them
+and later check the exact plan against the same budget, so an estimate must
+not undercount a planned route by much (in the grid model it never does).
+Every estimate is multiplied by ``detour_factor`` (1.25); the per-cell price
+is therefore the larger of the heading average and ``1 / detour_factor`` of
+the dearest grid heading on layer 1: an estimated straight route on layer 1
+is never undercounted, whatever its direction, while a crosswind or
+downwind route is not priced as if it flew into the wind all the way.
 """
 
 from __future__ import annotations
@@ -83,11 +92,13 @@ class ContinuousEnergyModel(EnergyModel):
         self.t_takeoff = self.t_climb + cfg.max_climb / cfg.max_accel
         self._cell: dict[tuple, tuple[float, float]] = {}
         self._still: dict[tuple, float] = {}
-        # heading-averaged cell (fast estimates do not know the route's direction)
+        # (drag power, seconds) of a planned cell on layer 1: every heading (average) and the 4 grid ones
         n = 16
         legs = [self._leg(1, math.cos(2 * math.pi * k / n), math.sin(2 * math.pi * k / n)) for k in range(n)]
         self._avg_time = sum(t for _, t in legs) / n
         self._avg_drag_energy = sum(d * t for d, t in legs) / n
+        self._grid_legs = [self._leg(1, float(dx), float(dy)) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+        self._detour = cfg.detour_factor
 
     # ------------------------------------------------------------ building blocks
     def _leg(self, z: int, ux: float, uy: float) -> tuple[float, float]:
@@ -139,8 +150,11 @@ class ContinuousEnergyModel(EnergyModel):
 
     # ------------------------------------------------------ EnergyModel interface
     def move(self, payload: float = 0.0) -> float:
-        """One cell, averaged over headings."""
-        return (self._hover_p(payload) * self._avg_time + self._avg_drag_energy) * self.margin
+        """One cell for estimates: max(heading average, dearest grid heading / detour_factor), layer 1."""
+        h = self._hover_p(payload)
+        avg = h * self._avg_time + self._avg_drag_energy
+        worst = max((h + drag) * t for drag, t in self._grid_legs)
+        return max(avg, worst / self._detour) * self.margin
 
     def hover(self, payload: float = 0.0) -> float:
         return (self._hover_p(payload) + self._still_drag(1)) * self.tick * self.margin
@@ -184,5 +198,5 @@ class ContinuousEnergyModel(EnergyModel):
 
     def estimate(self, cells: float, payload: float = 0.0, takeoff: bool = True,
                  hover_ticks: int = 0, slack: float = 1.0) -> float:
-        """Fast estimate (bids, reaching a station): heading-averaged price plus one landing."""
+        """Fast estimate (bids, reaching a station): per-tick price (see ``move``) plus one landing."""
         return super().estimate(cells, payload, takeoff, hover_ticks, slack) + self.land(payload)

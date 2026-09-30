@@ -64,10 +64,19 @@ sub-steps of `physics_dt = 0.5` s. Order within a tick:
   ≈ 10.75 s with acceleration), the parcel winch (hover over the customer)
   and landing are never smoothed.
 * **Landing takes time.** A 30 m descent at 2 m/s takes ≈ 15.5 s, more than a
-  tick. In continuous mode the planner therefore appends `land_ticks = 2`
-  hover steps over the pad (tag `land_start` → `land`), which also reserves
-  the pad column until touch-down. Grid mode has `land_ticks = 0`, so its
-  plans are bit-for-bit the same.
+  tick. The strategic layer still lands a drone when it arrives over the pad
+  (as in grid mode); the physical descent then finishes during the next
+  ~1.7 ticks while the agent already counts the drone as landed.
+  `land_ticks` (default 0) can append extra hover steps over the pad (tag
+  `land_start` → `land`) to keep the pad's layer-1 cell reserved during the
+  descent, but that halves a pad's arrival capacity (§10).
+* **Vertiports with several touchdown spots.** Every hub and station cell
+  (100 m × 100 m) has `pad_spots = 4` touchdown spots at (±25 m, ±25 m) from
+  its centre, 50 m apart. A landing drone flies from the pad centre to a free
+  spot and descends there; a take-off starts from a free spot. Vertical
+  operations on different spots are outside each other's bubble, so a pad can
+  take one arrival per tick (as the reservation table allows) while earlier
+  arrivals are still descending and others are climbing out.
 * **Descents between layers** take 15 s instead of 10 s; the drone falls
   about 5 s behind and catches up horizontally (they are rare: drones spend
   1–3 % of their time above layer 1).
@@ -82,10 +91,12 @@ then a braking cap `|v_h| ≤ sqrt(2 · 3 m/s² · distance to the next planned
 stop)` so the drone stops smoothly at a pad or customer, and the speed limits.
 The dynamics limit the change of velocity to `max_accel · dt`.
 
-Phases: *ground* (parked), *take-off* (vertical climb; only when the pad
-column is clear), *fly* (track the reference), *winch* (hold), *land* (align
-over the pad, then descend at 2 m/s; only when the column below is clear),
-*hold* (no plan: hover at the centre of the held cell).
+Phases: *ground* (parked), *take-off* (vertical climb from a free spot, only
+when its column is clear and within `takeoff_window_s` = 3 s of the planned
+time, otherwise the agent repairs its plan), *fly* (track the reference),
+*winch* (hold), *land* (fly to a free touchdown spot at layer 1, then descend
+at 2 m/s, only when the column below is clear), *hold* (no plan: hover where
+it is).
 
 **Reporting back to the agent.** At a tick boundary the drone is *on plan* if
 it is within `track_tol_h` = 40 m horizontally and `track_tol_v` = 12 m
@@ -102,9 +113,18 @@ ported from RVO2-3D (half-space construction, 3-D linear program with the
 
 * **Anisotropic bubble.** ORCA needs a sphere, the bubble is a cylinder. The
   vertical axis is scaled by `sep_h / sep_v` (40/15 ≈ 2.67) so the bubble
-  becomes round; the ORCA radius is `orca_margin · sep_h` (1.25 · 40 = 50 m)
-  in that space. Adjacent flight layers (30 m apart = 80 m scaled) never
-  interact; the vertical speed limits become two extra LP half-spaces.
+  becomes round; the ORCA radius is `orca_margin · sep_h` (1.45 · 40 = 58 m)
+  in that space. `orca_margin` ≥ √2 makes the ORCA sphere contain the whole
+  cylinder (its rim at 40 m / 15 m is 56.6 m from the centre in scaled
+  space). Adjacent flight layers (30 m apart = 80 m scaled) never interact;
+  the vertical speed limits become two extra LP half-spaces.
+* **Buildings** within 60 m are static obstacles: half-spaces that keep a
+  drone from closing in on a building box faster than `(distance − 8 m) /
+  4 s`. A **floor** 8 m below layer 1 does the same for the ground: only a
+  drone descending in its own touchdown column goes lower. These and the
+  speed limits stay hard in the fallback program (as in RVO2's 2-D version);
+  only the drone-drone constraints are relaxed. A touch-down counts only
+  within 8 m of the drone's assigned spot.
 * **Neighbours** are found with a spatial hash (buckets of `sense_radius_m` =
   300 m; a drone looks at 3 × 3 buckets), at most `orca_max_neighbors`
   nearest, time horizon `orca_horizon_s` = 8 s.
@@ -115,8 +135,11 @@ ported from RVO2-3D (half-space construction, 3-D linear program with the
 * **Vertiport rules.** A drone takes off only when no airborne drone is inside
   the bubble around the pad column up to layer 1; it starts or continues a
   landing descent only when nobody is below it inside the bubble.
-* **Symmetry breaking.** A small deterministic "keep right" rotation of the
-  preferred velocity when a neighbour is close, the usual fix for perfectly
+* **Symmetry breaking.** A small deterministic "keep right" rotation (8°) of
+  the preferred velocity when a neighbour is nearly head-on, and a strong one
+  (75°) when a drone is nearly stopped with neighbours ahead, so that a
+  symmetric jam turns into a roundabout; an exactly head-on pair (degenerate
+  cone projection) steps out sideways. This is the usual fix for perfectly
   symmetric head-on encounters.
 * **Deadlocks.** If a drone has been off plan for `stall_s` = 30 s without
   getting closer to its goal, the tactical layer hands it back to the
@@ -138,7 +161,8 @@ A smooth, seeded field (`wind.py`, own random stream):
 8 modes with random directions `d_i`, wavelengths 400–2000 m and periods
 20–120 s; amplitudes give an RMS gust of `wind_gust`. `profile(z) = (z /
 30 m)^0.14` (power-law shear). Presets: calm (0, 0), moderate (5 m/s,
-1.5 m/s RMS, the default), strong (10 m/s, 3 m/s RMS).
+1.5 m/s RMS, the default), strong (8 m/s, 2.5 m/s RMS), severe (10 m/s,
+3 m/s RMS).
 
 Coupling: drag pulls the drone's velocity toward the air at rate `D =
 wind_response` (0.25 /s); the flight controller compensates with a wind
@@ -169,10 +193,23 @@ same power model and the known wind forecast (mean wind + RMS gust), so bids,
 battery thresholds and the **predictive invariant** stay meaningful:
 
 * `plan_energy` prices every planned step with its real direction against the
-  forecast wind (headwind cells cost more, tailwind cells less); landing
-  steps are priced as hovering, which over-counts the actual descent;
-* fast estimates (bids, "reach a station") use the direction-averaged price
-  plus one landing, with the usual detour factor;
+  forecast wind (headwind cells cost more, tailwind cells less). Straight
+  into a strong wind the airspeed limit, minus one RMS gust of margin, stops
+  the drone from holding 10 m/s over the ground, so the cell is priced at
+  the slower speed it can actually fly (e.g. 4.1 units instead of 2.9 at
+  10 m/s); `energy_margin` (default 1.0) can inflate all prices;
+* fast estimates (bids, "reach a station", "may I fly back to a hub?") do not
+  know the route's direction, yet the agents later check the exact plan
+  against the same budget, so an estimate must not undercount a planned
+  route. Every estimate is multiplied by the detour factor (1.25); the
+  per-cell price is the larger of the heading average and 1/1.25 of the
+  dearest grid heading on layer 1 (calm 1.00, moderate 1.31, strong 1.86,
+  severe 3.27 units), so an estimated straight route on layer 1 is never
+  undercounted. One landing is added to every estimate;
+* the demand model's service area ("customers too far away cannot order by
+  drone") additionally requires, in continuous mode, that a drone on a fresh
+  pack at the station nearest the hub could bid for the order in the
+  forecast wind, so no order is generated that no drone could accept;
 * the four enforcement points of §4.4 are unchanged; the battery is charged
   with the energy integrated by the physics, and the per-tick emergency check
   catches any drift between forecast and actual wind.
@@ -195,3 +232,42 @@ and delta-encoded in one flat integer array; LoS episodes, ORCA episodes,
 collisions and the wind at the city centre as small lists. Viewers
 interpolate between samples; replays stay under 5 MB. Grid replays have no
 track and play exactly as before.
+
+## 10. What changed while building it
+
+The plan above is the final design. These parts changed after measuring them
+(all figures from single runs or small seed sets used during development):
+
+* **Pads.** With one touchdown point per pad and the landing reserved for
+  two extra ticks, the pad became the bottleneck: in calm air at 24 drones
+  (seed 2) the average delivery time rose from 26 ticks (grid) to 66.
+  Without the pad rules, a 32-drone run (seed 2) had 87–101 contacts at the
+  pads (take-offs and landings in the same column). Four touchdown spots per
+  pad fixed both, and the extra landing reservation was then dropped
+  (`land_ticks = 0`): with one extra tick a 32-drone run still lost a drone
+  that circled a congested station for 27 ticks waiting for a landing slot.
+* **ORCA radius.** At `orca_margin = 1.25` the ORCA sphere did not cover the
+  bubble's rim, and 32-drone runs had ≈ 54 losses of separation each; at 1.45
+  it was below one.
+* **Energy pricing.** Priced with the heading-averaged wind and without the
+  airspeed limit, upwind legs in strong wind cost ≈ 20 % more than planned
+  and drones ran out of battery; with the slower upwind speed priced in, no
+  drone was lost. A 10 % extra planning margin made the fleet worse, not
+  safer (more false-alarm diversions, more refused orders), so it defaults to
+  1.0.
+* **Estimates.** Heading-averaged fast estimates are not a bound: in 10 m/s
+  wind a drone at 99 % decided to fly upwind to a hub, failed the per-tick
+  battery check straight after take-off, diverted, swapped its pack and
+  repeated this about 50 times (seed 9), and one 24-drone run lost a drone.
+  Estimates that bound the dearest heading on every layer (5.8 units per cell
+  at 10 m/s) grounded the fleet (6 of 842 orders delivered) and cost 10 % of
+  the orders even in moderate wind. The final rule (above) keeps the bound
+  for straight layer-1 routes through the detour factor.
+* **Service area.** With direction-blind estimates, one 37-cell order with a
+  2 kg parcel (seed 1, moderate wind) could not be accepted by any drone; the
+  wind-aware service area stops such orders from being generated.
+* **Crowded hubs.** A drone waiting for a free touchdown spot at a 32-drone
+  hub was pushed down by ORCA until it touched the ground outside the pad;
+  the floor and the touch-down radius prevent that.
+* **Deadlocks.** The symmetric "swap across a circle" test jammed with only
+  the small keep-right bias; the stronger bias for stopped drones resolves it.

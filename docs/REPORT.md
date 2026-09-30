@@ -10,6 +10,14 @@
 > in which a planner bug, now fixed, trapped a drone in a no-fly zone; §9);
 > §6.6 varies the number of layers. Runs can be replayed in 2D or in 3D (§9).
 
+> **Update: continuous 3-D flight.** With `--motion continuous` drones fly in
+> metres and seconds instead of hopping between cells: the space-time plans
+> become 4-D waypoints for a path follower, 3-D ORCA keeps drones apart, a
+> wind field pushes them and a power model drains their batteries (§4.6).
+> §6.7 compares strategic reservations, tactical ORCA and both, grid against
+> continuous flight, and the fleet in rising wind. Grid mode, the default,
+> is unchanged.
+
 ---
 
 ## 1. Problem
@@ -50,10 +58,10 @@ execution noise, and **decentralised** wherever the information is.
 |---|---|---|
 | Observability | **partial** | a drone knows other drones only through reservations and broadcasts; station queues through (one-tick-stale) status messages; future no-fly zones only once announced |
 | Agents | **multi-agent, cooperative** | shared goal, but competition for airspace, parcels and battery packs |
-| Determinism | **stochastic** | Poisson order arrivals, wind gusts (a moving drone is held back with probability *p*) |
+| Determinism | **stochastic** | Poisson order arrivals, wind gusts (grid: a moving drone is held back with probability *p*; continuous: a correlated wind field) |
 | Episodic? | **sequential** | a battery decision now constrains every later mission |
 | Dynamics | **dynamic** | the world changes while agents deliberate (orders, zones, other drones) |
-| State/time | **discrete** | grid cells, 10-second ticks |
+| State/time | **discrete** (grid mode) or **continuous** | grid cells and 10-second ticks; in continuous mode positions, velocities and time are continuous (0.5 s physics steps) while agents still decide every 10 s |
 | Model | **known** | the energy model and map are known to the agents |
 
 ## 3. Architecture
@@ -70,6 +78,11 @@ flowchart LR
     DR -->|intents| SAFE[Reactive right-of-way layer]
     SAFE --> PHY[Physics: motion, energy,<br/>collision detector]
 ```
+
+In continuous mode (§4.6) the reactive right-of-way layer and the cell-move
+physics are replaced by the tactical layer (path following + 3-D ORCA) and
+continuous physics in 0.5 s sub-steps; everything to the left of them is
+unchanged.
 
 All inter-agent interaction is **message passing** with FIPA-ACL performatives
 (`CFP, PROPOSE, REFUSE, ACCEPT_PROPOSAL, REJECT_PROPOSAL, REQUEST, AGREE,
@@ -271,6 +284,122 @@ that test, all 310 runs of the original experiment suite were re-run with one
 layer and compared with the published `results/experiments.json`: 310 of 310
 were identical. (A later, separate bug fix changed 2 of them; see §9.)
 
+### 4.6 Continuous flight: hierarchical planning with ORCA
+
+With `SimConfig.motion = "continuous"` (`--motion continuous`) drones no
+longer hop between cells: they have a position and a velocity in metres and
+seconds. Nothing above changes; what changes is how a committed plan is
+flown. The design follows the split used in drone traffic management (UTM):
+a **strategic** layer agrees conflict-free flight plans before they are
+flown, and a **tactical** layer detects and avoids conflicts on board. The
+full design is in [continuous_design.md](continuous_design.md).
+
+| layer | runs every | role |
+|---|---|---|
+| agents (unchanged) | 10 s tick | auctions, battery decisions, swap stations, messages |
+| strategic | 10 s tick | space-time A* + reservation table (§4.1, §4.5) → 4-D waypoints: cell centres with target times |
+| tactical | 0.5 s | path following, 3-D ORCA, vertiport rules |
+| physics | 0.5 s | point-mass dynamics, wind field, power model, separation monitor |
+
+**Units and limits.** A cell is 100 m, layer z flies at 30·z m and a tick is
+10 s, so plans assume 10 m/s. A drone is a point mass of radius 0.6 m that
+may fly 15 m/s horizontally, climb 3 m/s, descend 2 m/s and accelerate
+4 m/s²; the 5 m/s of spare speed lets it catch up after a delay. Physics and
+avoidance run 20 sub-steps per tick.
+
+**From plans to motion.**
+
+* A committed plan becomes a time-parameterised reference through its cell
+  centres. Optional any-angle smoothing shortcuts it by line of sight, but a
+  shortcut is kept only if it clears every building box by 10 m and stays
+  within 0.36 cells of where the plan put the drone at every half tick. The
+  drone therefore stays inside the space-time tube it reserved, and the
+  strategic guarantee survives: corners are rounded, zig-zags become
+  diagonals.
+* A path follower flies it, `v = r'(t) + 0.4 (r(t) − p)`, capped by a braking
+  curve so that it stops smoothly at pads and customers.
+* Take-off, the parcel winch and landing stay vertical. A 30 m descent at
+  2 m/s takes 15 s, longer than a tick, and one landing column per pad could
+  not keep up with 24–32 drones. Every hub and station therefore has **four
+  touchdown spots**, 50 m apart, each with its own column (a vertiport). A
+  drone takes off only when its spot's column is clear and descends only
+  when nobody is below it.
+* At every tick the drone is reported back to its agent as a cell: the
+  planned one if it is within 40 m horizontally and 12 m vertically of it,
+  otherwise the cell it is in. The agent's existing logic (+1-tick repair,
+  re-plan, hold) does the rest, exactly as after a wind gust in grid mode. A
+  drone that stays off plan for 30 s without getting closer to its goal is
+  handed to the hold → yield → escalation logic of §4.2. (In the 250
+  continuous runs of §6.7 this deadlock hand-back never fired: the repairs
+  and re-plans were enough.)
+
+**Tactical avoidance: 3-D ORCA.** Optimal Reciprocal Collision Avoidance
+(van den Berg et al., 2011), ported from the RVO2-3D library. Each neighbour
+defines a half-space of velocities that stay collision-free for τ = 8 s, and
+a small 3-D linear program picks the permitted velocity closest to the
+preferred one (or, if there is none, the one that violates the worst
+constraint least).
+
+* The separation bubble is a cylinder (40 m sideways, 15 m up and down);
+  ORCA needs a sphere. The vertical axis is scaled by 40/15 and the ORCA
+  radius set to 1.45 × 40 m, just over √2 × 40 m, so the sphere contains the
+  whole cylinder. Drones on adjacent layers (30 m apart) never interact.
+* Neighbours come from a spatial hash with 300 m buckets, so there is no
+  loop over all pairs. Cooperative drones share the avoidance. A drone
+  lowering a parcel or in its take-off or landing column does not react, and
+  the others take full responsibility.
+* Buildings within 60 m and a floor 8 m below layer 1 are hard constraints.
+  A deterministic keep-right bias breaks perfectly symmetric head-on
+  encounters and jams.
+* Pure-Python ORCA is fast enough, because encounters are sparse, so the
+  planned fallback to sampled-velocity RVO was not needed (compute times in
+  §6.7).
+
+**Wind.** A seeded field: a mean wind with a power-law height profile plus
+eight sinusoidal gust modes (wavelengths 0.4–2 km, periods 20–120 s) scaled
+to the configured RMS gust. Drag pulls the drone's velocity toward the air;
+its controller cancels the wind it has estimated over the last few seconds,
+so steady wind is compensated and gusts push it. The airspeed is capped at
+20 m/s, so straight into a strong wind a drone is slower than planned. This
+replaces the i.i.d. "held back a tick" gusts. Presets: calm; moderate, 5 m/s
+with 1.5 m/s RMS gusts (the default); strong, 8 m/s with 2.5 m/s; severe,
+10 m/s with 3 m/s.
+
+**Energy.** Power in energy units per second is
+
+> `P = 0.07 · (m / 6 kg)^1.5 + 3·10⁻⁵ · |v_air|³ + 2.83·10⁻⁴ · m · g · v_z` (at least 40 % of hover)
+
+In still air one 100 m cell at 10 m/s costs exactly 1.0, a tick of hovering
+0.7, climbing a layer 1.21 and descending one 0.55. These are the grid
+model's units, so every battery threshold keeps its meaning. The agents'
+energy model prices each planned step with its direction against the
+forecast wind, including the slower upwind speed, and the battery is drained
+by the energy the physics integrates. Wind raises two issues for the
+predictive invariant of §4.4:
+
+* Fast estimates (bids, "can I reach a station from there?") do not know a
+  route's direction, but they are later checked against the exact plan. During
+  development, estimates that undercounted upwind routes produced a
+  divert-and-swap loop and one lost drone. The per-cell estimate is now the
+  larger of the heading average and 1/1.25 of the dearest heading on layer 1
+  (1.25 is the detour factor every estimate already carries): calm 1.00,
+  moderate 1.31, strong 1.86 and severe 3.27 units per cell. A straight
+  layer-1 route is therefore never undercounted, whatever its direction.
+* The service area ("customers too far away cannot order by drone") also
+  requires, in continuous mode, that a drone with a fresh pack at the station
+  nearest the hub could bid for the order in the forecast wind.
+
+**Measured.** Collisions (3-D distance under 1.2 m); losses of separation
+(LoS: another drone inside the bubble), counted as events and as
+pair-seconds; the minimum separation; the tracking error against the
+reference; ORCA interventions per flight hour. The replay records every
+drone's position every 2 s.
+
+**Grid mode is untouched.** The 78 earlier tests pass unchanged, and
+re-running two seeds of every grid configuration (86 runs across the seven
+grid experiments) reproduces every non-timing metric in
+`results/experiments.json` exactly.
+
 ## 5. Experimental method
 
 * **Scenario:**
@@ -289,7 +418,19 @@ were identical. (A later, separate bug fix changed 2 of them; see §9.)
   drone), with 6 spare packs per station. §6.4 shows that the swap queue
   otherwise dominates delivery times at these fleet sizes and would hide what
   happens in the air.
-* **Runtime:** the whole suite (430 simulations) runs in ≈3 minutes on a laptop.
+* **Continuous flight (§6.7):** the default configuration (3 layers) flown in
+  metres and seconds. The tactical experiment crosses three avoidance
+  strategies with calm, moderate (5 m/s) and strong (8 m/s) wind at 12 drones
+  and at 24 drones (0.35 orders/tick, 6 spare packs, as in §6.6). The motion
+  experiment compares grid and continuous flight at the default
+  configuration and at 32 drones, and the wind experiment runs the full
+  system from calm to severe (10 m/s) wind. The city and seeds are the same
+  as in grid mode. In calm and moderate wind the order streams are identical
+  too; in strong and severe wind the continuous service area is smaller
+  (§4.6), out-of-range customers are re-drawn, and the order stream differs.
+* **Runtime:** the grid suite (430 simulations) runs in ≈3 minutes on a
+  laptop; the continuous-flight sections (270 simulations) in ≈5 minutes
+  (294 s), one simulation after another (Python 3.14, Apple silicon).
 
 ## 6. Results
 
@@ -481,6 +622,138 @@ was delivered.
   "5 layers, free, 24 drones" runs hovered in a zone until its battery ran out.
   That planner bug is fixed in this version (§9).
 
+### 6.7 Continuous flight
+
+Continuous flight (§4.6) with the default configuration and 3 layers, same
+cities and seeds as above, 10 seeds per row. Standard deviations are in
+`results/experiments.md`. "Reservations only" flies the strategic plans with
+no ORCA and no vertiport clearance rules. "ORCA only" flies without a
+reservation table (coordination `none`), so plans ignore each other and only
+the tactical layer separates drones.
+
+**Strategic reservations vs tactical ORCA.**
+
+![tactical](../results/figures/tactical.svg)
+
+| configuration | collisions | LoS events | LoS pair-s | min sep (m) | avg time | on time | energy/delivery | s per run |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| reservations only, calm (12) | 0 | 28.0 | 109 | 18.6 | 31.2 | 99.3% | 50.5 | 0.51 |
+| ORCA only, calm (12) | 0 | 0.4 | 2.8 | 20.0 | 31.6 | 99.2% | 50.6 | 0.58 |
+| reservations + ORCA, calm (12) | **0** | **0.1** | 0.1 | **25.1** | 31.7 | 99.2% | 50.9 | 0.62 |
+| reservations only, moderate (12) | 0 | 27.5 | 113 | 18.6 | 31.7 | 99.3% | 58.4 | 0.78 |
+| ORCA only, moderate (12) | 0.1 | 0.8 | 8.0 | 15.8 | 31.1 | 99.5% | 58.2 | 0.83 |
+| reservations + ORCA, moderate (12) | **0** | **0** | 0 | **25.1** | 32.5 | 99.3% | 59.1 | 0.90 |
+| reservations only, strong (12) | 0 | 33.4 | 133 | 18.6 | 29.1 | 99.2% | 67.6 | 0.56 |
+| ORCA only, strong (12) | 0 | 0.6 | 3.9 | 18.3 | 29.8 | 99.0% | 68.6 | 0.65 |
+| reservations + ORCA, strong (12) | **0** | **0.1** | 0.2 | **23.4** | 28.5 | 99.1% | 68.1 | 0.66 |
+| reservations only, calm (24) | 0 | 123 | 501 | 15.5 | 28.3 | 99.8% | 49.4 | 1.17 |
+| ORCA only, calm (24) | 0.3 | 4.2 | 27.6 | 7.3 | 28.2 | 99.9% | 50.4 | 1.61 |
+| reservations + ORCA, calm (24) | **0** | **0.3** | 0.4 | **22.4** | 29.4 | 99.9% | 50.9 | 1.70 |
+| reservations only, moderate (24) | 0 | 126 | 500 | 16.4 | 28.7 | 99.9% | 58.1 | 1.44 |
+| ORCA only, moderate (24) | 0.2 | 4.1 | 23.9 | 6.8 | 28.0 | 99.9% | 59.1 | 1.75 |
+| reservations + ORCA, moderate (24) | **0** | **0.8** | 1.1 | **22.2** | 29.9 | 99.9% | 60.0 | 1.93 |
+| reservations only, strong (24) | 0 | 149 | 598 | 16.2 | 27.3 | 99.8% | 66.5 | 1.26 |
+| ORCA only, strong (24) | 0 | 4.4 | 27.2 | 3.8 | 26.5 | 99.9% | 67.3 | 1.60 |
+| reservations + ORCA, strong (24) | **0** | **0.6** | 0.8 | **22.1** | 30.8 | 99.4% | 69.8 | 1.66 |
+
+LoS = loss of separation (another drone within 40 m horizontally *and*
+15 m vertically), counted as events and as pair-seconds; min sep = the
+closest two airborne drones came in a run (mean over runs). Wind: calm;
+moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
+
+* **Both layers together are needed, and together they work.** Reservations
+  + ORCA had **0 collisions in all 60 runs** and 19 losses of separation in
+  total (16 of the 60 runs had any; at most 0.8 per run on average). No two
+  drones ever came closer than 21.7 m, and no drone ran out of battery or
+  entered a building.
+* **Reservations alone never collided, but they do not keep the bubble.**
+  Every one of those 60 runs lost separation, 27–33 times per run at 12
+  drones and 123–149 at 24, with the closest pair 6.5 m apart. In seeds 1–5,
+  98 % of these events happened within 100 m of a hub or station: a drone
+  passing a pad at layer 1 while another descends onto it or climbs out of
+  it. The 100 m × 10 s reservation grid cannot see those 15-second vertical
+  manoeuvres, and without the tactical layer nothing else separates them.
+* **ORCA alone keeps the bubble most of the time but is not safe.** Without
+  plan-level deconfliction, drones converge on the same hubs and crossings
+  at the same time, and with 4 m/s² of acceleration ORCA cannot always get
+  them apart: **6 collisions in 60 runs** (one each in 6 runs), 0.4–4.4
+  losses of separation per run, a closest approach of 0.02 m. It also offers
+  no deadlock guarantee; the reservation table does.
+* **The tactical layer is cheap.** On top of reservations, ORCA adds at most
+  3.5 ticks (13 %, strong wind at 24 drones) to the average delivery time and
+  at most 3.3 units (5 %) of energy per delivery. It intervenes 23–26 times
+  per flight hour at 12 drones and 44–50 at 24 drones. The planned route is
+  followed to 3–4.5 m on average (95 % of the time within 20–22 m).
+* **Wind costs energy, not separation.** From calm to strong wind the energy
+  per delivery rises by about a third (50.9 → 68.1 at 12 drones with both
+  layers), while losses of separation stay at 0–0.8 per run.
+* **Compute.** A continuous run took 0.5–1.9 s on average per configuration
+  (never more than 3.1 s) at 12 and 24 drones, and 3.0 s (at most 4.0 s) at
+  32 drones (next table), against targets of 5 s and 20 s. Pure-Python ORCA
+  was fast enough, so no fallback to sampled-velocity RVO was needed.
+
+**Grid cells vs continuous flight.**
+
+![motion](../results/figures/motion.svg)
+
+| configuration | delivered | avg time | p95 time | on time | energy/delivery | swaps | collisions | s per run |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 0 | 0.24 |
+| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 0 | 0.62 |
+| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 0 | 0.89 |
+| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 0 | 0.93 |
+| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 0 | 3.03 |
+
+The order streams are identical in these rows (the wind-aware service area
+removed no order in calm or moderate wind), so each comparison is exactly
+paired.
+
+* **Flying the plans for real does not make deliveries slower.** In calm air
+  continuous flight averages 31.7 ticks against 34.6 for cell hopping, with
+  the same energy (50.9 vs 51.4). That is about what the grid model achieves
+  without its random gusts (32.0 ticks in §6.5, one layer): continuous drones
+  make up small delays at up to 15 m/s instead of losing whole ticks.
+* **Moderate wind costs energy.** At the default 5 m/s the energy per
+  delivery is 15 % above the grid model (59.1 vs 51.4) and the fleet swaps
+  21 % more often (54.0 vs 44.6), while delivery time stays within noise
+  (32.5 vs 34.6 ticks).
+* **At 32 drones** continuous flight is 12 % slower (34.2 vs 30.5 ticks,
+  p95 66.5 vs 58.2) and uses 25 % more energy per delivery, with 0
+  collisions, 22 losses of separation in the 10 runs (2.2 per run) and no
+  pair closer than 21.4 m.
+
+**How much wind?**
+
+![wind](../results/figures/wind.svg)
+
+| wind (mean / RMS gust) | orders | delivered | avg time | energy/delivery | flight h | LoS events | min sep (m) | track err (m) | drones lost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| calm | 84.2 | 100% | 31.7 | 50.9 | 10.9 | 0.1 | 25.1 | 3.1 | 0 |
+| moderate, 5 / 1.5 m/s | 84.2 | 100% | 32.5 | 59.1 | 11.0 | 0 | 25.1 | 3.2 | 0 |
+| strong, 8 / 2.5 m/s | 82.5 | 100% | 28.5 | 68.1 | 10.3 | 0.1 | 23.4 | 3.9 | 0 |
+| severe, 10 / 3 m/s | 80.1 | **20.6%** | 93.8 | 49.3 | 1.3 | 0 | 65.2 | 6.1 | 0 |
+
+(Reservations + ORCA, 12 drones; per-run means.)
+
+* **Up to strong wind the full system delivers every order** it accepts,
+  with at most 0.1 losses of separation per run and no drone lost. Energy per
+  delivery rises by 16 % (moderate) and 34 % (strong), and gusts widen the
+  tracking error from 3.1 to 3.9 m. In strong wind the smaller service area
+  re-draws customers that are out of range, so the order stream differs from
+  the grid one (825 orders over the 10 seeds instead of 842) and leans toward
+  shorter trips, which is why the average delivery time drops.
+* **Severe wind (10 m/s) shows where the energy-safe fleet stops.** No drone
+  is lost and no emergency occurs, but only 20.6 % of the orders are
+  delivered (159 of 801), and the fleet flies 1.3 hours per run instead of
+  11. The fast estimate prices every cell as if it might be flown into the
+  wind (3.27 units per cell, times 1.25), so most orders look beyond a
+  pack's range to a drone that is not freshly charged. In seeds 1–3, idle
+  drones waited at 77–89 % charge while more than 12 orders were pending for
+  366–396 of the first 500 ticks. The Contract Net window (12 orders,
+  earliest deadline first) filled with orders nobody bid for, and orders
+  behind them waited. The drones are safe, but a direction-blind estimate
+  cannot tell a downwind order from an upwind one (§8).
+
 ## 7. Discussion: what the case study shows about AI techniques
 
 * **Search is the workhorse.** A* with an admissible, domain-exact heuristic,
@@ -507,6 +780,24 @@ was delivered.
   layers were barely used. A structural rule like the heading rule trades
   efficiency for fewer interactions. Whether that pays off depends on how many
   conflicts there are to remove, which is again an empirical question.
+* **Deliberation and reaction again, one level down.** In continuous flight
+  the same lesson reappears between the strategic and tactical layers
+  (§6.7). Reservations alone never collided but lost separation in every
+  run, almost all of it at the pads, where their 100 m × 10 s abstraction
+  cannot see 15-second vertical manoeuvres. ORCA alone kept the bubble
+  better but collided in 6 of 60 runs, because nothing stopped drones from
+  converging on the same place at the same time. Together they had 0
+  collisions in 60 runs, and the tactical layer added at most 13 % to
+  delivery time. A good abstraction is safe on its own terms; the hierarchy
+  covers what it abstracts away.
+* **Keep approximations consistent, not just conservative.** The agents
+  decide with fast estimates and later check exact plans. In wind a
+  heading-averaged estimate was cheaper than the exact upwind plan, and one
+  drone flipped back and forth between "I can go" and "emergency, divert"
+  about 50 times. Pricing every estimated cell as if it might be flown
+  upwind fixed it, but in severe wind it also grounds most of the demand.
+  The real fix is a better model in the estimate (the route's direction),
+  not a larger margin.
 
 ## 8. Limitations and future work
 
@@ -519,15 +810,23 @@ was delivered.
 | Perfect, lossless communication | message loss and latency; heartbeat time-outs; re-auction on silence |
 | Awards are final; single-parcel missions | task re-allocation / decommitment; multi-drop routing (VRP with energy constraints) |
 | Swap stations are passive FIFO servers | stations that schedule charging and reserve packs; demand-aware pre-positioning of idle drones (learning from order history) |
-| Wind is i.i.d. per move | spatially correlated wind fields with energy effects |
+| Grid mode's wind is i.i.d. per move | continuous mode has a correlated field with energy effects (§4.6); the grid model could adopt its per-direction energy prices |
+| Fast energy estimates do not know a route's direction, so in wind they must assume an upwind trip: in severe wind the fleet delivers 21 % of orders while safe (§6.7) | pass start and destination to the estimate (direction-aware bids and station checks); wind-aware routing that minimises energy, not arrival time |
+| The Contract Net window (12 orders, earliest deadline first) fills with orders no drone can take (severe wind, §6.7) | skip orders that drew no bid for a while, or let the service area follow the live forecast |
+| A few losses of separation remain with both layers (0.3–0.8 per run at 24 drones, 2.2 at 32) | strategic reservation of touchdown spots and departure slots (vertiport scheduling), published holding points near hubs |
+| ORCA without reservations collides occasionally (6 of 60 runs) | keep strategic deconfliction; if flying without it, add a longer horizon, acceleration-aware (non-holonomic) velocity obstacles, or priority rules |
+| Point-mass physics: no attitude dynamics, no sensing noise or latency in the neighbours ORCA sees, no vertical gusts | a multirotor model with thrust and tilt limits, ADS-B-like delayed and noisy neighbour states, 3-D turbulence |
+| The power model has no acceleration term and no translational lift (real multirotors often need less power at moderate speed than in a hover) | a blade-element / momentum-theory power model; fit its constants to a real airframe |
 
 ## 9. How to reproduce
 
 ```bash
-python3 -m unittest discover -s tests -t .      # 78 tests: planner, reservations, traffic, agents, layers, replay, system, regression
+python3 -m unittest discover -s tests -t .      # 111 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous
 python3 run_experiments.py --seeds 10           # tables -> results/experiments.md, charts -> results/figures/
 python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D)
 python3 run_simulation.py --view 3d             # the same run in 3D -> results/replay_3d.html
+python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html
+python3 run_experiments.py --only tactical motion wind   # §6.7 only; the other sections keep their results
 ```
 
 **Replay viewers.** Both viewers share one core, so the timeline, playback
@@ -551,6 +850,14 @@ controls, fleet list, follow card and plain-language event log are identical.
   and opens the follow card. Instanced meshes keep 32 drones at a handful of
   draw calls, the camera fits the city to the screen at phone width, and both
   viewers have light and dark themes.
+* **Continuous-flight replays** add each drone's position every 2 s (whole
+  metres, delta-encoded in one integer array per drone), interpolated
+  between samples. The 2D view shows the drones where they really are, with
+  their height in metres, and a wind tile. The 3D view flies them smoothly,
+  turned into their direction of travel, with optional velocity arrows (8 s
+  ahead) and separation bubbles, a compass for the wind, and a red link and
+  "too close" label for every loss of separation. A default continuous
+  replay is about 0.9 MB, a 32-drone one under 2 MB.
 
 **Fix found by the layer experiment.** A drone held by traffic inside a
 zone's footprint when the zone started could not plan at all. Every zone cell,
@@ -582,3 +889,5 @@ reproduces the metrics recorded before layers were added.
 * S. Russell, P. Norvig. *Artificial Intelligence: A Modern Approach* (agents, PEAS, environment types, search).
 * M. Wooldridge. *An Introduction to MultiAgent Systems* (BDI, hybrid architectures, auctions).
 * FIPA (2002). *ACL Message Structure Specification.*
+* J. van den Berg, S. J. Guy, M. Lin, D. Manocha (2011). *Reciprocal n-Body Collision Avoidance.* Robotics Research, Springer (ORCA; the RVO2 and RVO2-3D libraries).
+* P. Kopardekar et al. (2016). *Unmanned Aircraft System Traffic Management (UTM) Concept of Operations.* AIAA Aviation Forum (strategic vs tactical deconfliction).

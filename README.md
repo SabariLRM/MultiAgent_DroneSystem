@@ -84,14 +84,18 @@ python3 run_simulation.py --motion continuous --coordination none  # ORCA only, 
 python3 run_simulation.py --motion continuous --cruise-layer 0  # no cruise altitude: drones stay low
 ```
 
-From the command line, continuous runs **cruise over the buildings**: the
-planner charges extra for every cell flown below the top layer (90 m), so on
-longer trips drones climb out of the street canyons, cross the city above
-most roofs and descend near their destination; short hops stay low.
-`--cruise-layer 2` cruises at 60 m and `--cruise-layer 0` turns it off. The
-climbs cost time and energy (about 60 % longer deliveries at 90 m, 22 % at 60
-m; [report §6.7](docs/REPORT.md#67-continuous-flight)), so the experiments,
-and `SimConfig` itself, keep it off unless asked.
+From the command line, continuous runs **cruise at 60 m and climb over
+buildings**: the cruise height is measured above whatever is below the
+drone, so it flies at 60 m over the streets and rises to 90 m to cross a
+building, then comes back down. The planner also prefers the straight line
+to the destination, so drones fly across the city over the buildings in
+their way instead of following the streets around them; only towers that
+reach 90 m are flown around. When a drone crosses a building it is at
+90 m 82 % of the time. `--cruise-layer 3` cruises at 90 m everywhere and
+`--cruise-layer 0` turns it off. The climbs cost time and energy (30 %
+longer deliveries at 60 m, 80 % at 90 m; [report
+§6.7](docs/REPORT.md#67-continuous-flight)), so the experiments, and
+`SimConfig` itself, keep it off unless asked.
 
 In continuous mode every drone has a position and velocity in metres and
 seconds (physics every 0.5 s, agents still decide every 10 s), obeys speed
@@ -110,10 +114,10 @@ translucent "curtain" from its flight path down to the ground over the last
 minute and along its booked route, so every climb and descent is visible. As before, **3D replays need an internet connection** to load three.js;
 2D replays work offline. Design: [docs/continuous_design.md](docs/continuous_design.md).
 Ready-made continuous replays are in `results/`: `replay_continuous.html`
-(default run, cruising at 90 m; `_3d` for 3D), `replay_continuous_32_drones*.html`, and
+(default run; `_3d` for 3D), `replay_continuous_32_drones*.html`, and
 `replay_continuous_reservations_only_3d.html`, reservations without ORCA,
 where the red links show the losses of separation at the pads. All of them
-cruise at 90 m. Every saved replay has its messages in the **Messages between
+cruise at 60 m and climb over buildings. Every saved replay has its messages in the **Messages between
 the agents** panel; `results/replay_messages.txt` and
 `results/replay_continuous_messages.txt` are the full logs of the two default
 runs.
@@ -136,7 +140,7 @@ python3 run_experiments.py
 python3 run_experiments.py --only tactical motion wind   # just the continuous-flight sections (~6 minutes)
 ```
 
-Run the test suite (125 unit + integration tests, about 10 s):
+Run the test suite (127 unit + integration tests, about 10 s):
 
 ```bash
 python3 -m unittest discover -s tests -t .
@@ -201,7 +205,8 @@ docs/continuous_design.md design of the continuous flight mode (units, controlle
 | `wind_mean` / `wind_gust` | 5 / 1.5 | continuous: mean wind and RMS gust (m/s) at 30 m; presets in `wind.py` |
 | `sep_h` / `sep_v` | 40 / 15 | continuous: separation bubble (m) |
 | `pad_spots` | 4 | continuous: touchdown spots per hub or station |
-| `cruise_layer` | 0 | layer drones prefer for the cruise (0 = off; `run_simulation.py --motion continuous` uses the top layer) |
+| `cruise_layer` | 0 | cruise this many layers above the street or roof below (0 = off; `run_simulation.py --motion continuous` uses 2: 60 m, 90 m over buildings) |
+| `cruise_penalty` / `cruise_high_penalty` / `cruise_line_penalty` | 2.5 / 0.25 / 1.0 | planning cost per cell and layer below / above that height, and per cell off the straight line |
 | `record_messages` | `False` | keep the plain-English message log (`run_simulation.py` turns it on) |
 
 Scale: one cell ≈ 100 m, one layer ≈ 30 m, one tick ≈ 10 s, cruise ≈ 36 km/h

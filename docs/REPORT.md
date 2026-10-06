@@ -292,18 +292,35 @@ one layer ≈ 30 m).
   turn costs a layer change. With one layer the rule has no even layer to use
   and falls back to "free".
 * **Cruise altitude (optional, off by default).** With `cruise_layer = k`
-  every horizontal move below layer k costs the planner `cruise_penalty`
-  (0.6) extra per layer below it. A* then trades arrival time for height:
-  longer trips climb over the buildings, cross at layer k and descend near
-  the destination, while short hops stay low. A 10-cell trip at layer 1
-  costs 10 + 12 = 22 against 4 vertical moves + 10 = 14 at layer 3, so it
-  climbs; a 2-cell hop costs 4.4 low against 6 high, so it stays down. Costs
-  only grow, so the heuristic stays admissible and the reservation table
-  still rules out every conflict. Parcels are still lowered from layer 1.
-  `run_simulation.py --motion continuous` cruises at the top layer by
-  default, because that is what a real delivery drone over a city does and
-  what the viewers should show; the experiments keep it off unless a row
-  says otherwise (§6.7).
+  drones prefer to fly k layers above whatever is below them: over a street
+  the preferred layer is k, over a building k plus the building's height
+  (capped at the top layer). With k = 2 and three layers that is 60 m over
+  the streets and 90 m over any building. Three planning costs, all added
+  to the 1 per move, express it:
+  * every horizontal move below the preferred layer costs `cruise_penalty`
+    (2.5) per layer below it, so drones climb out of the street canyons
+    unless the hop is very short, and climb again to cross a building
+    rather than skim its roof;
+  * every move above it costs `cruise_high_penalty` (0.25) per layer, so a
+    drone comes back down to 60 m after a building unless another one
+    follows within a few cells (the descent is needed anyway before the
+    destination, so coming down early costs nothing extra);
+  * every horizontal move costs `cruise_line_penalty` (1.0) per cell it
+    strays from the straight line to the goal, beyond a 0.75-cell band that
+    lets a staircase along the line go free. Without it, every staircase of
+    equal length costs the same, and A* simply slips along the streets
+    around the buildings: in a test sweep (6 seeds) drones then spent 0.8 %
+    of their flight time over buildings. With it they fly the direct line
+    and go over the buildings in their way.
+
+  Crossing a one-cell building at 60 m then costs 2.5 extra, climbing over
+  it 2 (one climb, one descent), so the drone climbs. Costs only grow, so
+  the heuristic stays admissible and the reservation table still rules out
+  every conflict. Parcels are still lowered from layer 1, and towers that
+  reach the top layer are flown around. `run_simulation.py --motion
+  continuous` cruises at 60 m by default, as a delivery drone over a city
+  would and as the viewers should show; `SimConfig` and the experiments
+  keep cruise off unless a row says otherwise (§6.7).
 
 **One layer reproduces the original model exactly.** Before the change, the
 metrics of seeds 1–3 were recorded. `tests/test_regression.py` re-runs them
@@ -458,7 +475,7 @@ grid experiments) reproduces every non-timing metric in
   (§4.6), out-of-range customers are re-drawn, and the order stream differs.
 * **Runtime:** the grid suite (430 simulations) runs in ≈3 minutes on a
   laptop; the continuous-flight sections (300 simulations) in ≈6 minutes
-  (359 s), one simulation after another (Python 3.14, Apple silicon).
+  (348 s), one simulation after another (Python 3.14, Apple silicon).
 
 ## 6. Results
 
@@ -716,7 +733,7 @@ moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
   per delivery rises by about a third (50.9 → 68.1 at 12 drones with both
   layers), while losses of separation stay at 0–0.8 per run.
 * **Compute.** A continuous run took 0.5–1.9 s on average per configuration
-  (never more than 3.1 s) at 12 and 24 drones, and 3.1 s (at most 4.2 s) at
+  (never more than 3.1 s) at 12 and 24 drones, and 3.0 s (at most 4.0 s) at
   32 drones (next table), against targets of 5 s and 20 s. Pure-Python ORCA
   was fast enough, so no fallback to sampled-velocity RVO was needed.
 
@@ -726,17 +743,18 @@ moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
 
 | configuration | delivered | avg time | p95 time | on time | energy/delivery | swaps | above layer 1 | collisions | s per run |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 2.1% | 0 | 0.24 |
-| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 2.6% | 0 | 0.64 |
-| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 2.1% | 0 | 0.92 |
-| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 2.5% | 0 | 0.96 |
-| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 4.9% | 0 | 3.14 |
-| continuous, cruise at 60 m | 100% | 39.7 | 81.6 | 98.7% | 64.5 | 56.4 | 85.8% | 0 | 0.88 |
-| continuous, cruise at 90 m | 100% | 52.5 | 104 | 94.2% | 73.8 | 61.3 | 87.6% | 0 | 1.10 |
-| continuous, cruise at 90 m, 32 drones | 100% | 64.2 | 131 | 87.4% | 77.4 | 178 | 87.3% | 0 | 4.29 |
+| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 2.1% | 0 | 0.23 |
+| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 2.6% | 0 | 0.61 |
+| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 2.1% | 0 | 0.90 |
+| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 2.5% | 0 | 0.93 |
+| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 4.9% | 0 | 3.04 |
+| continuous, cruise at 60 m | 100% | 42.3 | 86.2 | 97.4% | 66.0 | 56.6 | 87.0% | 0 | 0.93 |
+| continuous, cruise at 60 m, 32 drones | 100% | 43.6 | 88.0 | 96.4% | 68.5 | 164 | 86.7% | 0 | 3.31 |
+| continuous, cruise at 90 m | 100% | 58.5 | 113 | 89.0% | 79.5 | 64.3 | 88.6% | 0 | 1.09 |
 
 (The cruise rows fly in moderate wind; "above layer 1" is the share of
-flight time spent at 60 m or higher.)
+flight time spent at 60 m or higher. The rows above them were re-run with
+the cruise rows: only their timings moved, by up to 0.1 s.)
 
 The order streams are identical in these rows (the wind-aware service area
 removed no order in calm or moderate wind), so each comparison is exactly
@@ -755,20 +773,28 @@ paired.
   p95 66.5 vs 58.2) and uses 25 % more energy per delivery, with 0
   collisions, 22 losses of separation in the 10 runs (2.2 per run) and no
   pair closer than 21.4 m.
-* **Flying over the buildings costs time and energy.** Without a cruise
-  layer, drones spend 2–5 % of their flight time above layer 1: the planner
-  only climbs to pass traffic or a low building. With `cruise_layer = 3`
-  they spend 88 % of it at 60–90 m, with 0 collisions and no drone lost, but
-  deliveries take 62 % longer (52.5 vs 32.5 ticks), energy per delivery rises
-  25 % (73.8 vs 59.1) and on-time delivery drops to 94 %. Each delivery adds
-  two 60 m climbs and two 60 m descents, at 3 and 2 m/s with full lift power;
-  the extra energy means 14 % more battery swaps, longer swap queues and a
-  busier fleet. At 32 drones the cost is larger (64.2 ticks, 87 % on time).
-  Cruising at 60 m keeps most of the height (86 % of flight time above layer
-  1) for a smaller cost: 22 % longer deliveries, 9 % more energy, 98.7 % on
-  time. Over the 10 seeds 46 % of the building blocks are one layer tall,
-  36 % two and 18 % three, so at 60 m a drone can cross about half the
-  blocks and at 90 m all but the tallest.
+* **Cruising over the buildings costs time and energy, and costs less at
+  60 m.** Without a cruise layer, drones spend 2–5 % of their flight time
+  above layer 1 (the planner only climbs to pass traffic or a low building)
+  and 0.4 % over a building: they fly along the streets. Cruising at 60 m
+  (the command-line default), they spend 87 % of their flight time at 60 m
+  or higher and 4.5 % over a building, and when they are over one they fly
+  at 90 m 82 % of the time. That takes 284 climb moves per run instead of
+  7. It costs 30 % in delivery time (42.3 vs 32.5 ticks), 12 % in energy
+  per delivery (66.0 vs 59.1) and 2 points of on-time delivery (97.4 %).
+  Each climb or descent takes a whole tick, at 3 and 2 m/s with full lift
+  power, and the extra energy means more swaps and longer swap queues.
+  Cruising at 90 m everywhere costs much more: 80 % longer deliveries
+  (58.5 ticks), 35 % more energy and 89 % on time.
+* **At 32 drones cruising at 60 m removed every loss of separation**: 0 in
+  all 10 runs, against 22 without cruise, for 27 % longer deliveries (43.6
+  vs 34.2 ticks) and 7 % more energy. A plausible reason, not isolated
+  here: without ORCA almost all losses of separation were near the pads
+  (above), and with cruise the traffic passing a pad flies at 60 m, 30 m
+  above the drones climbing out of and descending onto it.
+* Over the 10 seeds 46 % of the building blocks are one layer tall, 36 %
+  two and 18 % three. At 60 m a drone can fly over the one-layer blocks; at
+  90 m over all but the tallest, which it flies around.
 
 **How much wind?**
 
@@ -865,16 +891,16 @@ paired.
 | ORCA without reservations collides occasionally (6 of 60 runs) | keep strategic deconfliction; if flying without it, add a longer horizon, acceleration-aware (non-holonomic) velocity obstacles, or priority rules |
 | Point-mass physics: no attitude dynamics, no sensing noise or latency in the neighbours ORCA sees, no vertical gusts | a multirotor model with thrust and tilt limits, ADS-B-like delayed and noisy neighbour states, 3-D turbulence |
 | The power model has no acceleration term and no translational lift (real multirotors often need less power at moderate speed than in a hover) | a blade-element / momentum-theory power model; fit its constants to a real airframe |
-| The cruise layer is a fixed planning penalty, not a decision: every drone pays for the climb whether or not it saves anything, so cruising high costs 22–62 % in delivery time (§6.7) | price the climb against what it buys (fewer conflicts, shorter routes over low blocks), or separate cruise layers by heading as in §6.6 |
+| The cruise altitude is a fixed set of planning penalties, not a decision: every drone pays for the climbs whether or not they save anything, so cruising costs 30 % (60 m) to 80 % (90 m) in delivery time (§6.7). Climbs and descents take a whole tick each, because the planner has no climbing-while-moving step | price the climb against what it buys (fewer conflicts, shorter routes over low blocks), or separate cruise layers by heading as in §6.6 |
 
 ## 9. How to reproduce
 
 ```bash
-python3 -m unittest discover -s tests -t .      # 125 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous, messages
+python3 -m unittest discover -s tests -t .      # 127 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous, messages
 python3 run_experiments.py --seeds 10           # tables -> results/experiments.md, charts -> results/figures/
 python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D) + replay_messages.txt
 python3 run_simulation.py --view 3d             # the same run in 3D -> results/replay_3d.html
-python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html   # cruises at 90 m
+python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html   # cruises at 60 m
 python3 run_experiments.py --only tactical motion wind   # §6.7 only; the other sections keep their results
 ```
 

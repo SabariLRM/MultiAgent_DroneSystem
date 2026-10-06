@@ -276,9 +276,14 @@ The plan above is the final design. These parts changed after measuring them
 * **Cruise altitude (added after the experiments above).** With free layer
   choice, continuous drones flew above layer 1 only 2–5 % of the time, so
   in the 3-D view they threaded the streets between the towers instead of
-  crossing the city above them. `cruise_layer` (planner cost, §4.5 of the
-  report) makes longer trips climb; `run_simulation.py --motion continuous`
-  uses the top layer, `SimConfig` keeps it off. ORCA, the pad rules and the
-  energy model needed no change: with cruise at 90 m, 10 seeds at 12 and 32
-  drones had 0 collisions and no drone lost, at a cost of 62 % (12 drones)
-  in delivery time (report §6.7).
+  crossing the city above them. `cruise_layer` (planner costs, §4.5 of the
+  report) makes them cruise that many layers above the street or roof
+  below; `run_simulation.py --motion continuous` uses 2 (60 m, 90 m over
+  buildings), `SimConfig` keeps it off. A first version only penalised
+  flying below the cruise layer: at 90 m drones flew over whatever lay in
+  their path, but at 60 m they slipped along the streets and almost never crossed a building,
+  because in a 4-connected grid every staircase of the same length costs
+  the same. Pricing the distance from the straight line fixed that. ORCA,
+  the pad rules and the energy model needed no change: with cruise at 60 m,
+  10 seeds at 12 and 32 drones had 0 collisions and no drone lost, at a
+  cost of 30 % (12 drones) in delivery time (report §6.7).

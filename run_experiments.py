@@ -5,7 +5,7 @@ Every configuration is run on the same set of random seeds (same cities, same
 order streams, same gusts) so differences come from the strategy alone.
 Results are written as Markdown tables + JSON, plus SVG charts for the report.
 
-    python3 run_experiments.py              # 10 seeds, about 15 minutes
+    python3 run_experiments.py              # 10 seeds, about 10 minutes
     python3 run_experiments.py --seeds 3    # quick look
     python3 run_experiments.py --only layers
     python3 run_experiments.py --only tactical motion wind --jobs 8

@@ -165,7 +165,7 @@ class SpaceTimePlanner:
         cur, t = start, start_t
         try:
             for wp in waypoints:
-                goal = lift(wp.cell)
+                goal = self.world.drop_cell(wp.cell) if wp.kind == "drop" else lift(wp.cell)
                 dwell = wp.dwell if wp.kind == "drop" else self.land_dwell
                 seg = self._search(agent, cur, t, goal, dwell, zones, ignore, extra_blocked)
                 if seg is None:

@@ -99,9 +99,15 @@ class GridWorld:
         n_layers: int = 1,
         heights: dict[Site, int] | None = None,
         layer_rule: str = "free",
+        customer_heights: dict[Site, int] | None = None,
     ):
         """``blocked`` are building footprints; ``heights`` gives their height in
-        layers (a footprint without a height blocks every layer)."""
+        layers (a footprint without a height blocks every layer).
+
+        ``customer_heights`` (optional) puts customers in buildings: a customer
+        of height h >= 1 is a building h layers tall (it must also be in
+        ``heights``) whose parcels are winched onto the roof from layer h + 1;
+        h = 0 is a house, served from layer 1 as an open-ground customer is."""
         self.width = width
         self.height = height
         self.n_layers = n_layers
@@ -115,6 +121,7 @@ class GridWorld:
         self.hubs = list(hubs)
         self.stations = list(stations)
         self.customers = list(customers)
+        self.customer_heights: dict[Site, int] = {tuple(c): h for c, h in (customer_heights or {}).items()}
         self.pads = frozenset(self.hubs) | frozenset(self.stations)
         self.nfzs: list[NoFlyZone] = sorted(nfzs, key=lambda z: z.announce_t)
         self._nbr_cache: dict[Cell, tuple[Cell, ...]] = {}
@@ -130,6 +137,11 @@ class GridWorld:
     def building_height(self, site) -> int:
         """Height of the building on ``site`` in layers (0 = open ground)."""
         return self.heights.get((site[0], site[1]), 0)
+
+    def drop_cell(self, site) -> Cell:
+        """Where a drone hovers to deliver to the customer at ``site``: the layer
+        just above its roof (layer 1 for open ground or a house)."""
+        return site[0], site[1], self.customer_heights.get((site[0], site[1]), 0) + 1
 
     def is_open(self, c) -> bool:
         """Can a drone fly in cell ``c``? (A site is read as its layer-1 cell.)"""
@@ -314,8 +326,31 @@ def generate_world(cfg) -> GridWorld:
     if cfg.auto_nfz and not nfzs:
         nfzs = _generate_nfzs(rng, cfg, W, H, pads)
     heights = _building_heights(cfg, rects, blocked)
-    return GridWorld(W, H, blocked, hubs, stations, customers, nfzs,
-                     n_layers=cfg.n_layers, heights=heights, layer_rule=cfg.layer_rule)
+    if not getattr(cfg, "customer_buildings", False):
+        return GridWorld(W, H, blocked, hubs, stations, customers, nfzs,
+                         n_layers=cfg.n_layers, heights=heights, layer_rule=cfg.layer_rule)
+    cust = _customer_heights(cfg, customers)
+    while True:
+        world = GridWorld(W, H, blocked | {c for c, h in cust.items() if h}, hubs, stations, customers, nfzs,
+                          n_layers=cfg.n_layers, heights={**heights, **{c: h for c, h in cust.items() if h}},
+                          layer_rule=cfg.layer_rule, customer_heights=cust)
+        # a customer building must not wall another customer in: serve such a customer as a house
+        cut = [c for c in customers if cust[c] and world.dist(hubs[0], world.drop_cell(c)) == INF]
+        if not cut:
+            return world
+        for c in cut:
+            cust[c] = 0
+
+
+def _customer_heights(cfg, customers: list[Site]) -> dict[Site, int]:
+    """Height of each customer's building in layers: 0 = a house (parcel into the
+    garden from layer 1), h >= 1 = a building whose roof is h layers up. Drawn
+    from their own random stream, so nothing else in the city changes; capped
+    one layer below the top so a drone can always hover above the roof."""
+    rng = random.Random(cfg.seed * 7919 + 41)
+    levels = list(range(min(len(cfg.customer_height_weights), cfg.n_layers)))
+    weights = list(cfg.customer_height_weights)[: len(levels)]
+    return {c: rng.choices(levels, weights)[0] for c in customers}
 
 
 def _building_heights(cfg, rects: list[tuple[int, int, int, int]], blocked: set[Site]) -> dict[Site, int]:

@@ -24,6 +24,7 @@ def compute_metrics(sim) -> dict:
     energy = tot("energy_used")
     ticks = max(1, sim.t)
     ps = sim.planner.stats
+    drop_layers = [sim.world.drop_cell(o.dest)[2] for o in delivered]   # where each parcel was winched down
     vertex = sum(1 for c in sim.collisions if c[1] == "vertex")
     edge = sum(1 for c in sim.collisions if c[1] == "edge")
     m = {
@@ -51,6 +52,8 @@ def compute_metrics(sim) -> dict:
         "upper_layer_share": tot("upper_layer_ticks") / max(1, tot("airborne_ticks")),
         "over_building_share": tot("over_building_ticks") / max(1, tot("airborne_ticks")),
         "over_building_top_share": tot("over_building_top_ticks") / max(1, tot("over_building_ticks")),
+        "drop_height_mean_m": statistics.fmean(drop_layers) * sim.cfg.layer_m if drop_layers else 0.0,
+        "rooftop_drop_share": sum(1 for z in drop_layers if z > 1) / len(drop_layers) if drop_layers else 0.0,
         "swaps": sum(s.swaps_done for s in sim.stations),
         "avg_swap_wait": (sum(s.wait_ticks_total for s in sim.stations) / max(1, sum(s.swaps_done for s in sim.stations))),
         "max_station_queue": max((s.max_queue for s in sim.stations), default=0),

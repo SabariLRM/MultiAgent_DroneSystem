@@ -55,6 +55,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--cruise-layer", type=int, default=None,
                     help="cruise this many layers above the street or roof below: 2 = 60 m over streets, "
                          "climbing over buildings (0 = off; default: 2 in continuous mode, off in grid mode)")
+    ap.add_argument("--customer-buildings", action=argparse.BooleanOptionalAction, default=None,
+                    help="customers live in houses and buildings, and parcels are winched onto roofs at several "
+                         "heights (default: on in continuous mode, off in grid mode)")
     ap.add_argument("--out", default=None,
                     help="HTML replay path ('' to skip; default results/replay.html, or results/replay_3d.html for --view 3d)")
     ap.add_argument("--view", choices=("2d", "3d", "both"), default="2d",
@@ -104,6 +107,7 @@ def main(argv=None) -> int:
         record_trace=bool(replays), motion=a.motion, tactical=a.tactical, station_spare_packs=a.spare_packs,
         record_messages=bool(a.messages) or bool(replays),
         cruise_layer=(a.cruise_layer if a.cruise_layer is not None else min(2, a.layers) if a.motion == "continuous" else 0),
+        customer_buildings=(a.customer_buildings if a.customer_buildings is not None else a.motion == "continuous"),
     )
     if a.wind:
         cfg = dataclasses.replace(cfg, wind_mean=WIND_PRESETS[a.wind][0], wind_gust=WIND_PRESETS[a.wind][1])
@@ -121,6 +125,10 @@ def main(argv=None) -> int:
         if cfg.cruise_layer:
             k = min(cfg.cruise_layer, cfg.n_layers)
             print(f"Cruise at {k * cfg.layer_m:g} m (layer {k}) over the streets, higher over buildings")
+        if w.customer_heights:
+            n = [sum(1 for h in w.customer_heights.values() if h == k) for k in range(w.n_layers)]
+            print("Customers: " + ", ".join(f"{c} {'houses (garden, from 30 m)' if k == 0 else f'with a roof at {k * cfg.layer_m:g} m'}"
+                                             for k, c in enumerate(n) if c))
     if a.map:
         print(w.ascii())
         print("legend: H hub  S swap station  c customer  "

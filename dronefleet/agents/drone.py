@@ -31,7 +31,7 @@ from ..energy import BatteryPack, EnergyModel
 from ..messages import Performative
 from ..planner import Plan, PlanStep, SpaceTimePlanner, Waypoint
 from ..reservation import ReservationTable
-from ..world import Cell, GridWorld, Site, ground, lift
+from ..world import Cell, GridWorld, Site, ground
 from .base import Agent
 from .station import READY_SOC
 
@@ -157,7 +157,7 @@ class DroneAgent(Agent):
         if not self.plan or not self.carrying:
             return False
         s = self.plan.step_at(t)
-        if s is None or s.cell != lift(self.task["dest"]) or not self.airborne:
+        if s is None or s.cell != self.world.drop_cell(self.task["dest"]) or not self.airborne:
             return False
         started = any(p.tag == "drop_start" and p.t <= t for p in self.plan.steps)
         return started
@@ -247,7 +247,7 @@ class DroneAgent(Agent):
         """(energy, eta_delivery) for start -> hub -> customer -> nearest station."""
         w, e = self.world, self.energy
         slack = self.cfg.detour_factor
-        hub, dest, kg = tuple(order["hub"]), tuple(order["dest"]), order["weight"]
+        hub, dest, kg = tuple(order["hub"]), w.drop_cell(order["dest"]), order["weight"]
         if kg > self.cfg.max_payload_kg:
             return None
         d1 = 0 if ((start[0], start[1]) == hub and not airborne) else w.dist(start, hub)
@@ -425,10 +425,10 @@ class DroneAgent(Agent):
         """Plan customer drop + landing somewhere sensible, check energy, commit."""
         dest = self.task["dest"]
         e = self.energy
-        after = self.battery - e.estimate(self.world.dist(self.pos, dest), self.payload,
+        after = self.battery - e.estimate(self.world.dist(self.pos, self.world.drop_cell(dest)), self.payload,
                                           takeoff=not self.airborne, hover_ticks=self.cfg.drop_ticks,
                                           slack=self.cfg.detour_factor)
-        options = self._post_delivery_pads(dest, after)
+        options = self._post_delivery_pads(self.world.drop_cell(dest), after)
         energy_short = False
         for pad, is_station in options:
             wps = [Waypoint(dest, "drop", self.cfg.drop_ticks), Waypoint(pad, "land")]
@@ -455,7 +455,8 @@ class DroneAgent(Agent):
             self._go_swap(t)
         # otherwise stay on the ground (safe) and retry next tick
 
-    def _post_delivery_pads(self, dest: Site, battery_after: float) -> list[tuple[Site, bool]]:
+    def _post_delivery_pads(self, dest: Cell, battery_after: float) -> list[tuple[Site, bool]]:
+        """Where to land after the drop at cell ``dest``, best first."""
         hub = self._nearest_hub(dest)
         if self.cfg.battery_policy == "naive":
             if battery_after < self.cfg.naive_threshold * self.cfg.battery_capacity:

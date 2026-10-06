@@ -52,7 +52,7 @@ class Simulation:
     def __init__(self, cfg: SimConfig | None = None):
         self.cfg = cfg = (cfg or SimConfig()).validate()
         self.world = generate_world(cfg)
-        self.msglog = MessageLog(self.world) if cfg.record_messages else None
+        self.msglog = MessageLog(self.world, cfg.layer_m) if cfg.record_messages else None
         self.bus = MessageBus(listener=self.msglog.record if self.msglog else None)
         self.res = ReservationTable(enabled=cfg.coordination == "cooperative")
         self.continuous = cfg.motion == "continuous"

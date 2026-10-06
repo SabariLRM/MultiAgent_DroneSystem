@@ -48,8 +48,9 @@ def agent_name(name: str) -> str:
 
 
 class MessageLog:
-    def __init__(self, world):
+    def __init__(self, world, layer_m: float = 30.0):
         self.places = {tuple(h): f"Hub {i}" for i, h in enumerate(world.hubs)}
+        self.world, self.layer_m = world, layer_m
         self.places.update({tuple(s): f"Station {i}" for i, s in enumerate(world.stations)})
         self.n_layers = world.n_layers
         self.records: list[tuple[int, str, str, str, str, str]] = []   # t, from, to, act, topic, text
@@ -62,13 +63,21 @@ class MessageLog:
         self.counts[(act, topic)] += 1
         self.records.append((msg.t, agent_name(msg.sender), agent_name(msg.receiver), act, topic, self.describe(msg)))
 
+    def _drop_place(self, dest) -> str:
+        """Where the parcel goes, when customers live in buildings: ' (house)' or ' (roof at 60 m)'."""
+        if not self.world.customer_heights:
+            return ""
+        h = self.world.customer_heights.get(tuple(dest), 0)
+        return " (house)" if h == 0 else f" (roof at {h * self.layer_m:g} m)"
+
     def _order(self, o: dict, short: bool = False) -> str:
         hub = self.places.get(tuple(o["hub"]), f"the hub at {tuple(o['hub'])}")
         express = " (EXPRESS)" if o.get("express") else ""
         x, y = o["dest"]
+        place = self._drop_place(o["dest"])
         if short:
-            return f"#{o['oid']}{express} {o['weight']:.1f} kg {hub} -> ({x}, {y}) due t={o['deadline_t']}"
-        return (f"order #{o['oid']}{express}: {o['weight']:.1f} kg from {hub} to the customer at ({x}, {y}), "
+            return f"#{o['oid']}{express} {o['weight']:.1f} kg {hub} -> ({x}, {y}){place} due t={o['deadline_t']}"
+        return (f"order #{o['oid']}{express}: {o['weight']:.1f} kg from {hub} to the customer at ({x}, {y}){place}, "
                 f"due by t={o['deadline_t']}")
 
     def describe(self, msg) -> str:

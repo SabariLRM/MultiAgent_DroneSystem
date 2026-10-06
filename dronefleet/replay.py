@@ -145,6 +145,10 @@ class TraceRecorder:
             meta.update(motion="continuous", tactical=cfg.tactical, tick_s=cfg.tick_s, cell_m=cfg.cell_m,
                         layer_m=cfg.layer_m, wind=[cfg.wind_mean, cfg.wind_dir_deg, cfg.wind_gust])
             extra["track"] = sim.flight.trace(sim.t * cfg.tick_s)
+        world_extra = {}
+        if w.customer_heights:
+            # customers in buildings: each one's height in layers (0 = a house), in w.customers order
+            world_extra["customer_heights"] = [w.customer_heights.get(tuple(c), 0) for c in w.customers]
         return {
             "meta": meta,
             "world": {"w": w.width, "h": w.height, "layers": w.n_layers, "layer_rule": w.layer_rule,
@@ -152,7 +156,7 @@ class TraceRecorder:
                       "hubs": w.hubs, "stations": w.stations, "customers": w.customers,
                       "nfz": [{"rect": z.rect, "announce": z.announce_t, "start": z.start_t, "end": z.end_t,
                                "layers": list(z.layers(w.n_layers))}
-                              for z in w.nfzs]},
+                              for z in w.nfzs], **world_extra},
             "frames": self.frames,
             "plans": {str(k): v for k, v in self.plans.items()},
             "orders": orders,

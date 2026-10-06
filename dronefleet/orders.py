@@ -42,8 +42,9 @@ def _in_range_energy(cfg, world: GridWorld, hub: Site, dest: Site, kg: float) ->
     slack = cfg.detour_factor
     step = step_cost_bound(cfg)             # per tick of flight, climbs and descents included
     fetch = min(world.dist(s, hub) for s in world.stations) * slack * step + cfg.takeoff_cost
-    out = world.dist(hub, dest) * slack * step * (1 + cfg.payload_factor * kg)
-    back = min(world.dist(dest, s) for s in world.stations) * slack * step
+    drop = world.drop_cell(dest)
+    out = world.dist(hub, drop) * slack * step * (1 + cfg.payload_factor * kg)
+    back = min(world.dist(drop, s) for s in world.stations) * slack * step
     extra = (cfg.takeoff_cost + cfg.drop_ticks * cfg.hover_cost) * (1 + cfg.payload_factor * kg)
     return fetch + out + back + extra
 
@@ -80,8 +81,9 @@ class OrderGenerator:
         (The drones' own "swap first" estimate, with the forecast wind.)"""
         e, w, slack = self.flight_energy, self.world, self.cfg.detour_factor
         fetch = e.estimate(min(w.dist(s, hub) for s in w.stations), 0.0, True, slack=slack)
-        out = e.estimate(w.dist(hub, dest), kg, True, self.cfg.drop_ticks, slack)
-        back = e.estimate(min(w.dist(dest, s) for s in w.stations), 0.0, False, slack=slack)
+        drop = w.drop_cell(dest)
+        out = e.estimate(w.dist(hub, drop), kg, True, self.cfg.drop_ticks, slack)
+        back = e.estimate(min(w.dist(drop, s) for s in w.stations), 0.0, False, slack=slack)
         return fetch + out + back <= budget
 
     def tick(self, t: int) -> list[Order]:
@@ -95,7 +97,7 @@ class OrderGenerator:
             # their closest warehouse) cannot order by drone
             for _ in range(50):
                 dest = self.rng.choice(self.world.customers)
-                hubs = sorted(self.world.hubs, key=lambda h: (self.world.dist(h, dest), h))
+                hubs = sorted(self.world.hubs, key=lambda h: (self.world.dist(h, self.world.drop_cell(dest)), h))
                 if self._in_range(hubs[0], dest, weight):
                     break
             hub = hubs[0]

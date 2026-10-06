@@ -40,6 +40,8 @@ class SimConfig:
     n_hubs: int = 2
     n_stations: int = 3
     n_customers: int = 40
+    customer_buildings: bool = False  # customers live in buildings: parcels go onto roofs at several heights
+    customer_height_weights: tuple = (0.35, 0.4, 0.25)  # house / roof 1 layer up / roof 2 layers up (capped below the top layer)
     n_layers: int = 3               # flight layers z = 1..n_layers above the ground (z = 0)
     layer_rule: str = "free"        # "free" | "heading": east/west on odd layers, north/south on even
 

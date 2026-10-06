@@ -311,9 +311,9 @@ function startReplay(DATA, view) {
     fleet.innerHTML = fr.d.map((d, k) => {
       const col = colorOf(d), desc = describe(d);
       const sub = [desc.alt ? `Layer ${altOf(d)}` : "", desc.why].filter(Boolean).join(" · ");
-      return `<button class="frow${k === selected ? " sel" : ""}" data-k="${k}" aria-pressed="${k === selected}">` +
+      return `<button class="frow${k === selected ? " sel" : ""}" data-k="${k}" aria-pressed="${k === selected}" title="${esc(desc.text + (sub ? " · " + sub : ""))}">` +
         `<span class="fid" style="background:${col};color:${textOn(col)}">${k}</span>` +
-        `<span class="ftext">${esc(desc.text)}${sub ? `<small>${esc(sub)}</small>` : ""}</span>` +
+        `<span class="ftext"><span class="fmain">${esc(desc.text)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</span>` +
         `<span class="fbat" title="battery ${d[4]}%">${d[4]}%<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span></span></button>`;
     }).join("");
 
@@ -325,7 +325,7 @@ function startReplay(DATA, view) {
       fr.d.forEach((d, k) => { if (d[8] === here) { if (STATES[d[3]] === "swapping") swapping.push(k); else if (STATES[d[3]] === "queued") queued.push(k); } });
       const line = [swapping.length ? `swapping drone ${swapping.join(", ")}` : "",
                     queued.length ? `drone ${queued.join(", ")} waiting` : ""].filter(Boolean).join(" · ") || "free";
-      return `<div class="station"><div><b>Station ${j}</b></div><div class="meta">${line}</div>` +
+      return `<div class="station"><div><b>Station ${j}</b></div><div class="meta" title="${line}">${line}</div>` +
              `<div class="packs" title="${charged} of ${total} spare packs fully charged">${packs}<span>${charged} of ${total} spare packs charged</span></div></div>`;
     }).join("");
 

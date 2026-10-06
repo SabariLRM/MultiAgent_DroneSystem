@@ -86,6 +86,9 @@ def plan(world, goal, **kw):
     return SpaceTimePlanner(world, ReservationTable(), **kw).plan(0, (0, 0), 0, False, [Waypoint(goal, "land")], now=0)
 
 
+CRUISE = dict(cruise_layer=2, cruise_penalty=2.5, cruise_high_penalty=0.25, cruise_line_penalty=1.0)
+
+
 def cruise_layers(p):
     """Layers of the horizontal moves of a plan."""
     return [b.cell[2] for a, b in zip(p.steps, p.steps[1:]) if a.cell[:2] != b.cell[:2]]
@@ -109,6 +112,24 @@ class CruiseTests(unittest.TestCase):
     def test_short_hops_stay_low(self):
         p = plan(open_world(), (2, 0), cruise_layer=3, cruise_penalty=0.6)
         self.assertEqual(set(cruise_layers(p)), {1})
+
+    def test_climbs_over_buildings_and_comes_back_down(self):
+        # a row of 30 m buildings across the way at x = 6: 60 m over the streets, 90 m over the roofs
+        wall = {(6, y): 1 for y in range(4)}
+        w = GridWorld(14, 4, [], hubs=[(0, 0)], stations=[(13, 3)], customers=[], nfzs=(), n_layers=3, heights=wall)
+        p = plan(w, (12, 0), **CRUISE)
+        layer = {b.cell[0]: b.cell[2] for a, b in zip(p.steps, p.steps[1:]) if a.cell[:2] != b.cell[:2]}
+        self.assertEqual(layer[6], 3)
+        self.assertEqual([layer[x] for x in (3, 4, 9, 10)], [2, 2, 2, 2])
+
+    def test_flies_over_a_building_in_its_way_rather_than_around(self):
+        w = GridWorld(12, 5, [], hubs=[(0, 2)], stations=[(11, 4)], customers=[], nfzs=(), n_layers=3,
+                      heights={(5, 2): 1})
+        p = SpaceTimePlanner(w, ReservationTable(), **CRUISE).plan(0, (0, 2), 0, False, [Waypoint((10, 2), "land")],
+                                                                    now=0)
+        cells = [s.cell for s in p.steps]
+        self.assertIn((5, 2, 3), cells)                            # straight over the roof, at 90 m
+        self.assertEqual({c[1] for c in cells}, {2})               # never left the line
 
     def test_cruise_layer_is_capped_at_the_top_layer(self):
         planner = SpaceTimePlanner(open_world(n_layers=2), ReservationTable(), cruise_layer=5, cruise_penalty=0.6)
@@ -139,7 +160,17 @@ class CliTests(unittest.TestCase):
         self.assertEqual(run_simulation.messages_path(None, run_simulation.replay_paths("r/x_3d.html", "3d")),
                          "r/x_messages.txt")
         self.assertIsNone(run_simulation.parse_args([]).cruise_layer)
+        self.assertEqual({k: getattr(SimConfig(), k) for k in CRUISE},
+                         dict(CRUISE, cruise_layer=0))                    # the tests use the defaults
         self.assertEqual(run_simulation.parse_args(["--cruise-layer", "2"]).cruise_layer, 2)
+        for args, line in ((["--motion", "continuous"], "Cruise at 60 m"), ([], None),
+                           (["--motion", "continuous", "--cruise-layer", "0"], None)):
+            with contextlib.redirect_stdout(io.StringIO()) as printed:
+                run_simulation.main(args + ["--ticks", "5", "--out", "", "--messages", ""])
+            if line:
+                self.assertIn(line, printed.getvalue())
+            else:
+                self.assertNotIn("Cruise", printed.getvalue())
 
 
 if __name__ == "__main__":

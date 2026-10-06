@@ -97,8 +97,10 @@ class SimConfig:
 
     # --- planner ---------------------------------------------------------
     max_expansions: int = 40000     # A* budget per search and per flight layer
-    cruise_layer: int = 0           # 0 = off; else drones prefer to cruise on this layer (over the buildings)
-    cruise_penalty: float = 0.6     # extra planning cost per cell flown per layer below cruise_layer
+    cruise_layer: int = 0           # 0 = off; else drones prefer to fly this many layers above the street or roof below
+    cruise_penalty: float = 2.5     # extra planning cost per cell flown per layer below that preferred layer
+    cruise_high_penalty: float = 0.25  # ... and per layer above it (brings drones back down after a building)
+    cruise_line_penalty: float = 1.0  # ... and per cell strayed from the straight line to the goal (fly over, not around)
     hold_escalation: int = 4        # failed plans before priority escalation
     reservation_hold: int = 3       # ticks a stuck drone reserves its cell
 

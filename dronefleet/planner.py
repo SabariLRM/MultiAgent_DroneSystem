@@ -26,6 +26,7 @@ earliest-arrival path given everyone else's reservations.
 from __future__ import annotations
 
 import heapq
+import math
 import time
 from dataclasses import dataclass, field
 from itertools import count
@@ -36,6 +37,7 @@ from .world import Cell, GridWorld, ground, lift
 HOVER_TIEBREAK = 0.01     # prefer flying / waiting on the ground over hovering ...
 VERTICAL_TIEBREAK = 0.02  # ... and hovering over a climb or descent that arrives no sooner
 ZONE_ESCAPE_COST = 1000.0 # per tick inside a no-fly zone the drone is already caught in
+LINE_BAND = 0.75          # cruising: cells this close to the straight line cost nothing extra (a staircase along it)
 
 
 @dataclass(frozen=True)
@@ -96,7 +98,8 @@ class PlannerStats:
 
 class SpaceTimePlanner:
     def __init__(self, world: GridWorld, reservations: ReservationTable, max_expansions: int = 40000,
-                 land_dwell: int = 0, cruise_layer: int = 0, cruise_penalty: float = 0.0):
+                 land_dwell: int = 0, cruise_layer: int = 0, cruise_penalty: float = 0.0,
+                 cruise_high_penalty: float = 0.0, cruise_line_penalty: float = 0.0):
         """``max_expansions`` is the search budget per flight layer (the airspace grows with the layers).
 
         ``land_dwell`` (continuous flight only; 0 in grid mode) keeps the drone
@@ -104,13 +107,22 @@ class SpaceTimePlanner:
         layer-1 cell stays reserved while the vertical descent passes through
         it. The arrival step is tagged ``land_start``.
 
-        ``cruise_layer`` (0 = off) makes drones prefer to cruise high: every
-        horizontal move below that layer costs ``cruise_penalty`` extra per
-        layer below it. On a longer trip the planner then climbs over the
-        buildings and descends near the destination, while a short hop stays
-        low. Costs only grow, so the heuristic stays admissible and
-        consistent; A* still never plans a conflict, it just trades arrival
-        time for altitude.
+        ``cruise_layer`` (0 = off) makes drones prefer to cruise high, that
+        many layers above whatever is below them: over a street the preferred
+        layer is ``cruise_layer``, over a building ``cruise_layer`` plus the
+        building's height (capped at the top layer). Every horizontal move
+        below the preferred layer costs ``cruise_penalty`` extra per layer
+        below it, and every move above it ``cruise_high_penalty`` per layer
+        above. On a longer trip the planner then climbs to the cruise layer,
+        climbs higher to cross buildings and comes back down after them, and
+        descends near the destination, while a short hop stays low. While
+        cruising, every horizontal move also costs ``cruise_line_penalty`` per
+        cell it strays from the straight line to the goal (beyond
+        ``LINE_BAND``, so a staircase along the line is free): drones fly
+        straight across the city, over the buildings in their way, instead of
+        following the streets around them. Costs only grow, so the heuristic stays admissible and consistent; A*
+        still never plans a conflict, it just trades arrival time for
+        altitude.
         """
         self.world = world
         self.res = reservations
@@ -118,6 +130,11 @@ class SpaceTimePlanner:
         self.land_dwell = land_dwell
         self.cruise_layer = min(cruise_layer, world.n_layers)
         self.cruise_penalty = cruise_penalty
+        self.cruise_high_penalty = cruise_high_penalty
+        self.cruise_line_penalty = cruise_line_penalty if cruise_layer else 0.0
+        # preferred layer over each cell: cruise_layer above the street or the roof below
+        self.cruise_pref = ({(x, y): min(world.n_layers, cruise_layer + world.building_height((x, y)))
+                             for x in range(world.width) for y in range(world.height)} if cruise_layer else {})
         self.stats = PlannerStats()
 
     # ---------------------------------------------------------------- public
@@ -227,6 +244,17 @@ class SpaceTimePlanner:
                     return False
             return True
 
+        # cruising: distance of a cell from the straight line start -> goal (in cells)
+        line = None
+        if self.cruise_line_penalty:
+            sx, sy, gx, gy = start[0], start[1], goal[0], goal[1]
+            dx, dy = gx - sx, gy - sy
+            l2 = dx * dx + dy * dy
+            if l2:
+                def line(c, sx=sx, sy=sy, dx=dx, dy=dy, l2=l2) -> float:
+                    u = min(1.0, max(0.0, ((c[0] - sx) * dx + (c[1] - sy) * dy) / l2))
+                    return math.hypot(c[0] - sx - u * dx, c[1] - sy - u * dy)
+
         tie = count()
         s0 = (start, t0)
         h0 = max(dm[start_air] + (0 if airborne else 1), open_t - t0)
@@ -272,8 +300,14 @@ class SpaceTimePlanner:
                         cost = 1.0 + VERTICAL_TIEBREAK
                     else:
                         cost = 1.0
-                        if z < self.cruise_layer:
-                            cost += self.cruise_penalty * (self.cruise_layer - z)
+                        if self.cruise_layer:
+                            pref = self.cruise_pref[(n[0], n[1])]
+                            if z < pref:
+                                cost += self.cruise_penalty * (pref - z)
+                            elif z > pref:
+                                cost += self.cruise_high_penalty * (z - pref)
+                            if line is not None:
+                                cost += self.cruise_line_penalty * max(0.0, line(n) - LINE_BAND)
                     if escape and in_zone(n, nt, escape):
                         cost += ZONE_ESCAPE_COST
                     succ.append(((n, nt), cost))

@@ -320,6 +320,7 @@ function startReplay(DATA, view) {
 
     renderFollow(i);
     renderLog(i);
+    renderMsgs(i);
   }
 
   const followMini = document.getElementById("followMini");
@@ -385,6 +386,33 @@ function startReplay(DATA, view) {
     }).join("") || "<li>Nothing has happened yet.</li>";
   }
   logFilter.onchange = () => { lastUi = -1; render(); };
+
+  // ------------------------------------------------------------- messages
+  const MSGS = DATA.messages || null;     // [t, from, to, act, text], in order
+  const ACT = { cfp: "CALL FOR BIDS", propose: "BID", refuse: "REFUSE", accept: "ACCEPT", reject: "REJECT", request: "REQUEST",
+                agree: "AGREE", inform: "INFORM", failure: "FAILURE", cancel: "CANCEL" };
+  const msgPanel = document.getElementById("msgPanel"), msgList = document.getElementById("msgList"),
+        msgFilterWrap = document.getElementById("msgFilterWrap"), msgFilter = document.getElementById("msgFilter"),
+        msgFilterLabel = document.getElementById("msgFilterLabel");
+  if (msgPanel) msgPanel.hidden = !MSGS;
+  function renderMsgs(i) {
+    if (!MSGS || !msgList) return;
+    const t = frames[i].t, only = selected >= 0 && msgFilter.checked, me = `Drone ${selected}`;
+    msgFilterWrap.hidden = selected < 0;
+    msgFilterLabel.textContent = `only Drone ${selected}`;
+    let lo = 0, hi = MSGS.length - 1, end = -1;           // last message sent at or before tick t
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (MSGS[mid][0] <= t) { end = mid; lo = mid + 1; } else hi = mid - 1; }
+    const rows = [];
+    for (let j = end; j >= 0 && rows.length < 60; j--) {
+      const m = MSGS[j];
+      if (only && m[1] !== me && m[2] !== me) continue;
+      rows.push(m);
+    }
+    msgList.innerHTML = rows.map(([mt, from, to, act, text]) =>
+      `<li><span class="t">t=${mt}</span><span class="who">${esc(from)}</span> → ${esc(to)}<span class="act">${ACT[act] || esc(act)}</span>` +
+      `<span class="txt">${esc(text)}</span></li>`).join("") || "<li>No messages yet.</li>";
+  }
+  if (msgFilter) msgFilter.onchange = () => { lastUi = -1; render(); };
 
   fleet.addEventListener("click", ev => {
     const b = ev.target.closest(".frow");

@@ -150,6 +150,7 @@ class SimConfig:
 
     # --- output ----------------------------------------------------------
     record_trace: bool = True
+    record_messages: bool = False   # keep a human-readable log of every agent message (msglog.py)
 
     def validate(self) -> "SimConfig":
         if self.allocation not in ALLOCATION_STRATEGIES:

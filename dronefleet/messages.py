@@ -45,7 +45,9 @@ class Message:
 
 
 class MessageBus:
-    def __init__(self):
+    def __init__(self, listener=None):
+        """``listener`` (optional) is called with every message sent, e.g. to keep a log."""
+        self.listener = listener
         self._agents: dict[str, "object"] = {}
         self._roles: dict[str, list[str]] = {}
         self._ids = count(1)
@@ -77,6 +79,8 @@ class MessageBus:
         self.topic_counts[topic] += 1
         if topic not in ("telemetry", "station_status"):
             self.log.append(msg)
+        if self.listener is not None:
+            self.listener(msg)
 
     @property
     def total(self) -> int:

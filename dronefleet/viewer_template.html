@@ -91,6 +91,11 @@
         <div class="loghead"><h2>What just happened</h2><label id="logFilterWrap" hidden><input type="checkbox" id="logFilter" checked> <span id="logFilterLabel">only this drone</span></label></div>
         <ul id="log"></ul>
       </section>
+      <section class="card" id="msgPanel" hidden>
+        <div class="loghead"><h2>Messages between the agents</h2><label id="msgFilterWrap" hidden><input type="checkbox" id="msgFilter" checked> <span id="msgFilterLabel">only this drone</span></label></div>
+        <p class="msg-note">What the dispatcher, the drones, the swap stations and air traffic control said to each other, newest first (routine status reports left out).</p>
+        <ul id="msgList"></ul>
+      </section>
       <section class="card">
         <details class="sum"><summary>Run summary</summary><table class="metrics" id="metrics"></table></details>
       </section>

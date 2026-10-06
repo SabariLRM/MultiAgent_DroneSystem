@@ -57,6 +57,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--view", choices=("2d", "3d", "both"), default="2d",
                     help="replay viewer: 2d (works offline), 3d (needs internet for three.js) or both")
     ap.add_argument("--metrics-json", default="", help="also write metrics to this JSON file")
+    ap.add_argument("--messages", default=None,
+                    help="write every message between the agents, in plain English, to this file ('' to skip; "
+                         "default: next to the replay, e.g. results/replay_messages.txt)")
+    ap.add_argument("--messages-all", action="store_true",
+                    help="also list the routine status reports (telemetry and station status, every tick)")
     ap.add_argument("--map", action="store_true", help="print the ASCII city map")
     ap.add_argument("--events", type=int, default=0, help="print the first N event-log lines")
     ap.add_argument("--quiet", action="store_true")
@@ -75,14 +80,26 @@ def replay_paths(out: str | None, view: str) -> list[tuple[str, Path]]:
     return [(view, path)]
 
 
+def messages_path(messages: str | None, replays: list[tuple[str, Path]]) -> str:
+    """Where the message log goes: the given path, or <replay>_messages.txt next to the replay."""
+    if messages is not None:
+        return messages
+    if not replays:
+        return "results/messages.txt"
+    path = replays[0][1]
+    return str(path.with_name(path.stem.removesuffix("_3d") + "_messages.txt"))
+
+
 def main(argv=None) -> int:
     a = parse_args(argv)
     replays = replay_paths(a.out, a.view)
+    a.messages = messages_path(a.messages, replays)
     cfg = dataclasses.replace(
         SimConfig(), seed=a.seed, n_drones=a.drones, order_rate=a.rate, max_ticks=a.ticks,
         allocation=a.allocation, coordination=a.coordination, battery_policy=a.battery,
         gust_prob=a.gust, auto_nfz=not a.no_nfz, n_layers=a.layers, layer_rule=a.layer_rule,
         record_trace=bool(replays), motion=a.motion, tactical=a.tactical, station_spare_packs=a.spare_packs,
+        record_messages=bool(a.messages) or bool(replays),
     )
     if a.wind:
         cfg = dataclasses.replace(cfg, wind_mean=WIND_PRESETS[a.wind][0], wind_gust=WIND_PRESETS[a.wind][1])
@@ -111,6 +128,11 @@ def main(argv=None) -> int:
         path = export_html(sim, metrics, out, view=view)
         note = "" if view == "2d" else "; the 3-D view loads three.js from cdn.jsdelivr.net"
         print(f"\nReplay ({view.upper()}) written to {path}  (open it in a browser{note})")
+    if a.messages:
+        title = (f"Messages between the agents: seed {cfg.seed}, {cfg.n_drones} drones, {cfg.motion} flight, "
+                 f"{metrics['ticks']} ticks (1 tick = 10 s)")
+        path = sim.msglog.write(a.messages, title, everything=a.messages_all)
+        print(f"\nAgent messages ({len(sim.msglog.records):,}) written to {path} in plain English")
     if a.metrics_json:
         Path(a.metrics_json).parent.mkdir(parents=True, exist_ok=True)
         Path(a.metrics_json).write_text(json.dumps(metrics, indent=2))

@@ -138,6 +138,9 @@ class TraceRecorder:
                 "gust_prob": cfg.gust_prob, "capacity": cfg.battery_capacity,
                 "n_layers": w.n_layers, "layer_rule": w.layer_rule, "layer_m": LAYER_METRES}
         extra = {}
+        if getattr(sim, "msglog", None) is not None:
+            # the agents' messages in plain English (routine status reports left out)
+            extra["messages"] = [[t, s, r, a, text] for t, s, r, a, _, text in sim.msglog.listed()]
         if getattr(sim, "flight", None) is not None:
             meta.update(motion="continuous", tactical=cfg.tactical, tick_s=cfg.tick_s, cell_m=cfg.cell_m,
                         layer_m=cfg.layer_m, wind=[cfg.wind_mean, cfg.wind_dir_deg, cfg.wind_gust])

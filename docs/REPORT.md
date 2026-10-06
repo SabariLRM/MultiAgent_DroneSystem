@@ -97,6 +97,21 @@ deliberate (highest right-of-way first) → same-tick yield negotiation → inte
 to an agent that has already acted this tick are read next tick, so protocols
 have realistic latency: CFP → bid → award takes two ticks.
 
+Every message can also be logged in plain English (`dronefleet/msglog.py`,
+`SimConfig.record_messages`, on in `run_simulation.py`). The bus hands each
+message to the log as it is sent, and the log writes one sentence per
+message, using the state at that moment. From the default run: *"Dispatcher
+→ all drones, CALL FOR BIDS: Auction round 2: who can deliver this order? #2
+2.3 kg Hub 0 -> (27, 5) due t=147"*, *"Drone 3 → Dispatcher, BID: My bids in
+round 2: order #2 for cost 49.4, delivered by t=54"*, *"Station 1 → Drone
+10, AGREE: Reserved. Expected wait when you arrive: 31 ticks."* After a run it
+writes a text file next to the replay, with a count of every kind of
+message, and the replays show the same sentences in a panel that follows
+the timeline. Routine status reports (each drone's telemetry and each
+station's status, every tick: about 85 % of the traffic) are counted but
+only listed on request. Logging only reads the messages, so a run with or
+without it is identical (tested).
+
 ### 3.1 The agents
 
 **Drone agent: a hybrid (layered) architecture.**
@@ -276,6 +291,19 @@ one layer ≈ 30 m).
   descents always. Crossing traffic is then vertically separated, but every
   turn costs a layer change. With one layer the rule has no even layer to use
   and falls back to "free".
+* **Cruise altitude (optional, off by default).** With `cruise_layer = k`
+  every horizontal move below layer k costs the planner `cruise_penalty`
+  (0.6) extra per layer below it. A* then trades arrival time for height:
+  longer trips climb over the buildings, cross at layer k and descend near
+  the destination, while short hops stay low. A 10-cell trip at layer 1
+  costs 10 + 12 = 22 against 4 vertical moves + 10 = 14 at layer 3, so it
+  climbs; a 2-cell hop costs 4.4 low against 6 high, so it stays down. Costs
+  only grow, so the heuristic stays admissible and the reservation table
+  still rules out every conflict. Parcels are still lowered from layer 1.
+  `run_simulation.py --motion continuous` cruises at the top layer by
+  default, because that is what a real delivery drone over a city does and
+  what the viewers should show; the experiments keep it off unless a row
+  says otherwise (§6.7).
 
 **One layer reproduces the original model exactly.** Before the change, the
 metrics of seeds 1–3 were recorded. `tests/test_regression.py` re-runs them
@@ -429,8 +457,8 @@ grid experiments) reproduces every non-timing metric in
   too; in strong and severe wind the continuous service area is smaller
   (§4.6), out-of-range customers are re-drawn, and the order stream differs.
 * **Runtime:** the grid suite (430 simulations) runs in ≈3 minutes on a
-  laptop; the continuous-flight sections (270 simulations) in ≈5 minutes
-  (294 s), one simulation after another (Python 3.14, Apple silicon).
+  laptop; the continuous-flight sections (300 simulations) in ≈6 minutes
+  (359 s), one simulation after another (Python 3.14, Apple silicon).
 
 ## 6. Results
 
@@ -688,7 +716,7 @@ moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
   per delivery rises by about a third (50.9 → 68.1 at 12 drones with both
   layers), while losses of separation stay at 0–0.8 per run.
 * **Compute.** A continuous run took 0.5–1.9 s on average per configuration
-  (never more than 3.1 s) at 12 and 24 drones, and 3.0 s (at most 4.0 s) at
+  (never more than 3.1 s) at 12 and 24 drones, and 3.1 s (at most 4.2 s) at
   32 drones (next table), against targets of 5 s and 20 s. Pure-Python ORCA
   was fast enough, so no fallback to sampled-velocity RVO was needed.
 
@@ -696,13 +724,19 @@ moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
 
 ![motion](../results/figures/motion.svg)
 
-| configuration | delivered | avg time | p95 time | on time | energy/delivery | swaps | collisions | s per run |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 0 | 0.24 |
-| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 0 | 0.62 |
-| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 0 | 0.89 |
-| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 0 | 0.93 |
-| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 0 | 3.03 |
+| configuration | delivered | avg time | p95 time | on time | energy/delivery | swaps | above layer 1 | collisions | s per run |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 2.1% | 0 | 0.24 |
+| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 2.6% | 0 | 0.64 |
+| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 2.1% | 0 | 0.92 |
+| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 2.5% | 0 | 0.96 |
+| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 4.9% | 0 | 3.14 |
+| continuous, cruise at 60 m | 100% | 39.7 | 81.6 | 98.7% | 64.5 | 56.4 | 85.8% | 0 | 0.88 |
+| continuous, cruise at 90 m | 100% | 52.5 | 104 | 94.2% | 73.8 | 61.3 | 87.6% | 0 | 1.10 |
+| continuous, cruise at 90 m, 32 drones | 100% | 64.2 | 131 | 87.4% | 77.4 | 178 | 87.3% | 0 | 4.29 |
+
+(The cruise rows fly in moderate wind; "above layer 1" is the share of
+flight time spent at 60 m or higher.)
 
 The order streams are identical in these rows (the wind-aware service area
 removed no order in calm or moderate wind), so each comparison is exactly
@@ -721,6 +755,20 @@ paired.
   p95 66.5 vs 58.2) and uses 25 % more energy per delivery, with 0
   collisions, 22 losses of separation in the 10 runs (2.2 per run) and no
   pair closer than 21.4 m.
+* **Flying over the buildings costs time and energy.** Without a cruise
+  layer, drones spend 2–5 % of their flight time above layer 1: the planner
+  only climbs to pass traffic or a low building. With `cruise_layer = 3`
+  they spend 88 % of it at 60–90 m, with 0 collisions and no drone lost, but
+  deliveries take 62 % longer (52.5 vs 32.5 ticks), energy per delivery rises
+  25 % (73.8 vs 59.1) and on-time delivery drops to 94 %. Each delivery adds
+  two 60 m climbs and two 60 m descents, at 3 and 2 m/s with full lift power;
+  the extra energy means 14 % more battery swaps, longer swap queues and a
+  busier fleet. At 32 drones the cost is larger (64.2 ticks, 87 % on time).
+  Cruising at 60 m keeps most of the height (86 % of flight time above layer
+  1) for a smaller cost: 22 % longer deliveries, 9 % more energy, 98.7 % on
+  time. Over the 10 seeds 46 % of the building blocks are one layer tall,
+  36 % two and 18 % three, so at 60 m a drone can cross about half the
+  blocks and at 90 m all but the tallest.
 
 **How much wind?**
 
@@ -817,25 +865,31 @@ paired.
 | ORCA without reservations collides occasionally (6 of 60 runs) | keep strategic deconfliction; if flying without it, add a longer horizon, acceleration-aware (non-holonomic) velocity obstacles, or priority rules |
 | Point-mass physics: no attitude dynamics, no sensing noise or latency in the neighbours ORCA sees, no vertical gusts | a multirotor model with thrust and tilt limits, ADS-B-like delayed and noisy neighbour states, 3-D turbulence |
 | The power model has no acceleration term and no translational lift (real multirotors often need less power at moderate speed than in a hover) | a blade-element / momentum-theory power model; fit its constants to a real airframe |
+| The cruise layer is a fixed planning penalty, not a decision: every drone pays for the climb whether or not it saves anything, so cruising high costs 22–62 % in delivery time (§6.7) | price the climb against what it buys (fewer conflicts, shorter routes over low blocks), or separate cruise layers by heading as in §6.6 |
 
 ## 9. How to reproduce
 
 ```bash
-python3 -m unittest discover -s tests -t .      # 111 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous
+python3 -m unittest discover -s tests -t .      # 125 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous, messages
 python3 run_experiments.py --seeds 10           # tables -> results/experiments.md, charts -> results/figures/
-python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D)
+python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D) + replay_messages.txt
 python3 run_simulation.py --view 3d             # the same run in 3D -> results/replay_3d.html
-python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html
+python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html   # cruises at 90 m
 python3 run_experiments.py --only tactical motion wind   # §6.7 only; the other sections keep their results
 ```
 
 **Replay viewers.** Both viewers share one core, so the timeline, playback
 controls, fleet list, follow card and plain-language event log are identical.
+The follow card graphs the followed drone's height over the last two minutes
+and along its booked route, and a **Messages between the agents** panel
+lists the plain-English messages up to the current moment (only the
+followed drone's when you follow one).
 
 * The **2D viewer** is a top-down map in a single self-contained file that
   works offline. In stacked airspace each drone's label shows its layer ("L2"),
   buildings are shaded by height, and drones stacked over the same spot are
-  drawn side by side.
+  drawn side by side. A drone carrying a parcel has the box drawn under it
+  (brown, red for express).
 * The **3D viewer** (`--view 3d`) draws the same run with three.js (a pinned
   r147 build and its OrbitControls, loaded from cdn.jsdelivr.net, so it needs
   an internet connection) as a city at **true scale** (flight layers at 30,
@@ -851,9 +905,14 @@ controls, fleet list, follow card and plain-language event log are identical.
     daytime, the dark theme dusk with lit windows and glowing lights;
   * quadcopters coloured by the same state palette, with spinning rotors,
     navigation lights and a glowing battery ring, leaning into their speed
-    and banking into their acceleration; parcels ride between the skids and
-    are lowered to the customer on a winch. Drones are drawn larger than
-    life, more so when the camera is far away;
+    and banking into their acceleration; a parcel hangs under the drone in
+    a box (brown, red for express) and is lowered to the customer on a
+    winch. Drones are drawn larger than life, more so when the camera is
+    far away;
+  * altitude lines from every flying drone to the ground and, for the drone
+    you follow, a translucent curtain from its flight path down to the
+    street, over the last minute and along its booked route, so climbs over
+    the buildings and descents to pads and customers stand out;
   * booked routes as 3-D lines, no-fly zones as translucent red volumes over
     the layers they close, and collision flashes.
 
@@ -871,7 +930,7 @@ controls, fleet list, follow card and plain-language event log are identical.
   flies them smoothly, turned into their direction of travel, with velocity
   arrows (8 s ahead), optional separation bubbles, a compass for the wind,
   and a red link and "too close" label for every loss of separation. A default continuous
-  replay is about 0.9 MB, a 32-drone one under 2 MB.
+  replay is about 0.9 MB, a 32-drone one under 3 MB (messages included).
 
 **Fix found by the layer experiment.** A drone held by traffic inside a
 zone's footprint when the zone started could not plan at all. Every zone cell,

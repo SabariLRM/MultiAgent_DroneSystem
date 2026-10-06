@@ -39,7 +39,21 @@ customer", "→ Station 2 battery"), and the fleet list and event log explain ea
 step in plain sentences. Click any drone to follow it: its route, destination,
 arrival time, battery and recent decisions are shown, including why it paused
 (wind gust, giving way, waiting for a clear route). In stacked airspace every
-label also shows the drone's flight layer ("L2").
+label also shows the drone's flight layer ("L2"), and the follow card graphs
+the drone's height over the last two minutes and along its booked route. A
+drone carrying a parcel has the box drawn under it (brown, or red for
+express).
+
+Every message the agents exchanged is written in plain English to
+`results/replay_messages.txt` (next to the replay): who sent what to whom and
+when, such as *"Drone 3 → Dispatcher, BID: My bids in round 2: order #2 for
+cost 49.4, delivered by t=54"* or *"Station 1 → Drone 10, AGREE: Reserved.
+Expected wait when you arrive: 31 ticks."* A summary counts every
+kind of message; the routine status reports (each drone's and station's,
+every tick) are counted but only listed with `--messages-all`. The replays
+also have a **Messages between the agents** panel that follows the timeline
+(only the followed drone's messages when you follow one). `--messages
+FILE` writes the log elsewhere, `--messages ''` skips it.
 
 For a 3D view of the same run:
 
@@ -67,7 +81,17 @@ python3 run_simulation.py --motion continuous --view both   # results/replay.htm
 python3 run_simulation.py --motion continuous --wind strong --drones 24 --rate 0.35
 python3 run_simulation.py --motion continuous --tactical none   # strategic reservations only, no ORCA
 python3 run_simulation.py --motion continuous --coordination none  # ORCA only, no reservations
+python3 run_simulation.py --motion continuous --cruise-layer 0  # no cruise altitude: drones stay low
 ```
+
+From the command line, continuous runs **cruise over the buildings**: the
+planner charges extra for every cell flown below the top layer (90 m), so on
+longer trips drones climb out of the street canyons, cross the city above
+most roofs and descend near their destination; short hops stay low.
+`--cruise-layer 2` cruises at 60 m and `--cruise-layer 0` turns it off. The
+climbs cost time and energy (about 60 % longer deliveries at 90 m, 22 % at 60
+m; [report §6.7](docs/REPORT.md#67-continuous-flight)), so the experiments,
+and `SimConfig` itself, keep it off unless asked.
 
 In continuous mode every drone has a position and velocity in metres and
 seconds (physics every 0.5 s, agents still decide every 10 s), obeys speed
@@ -80,13 +104,19 @@ drones' positions every 2 s and is titled "continuous flight": both viewers
 draw a 30-second trail behind each drone (smoothed corners, gusts, avoidance
 swerves), an amber ring around any drone that ORCA is steering right now, a
 red link for every loss of separation, and the wind; the 2D viewer shows
-heights in metres, the 3D viewer adds velocity arrows and optional
-separation bubbles. As before, **3D replays need an internet connection** to load three.js;
+heights in metres, the 3D viewer adds velocity arrows, altitude lines to the
+ground, optional separation bubbles, and for the drone you follow a
+translucent "curtain" from its flight path down to the ground over the last
+minute and along its booked route, so every climb and descent is visible. As before, **3D replays need an internet connection** to load three.js;
 2D replays work offline. Design: [docs/continuous_design.md](docs/continuous_design.md).
 Ready-made continuous replays are in `results/`: `replay_continuous.html`
-(default run; `_3d` for 3D), `replay_continuous_32_drones*.html`, and
+(default run, cruising at 90 m; `_3d` for 3D), `replay_continuous_32_drones*.html`, and
 `replay_continuous_reservations_only_3d.html`, reservations without ORCA,
-where the red links show the losses of separation at the pads.
+where the red links show the losses of separation at the pads. All of them
+cruise at 90 m. Every saved replay has its messages in the **Messages between
+the agents** panel; `results/replay_messages.txt` and
+`results/replay_continuous_messages.txt` are the full logs of the two default
+runs.
 
 Other scenarios:
 
@@ -99,14 +129,14 @@ python3 run_simulation.py --layers 5 --layer-rule heading --drones 32 --rate 0.4
 python3 run_simulation.py --layers 1                       # the original flat airspace
 ```
 
-Run the controlled experiments (10 seeds × 70 configurations, about 8 minutes):
+Run the controlled experiments (10 seeds × 73 configurations, about 9 minutes):
 
 ```bash
 python3 run_experiments.py
-python3 run_experiments.py --only tactical motion wind   # just the continuous-flight sections (~5 minutes)
+python3 run_experiments.py --only tactical motion wind   # just the continuous-flight sections (~6 minutes)
 ```
 
-Run the test suite (111 unit + integration tests, about 8 s):
+Run the test suite (125 unit + integration tests, about 10 s):
 
 ```bash
 python3 -m unittest discover -s tests -t .
@@ -126,6 +156,7 @@ dronefleet/
   orca.py                3-D ORCA half-spaces and linear programs (port of RVO2-3D)
   flight.py              continuous flight: 4-D references + smoothing, path follower, ORCA, vertiports, physics, safety monitor
   messages.py            FIPA-ACL performatives and the message bus
+  msglog.py              every agent message as a plain-English sentence; the replay_messages.txt log
   orders.py              Poisson order stream with a service-area check
   traffic.py             reactive right-of-way resolver + collision detector
   agents/drone.py        the drone agent: beliefs, bidding, mission FSM, planning, repair
@@ -141,6 +172,7 @@ dronefleet/
 tests/                   unit tests (planner, reservations, traffic, agents, layers, replay) + system tests
   test_regression.py     one-layer runs must reproduce the recorded flat-airspace metrics (tests/data/)
   test_continuous.py     controller limits, ORCA scenarios, power model, wind, smoothing, continuous system runs
+  test_messages.py       the message log, the cruise-altitude option and the CLI
 run_simulation.py        CLI: one run -> metrics + replay
 run_experiments.py       CLI: experiment suite -> results/experiments.md, .json, figures/
 docs/REPORT.md           the case-study report (design, algorithms, results, discussion)
@@ -169,6 +201,8 @@ docs/continuous_design.md design of the continuous flight mode (units, controlle
 | `wind_mean` / `wind_gust` | 5 / 1.5 | continuous: mean wind and RMS gust (m/s) at 30 m; presets in `wind.py` |
 | `sep_h` / `sep_v` | 40 / 15 | continuous: separation bubble (m) |
 | `pad_spots` | 4 | continuous: touchdown spots per hub or station |
+| `cruise_layer` | 0 | layer drones prefer for the cruise (0 = off; `run_simulation.py --motion continuous` uses the top layer) |
+| `record_messages` | `False` | keep the plain-English message log (`run_simulation.py` turns it on) |
 
 Scale: one cell ≈ 100 m, one layer ≈ 30 m, one tick ≈ 10 s, cruise ≈ 36 km/h
 (exact in continuous mode, where every physical constant is a `SimConfig` field).

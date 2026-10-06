@@ -231,7 +231,9 @@ panels) plus, per drone, positions every `trace_dt` = 2 s, quantised to 1 m
 and delta-encoded in one flat integer array; LoS episodes, ORCA episodes,
 collisions and the wind at the city centre as small lists. Viewers
 interpolate between samples; replays stay under 5 MB. Grid replays have no
-track and play exactly as before.
+track and play exactly as before. Both kinds of replay also carry the agents'
+messages as plain-English sentences (`msglog.py`; routine status reports
+left out), which the viewers list beside the timeline.
 
 ## 10. What changed while building it
 
@@ -271,3 +273,12 @@ The plan above is the final design. These parts changed after measuring them
   the floor and the touch-down radius prevent that.
 * **Deadlocks.** The symmetric "swap across a circle" test jammed with only
   the small keep-right bias; the stronger bias for stopped drones resolves it.
+* **Cruise altitude (added after the experiments above).** With free layer
+  choice, continuous drones flew above layer 1 only 2–5 % of the time, so
+  in the 3-D view they threaded the streets between the towers instead of
+  crossing the city above them. `cruise_layer` (planner cost, §4.5 of the
+  report) makes longer trips climb; `run_simulation.py --motion continuous`
+  uses the top layer, `SimConfig` keeps it off. ORCA, the pad rules and the
+  energy model needed no change: with cruise at 90 m, 10 seeds at 12 and 32
+  drones had 0 collisions and no drone lost, at a cost of 62 % (12 drones)
+  in delivery time (report §6.7).

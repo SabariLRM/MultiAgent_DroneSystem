@@ -152,20 +152,24 @@ def experiments() -> dict[str, dict]:
             "question": "Grid cells or continuous flight, at the default configuration?",
             "note": "Default configuration (12 drones, 3 flight layers, 0.16 orders/tick); 32 drones fly with "
                     "0.47 orders/tick and 6 spare packs per station. The grid model's wind is a 3 % chance per "
-                    "move of being held back a tick; continuous flight uses the wind field. \"Cruise at 90 m\" "
-                    "sets cruise_layer = 3: every cell flown below layer 3 costs the planner 0.6 extra per layer, "
-                    "so longer trips climb over the buildings (off by default; 60 m: cruise_layer = 2).",
+                    "move of being held back a tick; continuous flight uses the wind field. \"Cruise at 60 m\" "
+                    "(cruise_layer = 2, the default of run_simulation.py --motion continuous): drones prefer to fly "
+                    "2 layers above the street or roof below them and close to the straight line to their goal, so "
+                    "they cruise at 60 m and climb to 90 m over buildings; \"90 m\" is cruise_layer = 3. "
+                    "\"Over roofs at 90 m\": share of the time spent over a building that is flown at 90 m.",
             "variants": [("grid (default)", dict(n_layers=3)),
                          ("continuous, calm", dict(**CONT, **wind("calm"))),
                          ("continuous, moderate wind (default)", dict(**CONT)),
                          ("grid, 32 drones", dict(n_layers=3, **FLEET32)),
                          ("continuous, moderate wind, 32 drones", dict(**CONT, **FLEET32)),
                          ("continuous, cruise at 60 m", dict(**CONT, cruise_layer=2)),
-                         ("continuous, cruise at 90 m", dict(**CONT, cruise_layer=3)),
-                         ("continuous, cruise at 90 m, 32 drones", dict(**CONT, **FLEET32, cruise_layer=3))],
+                         ("continuous, cruise at 60 m, 32 drones", dict(**CONT, **FLEET32, cruise_layer=2)),
+                         ("continuous, cruise at 90 m", dict(**CONT, cruise_layer=3))],
             "metrics": ["delivery_rate", "avg_delivery_time", "p95_delivery_time", "on_time_rate",
-                        "energy_per_delivery", "upper_layer_share", "collisions", "wall_time_s"],
-            "extra": ["delivered", "orders", "failed", "cells_flown", "hover_ticks", "swaps", "dead_drones"],
+                        "energy_per_delivery", "upper_layer_share", "over_building_top_share", "collisions",
+                        "wall_time_s"],
+            "extra": ["delivered", "orders", "failed", "cells_flown", "hover_ticks", "swaps", "dead_drones",
+                      "over_building_share", "climbs"],
         },
         "wind": {
             "question": "Continuous flight: how much wind can the energy-safe fleet fly in?",
@@ -209,11 +213,12 @@ LABELS = {
     "replans": "plans", "planner_ms_per_search": "ms/A*", "wall_time_s": "wall s",
     "deviations": "deviations", "plan_repairs": "repairs", "yields": "yields",
     "max_station_queue": "max queue", "upper_layer_share": "above layer 1", "nfz_violations": "NFZ violations",
+    "over_building_top_share": "over roofs at 90 m",
     "separation_losses": "LoS events", "separation_loss_s": "LoS pair-s", "min_separation_m": "min sep (m)",
     "orca_per_drone_hour": "ORCA / drone-h", "tracking_error_mean_m": "track err (m)",
     "flight_hours": "flight h",
 }
-PERCENT = {"delivery_rate", "on_time_rate", "utilisation", "upper_layer_share"}
+PERCENT = {"delivery_rate", "on_time_rate", "utilisation", "upper_layer_share", "over_building_top_share"}
 
 
 def fmt(k: str, s: dict) -> str:

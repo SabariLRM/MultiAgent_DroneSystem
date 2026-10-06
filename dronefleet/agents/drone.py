@@ -97,7 +97,8 @@ class DroneAgent(Agent):
         self.stats = dict(replans=0, repairs=0, holds=0, deviations=0, yields=0, escalations=0,
                           energy_used=0.0, cells_flown=0, hover_ticks=0, deliveries=0, swaps=0,
                           emergencies=0, bids=0, busy_ticks=0, airborne_ticks=0, plan_failures=0,
-                          climbs=0, descents=0, upper_layer_ticks=0)
+                          climbs=0, descents=0, upper_layer_ticks=0, over_building_ticks=0,
+                          over_building_top_ticks=0)
         self.plan_log: list[tuple[int, list]] = []       # (t, cells) for the replay viewer
         self.event_log: list[str] = []
 
@@ -655,6 +656,10 @@ class DroneAgent(Agent):
             self.stats["airborne_ticks"] += 1
             if cell[2] > 1:
                 self.stats["upper_layer_ticks"] += 1
+            if self.world.building_height(cell):
+                self.stats["over_building_ticks"] += 1
+                if cell[2] == self.world.n_layers:
+                    self.stats["over_building_top_ticks"] += 1
             if self.airborne and cell != self.pos:
                 if cell[0] == self.pos[0] and cell[1] == self.pos[1]:
                     self.stats["climbs" if cell[2] > self.pos[2] else "descents"] += 1

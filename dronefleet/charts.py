@@ -348,8 +348,8 @@ def write_charts(results: dict, outdir: str | Path) -> list[Path]:
 
     if "motion" in results:
         modes = ["grid (default)", "continuous, calm", "continuous, moderate wind (default)",
-                 "continuous, cruise at 90 m"]
-        names = ["grid cells", "continuous, calm", "continuous, moderate wind", "continuous, cruise at 90 m"]
+                 "continuous, cruise at 60 m"]
+        names = ["grid cells", "continuous, calm", "continuous, moderate wind", "continuous, cruise at 60 m"]
         panels = []
         for key, title, pct in [("avg_delivery_time", "Average delivery time (ticks)", False),
                                 ("energy_per_delivery", "Energy per delivery", False),

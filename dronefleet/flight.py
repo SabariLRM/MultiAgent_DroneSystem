@@ -819,6 +819,10 @@ class FlightLayer:
             st["airborne_ticks"] += 1
             if pos[2] > 1:
                 st["upper_layer_ticks"] += 1
+            if self.world.building_height(pos):
+                st["over_building_ticks"] += 1
+                if pos[2] == self.world.n_layers:
+                    st["over_building_top_ticks"] += 1
             if prev[2] > 0:
                 if pos == prev:
                     st["hover_ticks"] += 1

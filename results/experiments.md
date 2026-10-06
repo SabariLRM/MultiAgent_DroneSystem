@@ -121,18 +121,18 @@ Mean ± standard deviation over 10 seeds. Continuous flight (metres and seconds)
 
 ### Motion: Grid cells or continuous flight, at the default configuration?
 
-Mean ± standard deviation over 10 seeds. Default configuration (12 drones, 3 flight layers, 0.16 orders/tick); 32 drones fly with 0.47 orders/tick and 6 spare packs per station. The grid model's wind is a 3 % chance per move of being held back a tick; continuous flight uses the wind field. "Cruise at 90 m" sets cruise_layer = 3: every cell flown below layer 3 costs the planner 0.6 extra per layer, so longer trips climb over the buildings (off by default; 60 m: cruise_layer = 2).
+Mean ± standard deviation over 10 seeds. Default configuration (12 drones, 3 flight layers, 0.16 orders/tick); 32 drones fly with 0.47 orders/tick and 6 spare packs per station. The grid model's wind is a 3 % chance per move of being held back a tick; continuous flight uses the wind field. "Cruise at 60 m" (cruise_layer = 2, the default of run_simulation.py --motion continuous): drones prefer to fly 2 layers above the street or roof below them and close to the straight line to their goal, so they cruise at 60 m and climb to 90 m over buildings; "90 m" is cruise_layer = 3. "Over roofs at 90 m": share of the time spent over a building that is flown at 90 m.
 
-| configuration | delivered | avg time | p95 time | on time | energy/deliv | above layer 1 | collisions | wall s |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| grid (default) | 100.0% ±0.0 | 34.6 ±6.9 | 70.4 ±15.9 | 98.8% ±2.0 | 51.4 ±3.4 | 2.1% ±2.3 | 0.00 ±0.00 | 0.24 ±0.30 |
-| continuous, calm | 100.0% ±0.0 | 31.7 ±4.7 | 63.9 ±9.7 | 99.2% ±1.2 | 50.9 ±3.2 | 2.6% ±2.6 | 0.00 ±0.00 | 0.64 ±0.18 |
-| continuous, moderate wind (default) | 100.0% ±0.0 | 32.5 ±5.1 | 68.8 ±11.2 | 99.3% ±0.8 | 59.1 ±4.0 | 2.1% ±2.4 | 0.00 ±0.00 | 0.92 ±0.61 |
-| grid, 32 drones | 100.0% ±0.0 | 30.5 ±5.3 | 58.2 ±13.7 | 99.5% ±0.8 | 50.9 ±3.4 | 2.5% ±1.7 | 0.00 ±0.00 | 0.96 ±0.89 |
-| continuous, moderate wind, 32 drones | 100.0% ±0.0 | 34.2 ±6.4 | 66.5 ±19.6 | 98.8% ±2.1 | 63.8 ±2.4 | 4.9% ±1.8 | 0.00 ±0.00 | 3.14 ±0.61 |
-| continuous, cruise at 60 m | 100.0% ±0.0 | 39.7 ±10.0 | 81.6 ±16.9 | 98.7% ±1.8 | 64.5 ±4.5 | 85.8% ±0.9 | 0.00 ±0.00 | 0.88 ±0.30 |
-| continuous, cruise at 90 m | 100.0% ±0.0 | 52.5 ±18.3 | 104 ±37 | 94.2% ±10.3 | 73.8 ±5.0 | 87.6% ±0.6 | 0.00 ±0.00 | 1.10 ±0.29 |
-| continuous, cruise at 90 m, 32 drones | 100.0% ±0.0 | 64.2 ±17.3 | 131 ±44 | 87.4% ±10.3 | 77.4 ±4.4 | 87.3% ±0.6 | 0.00 ±0.00 | 4.29 ±0.60 |
+| configuration | delivered | avg time | p95 time | on time | energy/deliv | above layer 1 | over roofs at 90 m | collisions | wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| grid (default) | 100.0% ±0.0 | 34.6 ±6.9 | 70.4 ±15.9 | 98.8% ±2.0 | 51.4 ±3.4 | 2.1% ±2.3 | 19.1% ±33.1 | 0.00 ±0.00 | 0.23 ±0.29 |
+| continuous, calm | 100.0% ±0.0 | 31.7 ±4.7 | 63.9 ±9.7 | 99.2% ±1.2 | 50.9 ±3.2 | 2.6% ±2.6 | 20.8% ±32.8 | 0.00 ±0.00 | 0.61 ±0.17 |
+| continuous, moderate wind (default) | 100.0% ±0.0 | 32.5 ±5.1 | 68.8 ±11.2 | 99.3% ±0.8 | 59.1 ±4.0 | 2.1% ±2.4 | 17.5% ±36.8 | 0.00 ±0.00 | 0.90 ±0.59 |
+| grid, 32 drones | 100.0% ±0.0 | 30.5 ±5.3 | 58.2 ±13.7 | 99.5% ±0.8 | 50.9 ±3.4 | 2.5% ±1.7 | 11.4% ±24.8 | 0.00 ±0.00 | 0.93 ±0.86 |
+| continuous, moderate wind, 32 drones | 100.0% ±0.0 | 34.2 ±6.4 | 66.5 ±19.6 | 98.8% ±2.1 | 63.8 ±2.4 | 4.9% ±1.8 | 23.6% ±24.2 | 0.00 ±0.00 | 3.04 ±0.55 |
+| continuous, cruise at 60 m | 100.0% ±0.0 | 42.3 ±11.9 | 86.2 ±26.4 | 97.4% ±3.9 | 66.0 ±4.4 | 87.0% ±0.6 | 81.6% ±4.2 | 0.00 ±0.00 | 0.93 ±0.26 |
+| continuous, cruise at 60 m, 32 drones | 100.0% ±0.0 | 43.6 ±11.6 | 88.0 ±31.5 | 96.4% ±5.1 | 68.5 ±4.3 | 86.7% ±0.6 | 82.3% ±4.4 | 0.00 ±0.00 | 3.31 ±0.61 |
+| continuous, cruise at 90 m | 100.0% ±0.0 | 58.5 ±20.9 | 113 ±39 | 89.0% ±15.2 | 79.5 ±5.8 | 88.6% ±0.6 | 100.0% ±0.1 | 0.00 ±0.00 | 1.09 ±0.35 |
 
 ### Wind: Continuous flight: how much wind can the energy-safe fleet fly in?
 
@@ -145,4 +145,4 @@ Mean ± standard deviation over 10 seeds. Reservations + ORCA, default configura
 | strong wind | 100.0% ±0.0 | 28.5 ±6.7 | 68.1 ±6.7 | 10.3 ±1.4 | 0.10 ±0.32 | 23.4 ±1.9 | 3.91 ±0.33 | 0.10 ±0.32 |
 | severe wind | 20.6% ±12.0 | 93.8 ±73.1 | 49.3 ±10.6 | 1.28 ±0.79 | 0.00 ±0.00 | 65.2 ±33.8 | 6.14 ±1.07 | 0.00 ±0.00 |
 
-_Total compute: 526.5 s._
+_Total compute: 515.2 s._

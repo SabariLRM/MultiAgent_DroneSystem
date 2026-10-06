@@ -49,6 +49,8 @@ def compute_metrics(sim) -> dict:
         "climbs": tot("climbs"),
         "descents": tot("descents"),
         "upper_layer_share": tot("upper_layer_ticks") / max(1, tot("airborne_ticks")),
+        "over_building_share": tot("over_building_ticks") / max(1, tot("airborne_ticks")),
+        "over_building_top_share": tot("over_building_top_ticks") / max(1, tot("over_building_ticks")),
         "swaps": sum(s.swaps_done for s in sim.stations),
         "avg_swap_wait": (sum(s.wait_ticks_total for s in sim.stations) / max(1, sum(s.swaps_done for s in sim.stations))),
         "max_station_queue": max((s.max_queue for s in sim.stations), default=0),

@@ -47,6 +47,8 @@ BUILDING_MARGIN = 8.0            # ... so that the drone stays this far from the
 BUILDING_HORIZON = 4.0           # ... for at least this many seconds
 FLOOR_BELOW_LAYER1 = 8.0         # m: avoidance never pushes traffic lower than this under layer 1 ...
 FLOOR_HORIZON = 2.0              # ... (it may approach that height at most this fast, in seconds)
+ROOF_CLEAR = 5.0                 # m: a drone over a building stays this far above its box ...
+ROOF_EDGE = 5.0                  # ... while within this of its footprint (approached as the floor above)
 TOUCHDOWN_RADIUS = 8.0           # m: a drone only touches down this close to its touchdown spot
 
 
@@ -646,6 +648,9 @@ class FlightLayer:
         sp = math.hypot(vxd, vyd)
         if sp > cap:
             vxd, vyd = vxd * cap / sp, vyd * cap / sp
+        roof = self._roof_floor(b)
+        if roof:                         # over a roof: never sink onto it, even when the plan's descent is ahead of us
+            vzd = max(vzd, (roof - z) / FLOOR_HORIZON)
         b.px, b.py, b.pz = vxd, vyd, max(-cfg.max_descent, min(cfg.max_climb, vzd))
         # below layer 1 a drone is still climbing out of a pad column: others give way
         b.mode, b.coop = mode, mode != WINCH and z >= lm - 2.0
@@ -715,6 +720,9 @@ class FlightLayer:
         # a floor: only a drone descending in its touchdown column goes below layer 1
         floor = cfg.layer_m - FLOOR_BELOW_LAYER1
         planes.append((0.0, 0.0, -s * max(0.0, b.z - floor) / FLOOR_HORIZON, 0.0, 0.0, 1.0))
+        roof = self._roof_floor(b)
+        if roof:                              # and over a building, never down onto its roof
+            planes.append((0.0, 0.0, s * (roof - b.z) / FLOOR_HORIZON, 0.0, 0.0, 1.0))
         n_fixed = len(planes) + self._building_planes(b, planes)
         close = ahead = False
         pn = math.sqrt(px * px + py * py + pz * pz)
@@ -770,6 +778,34 @@ class FlightLayer:
                 planes.append((k * nx, k * ny, 0.0, nx, ny, 0.0))
                 added += 1
         return added
+
+    def _roof_floor(self, b: Body) -> float:
+        """The lowest a drone may go where it is: ``ROOF_CLEAR`` above the box of any building
+        whose footprint (grown by ``ROOF_EDGE``) it is over and above; 0 if there is none.
+
+        The path follower tracks a timed reference, so a drone that falls behind
+        horizontally (accelerating out of a hover after a rooftop drop, or slowed
+        by avoidance) can follow the plan's descent while it is still over the
+        building it was meant to leave. This floor stops it there. A drone beside
+        a building, below its roof, is kept off the wall by the building planes.
+        """
+        cfg = self.cfg
+        cm, lm = cfg.cell_m, cfg.layer_m
+        heights = self.world.heights
+        cx, cy = int(b.x // cm), int(b.y // cm)
+        floor = 0.0
+        for ox in (-1, 0, 1):
+            for oy in (-1, 0, 1):
+                h = heights.get((cx + ox, cy + oy))
+                if not h:
+                    continue
+                top = (h + 0.5) * lm
+                if b.z < top:
+                    continue
+                x0, y0 = (cx + ox) * cm, (cy + oy) * cm
+                if x0 - ROOF_EDGE <= b.x <= x0 + cm + ROOF_EDGE and y0 - ROOF_EDGE <= b.y <= y0 + cm + ROOF_EDGE:
+                    floor = max(floor, top + ROOF_CLEAR)
+        return floor
 
     def _orca_state(self, b: Body, on: bool, now: float) -> None:
         if on and not b.orca_on:

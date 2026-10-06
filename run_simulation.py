@@ -52,6 +52,9 @@ def parse_args(argv=None) -> argparse.Namespace:
                     help="continuous mode: wind preset (default moderate: 5 m/s, gusts 1.5 m/s RMS)")
     ap.add_argument("--tactical", choices=TACTICAL_MODES, default=SimConfig.tactical,
                     help="continuous mode: orca (default) or none (strategic reservations only)")
+    ap.add_argument("--cruise-layer", type=int, default=None,
+                    help="layer drones prefer for the cruise, over the buildings (0 = off; default: the top layer "
+                         "in continuous mode, off in grid mode)")
     ap.add_argument("--out", default=None,
                     help="HTML replay path ('' to skip; default results/replay.html, or results/replay_3d.html for --view 3d)")
     ap.add_argument("--view", choices=("2d", "3d", "both"), default="2d",
@@ -100,6 +103,7 @@ def main(argv=None) -> int:
         gust_prob=a.gust, auto_nfz=not a.no_nfz, n_layers=a.layers, layer_rule=a.layer_rule,
         record_trace=bool(replays), motion=a.motion, tactical=a.tactical, station_spare_packs=a.spare_packs,
         record_messages=bool(a.messages) or bool(replays),
+        cruise_layer=(a.cruise_layer if a.cruise_layer is not None else a.layers if a.motion == "continuous" else 0),
     )
     if a.wind:
         cfg = dataclasses.replace(cfg, wind_mean=WIND_PRESETS[a.wind][0], wind_gust=WIND_PRESETS[a.wind][1])
@@ -114,6 +118,9 @@ def main(argv=None) -> int:
         if cfg.motion == "continuous":
             print(f"Continuous flight: tactical={cfg.tactical}, wind {cfg.wind_mean:g} m/s (gusts {cfg.wind_gust:g} m/s RMS), "
                   f"physics every {cfg.physics_dt:g} s")
+        if cfg.cruise_layer:
+            print(f"Cruise on layer {min(cfg.cruise_layer, cfg.n_layers)} ({min(cfg.cruise_layer, cfg.n_layers) * cfg.layer_m:g} m), "
+                  f"over the buildings")
     if a.map:
         print(w.ascii())
         print("legend: H hub  S swap station  c customer  "

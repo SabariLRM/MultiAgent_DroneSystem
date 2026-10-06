@@ -96,18 +96,28 @@ class PlannerStats:
 
 class SpaceTimePlanner:
     def __init__(self, world: GridWorld, reservations: ReservationTable, max_expansions: int = 40000,
-                 land_dwell: int = 0):
+                 land_dwell: int = 0, cruise_layer: int = 0, cruise_penalty: float = 0.0):
         """``max_expansions`` is the search budget per flight layer (the airspace grows with the layers).
 
         ``land_dwell`` (continuous flight only; 0 in grid mode) keeps the drone
         over the pad for that many extra ticks after it arrives, so the pad's
         layer-1 cell stays reserved while the vertical descent passes through
         it. The arrival step is tagged ``land_start``.
+
+        ``cruise_layer`` (0 = off) makes drones prefer to cruise high: every
+        horizontal move below that layer costs ``cruise_penalty`` extra per
+        layer below it. On a longer trip the planner then climbs over the
+        buildings and descends near the destination, while a short hop stays
+        low. Costs only grow, so the heuristic stays admissible and
+        consistent; A* still never plans a conflict, it just trades arrival
+        time for altitude.
         """
         self.world = world
         self.res = reservations
         self.max_expansions = max_expansions * world.n_layers
         self.land_dwell = land_dwell
+        self.cruise_layer = min(cruise_layer, world.n_layers)
+        self.cruise_penalty = cruise_penalty
         self.stats = PlannerStats()
 
     # ---------------------------------------------------------------- public
@@ -262,6 +272,8 @@ class SpaceTimePlanner:
                         cost = 1.0 + VERTICAL_TIEBREAK
                     else:
                         cost = 1.0
+                        if z < self.cruise_layer:
+                            cost += self.cruise_penalty * (self.cruise_layer - z)
                     if escape and in_zone(n, nt, escape):
                         cost += ZONE_ESCAPE_COST
                     succ.append(((n, nt), cost))

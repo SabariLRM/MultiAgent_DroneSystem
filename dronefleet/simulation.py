@@ -58,12 +58,13 @@ class Simulation:
         self.continuous = cfg.motion == "continuous"
         if self.continuous:
             self.wind = WindField(cfg)
-            self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions,
-                                            land_dwell=cfg.land_ticks)
+            self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions, land_dwell=cfg.land_ticks,
+                                            cruise_layer=cfg.cruise_layer, cruise_penalty=cfg.cruise_penalty)
             self.energy = ContinuousEnergyModel(cfg, self.wind)
         else:
             self.wind = None
-            self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions)
+            self.planner = SpaceTimePlanner(self.world, self.res, cfg.max_expansions,
+                                            cruise_layer=cfg.cruise_layer, cruise_penalty=cfg.cruise_penalty)
             self.energy = EnergyModel(cfg)
         self.dispatcher = DispatcherAgent(cfg, self.bus)
         self.orders = OrderGenerator(cfg, self.world, self.energy if self.continuous else None)

@@ -369,7 +369,7 @@ where a configuration says so.
 
 ### What both viewers show
 
-* **Timeline**: play, pause, step a tick, speed 0.5×–8× (1× plays 4 ticks,
+* **Timeline**: play, pause, step a tick, speed 0.25×–8× (1× plays 4 ticks,
   40 s of flight, per second), and a chart of orders waiting and being
   delivered over time.
 * **Fleet list**: what every drone is doing right now, in a sentence ("Lowering

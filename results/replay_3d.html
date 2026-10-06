@@ -107,20 +107,24 @@ button:hover, select:hover { border-color: var(--base); }
 
 /* fleet */
 .fleet { display: grid; gap: 2px; }
+/* every row has the same height whatever its text: two lines at most for what the drone is doing,
+   one for the detail line (cut with an ellipsis; the full text is in the row's tooltip) */
 .frow { display: grid; grid-template-columns: 26px minmax(0, 1fr) 54px; gap: 10px; align-items: center; text-align: left;
-  border: 0; border-radius: 8px; padding: 5px 6px; background: transparent; width: 100%; }
+  border: 0; border-radius: 8px; padding: 5px 6px; background: transparent; width: 100%; height: 60px; box-sizing: border-box; }
 .frow:hover { background: var(--raised); }
 .frow.sel { background: var(--raised); box-shadow: inset 0 0 0 1px var(--base); }
 .fid { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; }
-.ftext { font-size: 12.5px; line-height: 1.35; min-width: 0; }
-.ftext small { display: block; color: var(--muted); font-size: 11.5px; }
+.ftext { font-size: 12.5px; line-height: 1.35; min-width: 0; overflow: hidden; }
+.ftext .fmain { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ftext small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fbat { display: grid; gap: 2px; justify-items: end; font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .fbat .bar { width: 100%; height: 6px; border-radius: 3px; background: var(--grid); position: relative; overflow: hidden; }
 .fbat .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
 
 .stations { display: grid; gap: 10px; }
-.station { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; font-size: 13px; }
-.station .meta { color: var(--ink2); font-size: 12px; }
+.station { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 8px; font-size: 13px; }
+.station .meta { text-align: right; }
+.station .meta { color: var(--ink2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .packs { display: flex; gap: 3px; grid-column: 1 / -1; align-items: center; font-size: 11px; color: var(--muted); }
 .packs i { width: 14px; height: 8px; border-radius: 2px; background: var(--grid); }
 .packs i.full { background: var(--c-energy); }
@@ -218,6 +222,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--raised); border-radi
       <div class="row"><svg viewBox="0 0 30 24"><path d="M3 20 L10 20 L10 13 L18 13 L18 6 L27 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/></svg><span><b>Line</b>: the route the drone has booked, climbs and descents included. Routes are booked in space <i>and time</i>, so lines can cross without the drones ever meeting</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><path d="M2 21 L2 16 L9 16 L13 6 L28 6 L28 21 Z" fill="var(--c-parcel)" fill-opacity=".22"/><path d="M2 16 L9 16 L13 6 L28 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/><line x1="2" y1="21" x2="28" y2="21" stroke="var(--muted)"/></svg><span><b>Curtain</b>: for the drone you follow, a see-through wall from its flight path down to the street, over the last minute and along its booked route, so every climb and descent stands out. <b>Altitude lines</b> drop from every flying drone to the ground; the follow card graphs its height</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="4" y="12" width="8" height="10" fill="var(--building)"/><rect x="15" y="4" width="8" height="18" fill="var(--building)"/><line x1="8" y1="3" x2="8" y2="12" stroke="var(--muted)" stroke-dasharray="2 2"/><circle cx="8" cy="3" r="2.5" fill="var(--c-pickup)"/></svg><span><b>True scale</b>: buildings and flight heights are to scale (layers at 30, 60, 90 m; each planning block of up to 45, 75 or 105 m is drawn as one to four towers no taller than the block). A drone can fly over a block on any layer above it. Drones are drawn larger than life so you can see them, more so when the camera is far away; their shadows show where they are</span></div>
+      <div class="row" data-cust hidden><svg viewBox="0 0 30 24"><rect x="3" y="6" width="11" height="16" fill="var(--building)"/><ellipse cx="8.5" cy="6" rx="4" ry="1.4" fill="var(--ink2)"/><path d="M17 14 L22.5 9 L28 14 Z" fill="#a0503a"/><rect x="18" y="14" width="9" height="7" fill="var(--base)"/></svg><span><b>Customers live in buildings.</b> A dark pad with a white target on a roof is where the parcel is set down: a 30 m roof is served from 60 m, a 60 m roof from 90 m. Houses with pitched roofs get it on the lawn, lowered from 30 m. Rings show waiting orders at the height they will be delivered</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><rect x="4" y="4" width="22" height="16" fill="var(--critical)" fill-opacity=".18" stroke="var(--critical)" stroke-width="1.5"/></svg><span><b>Red box</b>: a no-fly zone and the layers it closes (dashed outline = announced, not active yet). <b>Rings</b> on the ground are customers waiting for an order</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><path d="M2 20 Q10 20 14 13 T24 6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><circle cx="24" cy="6" r="4" fill="var(--c-parcel)"/></svg><span><b>Trail</b>: where the drone actually flew in the last 30 seconds, in 3D: climbs, smoothed corners, gusts and swerves. An <b>amber ring</b> means collision avoidance (ORCA) is steering it around another drone right now</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><ellipse cx="15" cy="12" rx="12" ry="7" fill="var(--muted)" fill-opacity=".18" stroke="var(--muted)"/><rect x="12" y="10" width="6" height="4" rx="1" fill="var(--c-idle)"/></svg><span><b>Bubble</b> (optional): the separation minimum around a drone, 40 m sideways and 15 m up and down. It turns red, and a <b>red line</b> joins the two drones, when another drone is inside it</span></div>
@@ -432,6 +437,16 @@ function startReplay(DATA, view) {
   stations.forEach(([x, y], i) => placeByEnc.set(enc(x, y), `Station ${i}`));
   const placeName = e => placeByEnc.get(e) || "the customer";
   const heights = new Map(DATA.world.blocked.map((b, j) => [b, DATA.world.heights ? DATA.world.heights[j] : L]));
+  // customers in buildings (optional): height in layers, 0 = a house; parcels go onto the roof
+  const CUST_H = DATA.world.customer_heights ? new Map(DATA.world.customers.map(([x, y], j) => [x + "," + y, DATA.world.customer_heights[j]])) : null;
+  const custHeight = (x, y) => CUST_H ? (CUST_H.get(x + "," + y) || 0) : -1;
+  /* Where an order's parcel goes, in words: "the customer's roof (30 m up)", "the customer's garden" or "the customer"
+     (with a preposition, for "Lowering order #3 onto the customer's roof"). */
+  function dropPlace(o, prep = false) {
+    const h = o ? custHeight(o.x, o.y) : -1;
+    if (h < 0) return (prep ? "to " : "") + "the customer";
+    return h === 0 ? (prep ? "into " : "") + "the customer's garden" : (prep ? "onto " : "") + `the customer's roof (${h * LAYER_M} m up)`;
+  }
 
   // ------------------------------------------------------------ orders
   const orders = DATA.orders.map(o => ({ oid: o[0], hub: o[1], x: o[2], y: o[3], created: o[4], deadline: o[5],
@@ -469,7 +484,7 @@ function startReplay(DATA, view) {
       case "loading":
         text = `Loading order #${oid}${ex} at ${tgt}`; tag = `loading #${oid}`; break;
       case "to_customer":
-        if (flag === FLAG.LOWERING) { text = `Lowering order #${oid} to the customer on a winch`; tag = `lowering #${oid}`; }
+        if (flag === FLAG.LOWERING) { text = `Lowering order #${oid} ${dropPlace(o, true)} on a winch`; tag = `lowering #${oid}`; }
         else if (!air) { text = `Taking off with order #${oid}${ex}`; tag = ""; }
         else { text = `Carrying order #${oid}${ex} to the customer`; tag = `#${oid} → customer`; }
         break;
@@ -522,6 +537,7 @@ function startReplay(DATA, view) {
     .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join("");
   document.querySelectorAll("[data-layers]").forEach(el => { el.hidden = L === 1; });
   document.querySelectorAll("[data-continuous]").forEach(el => { el.hidden = !CONT; });
+  document.querySelectorAll("[data-cust]").forEach(el => { el.hidden = !CUST_H; });
   if (CONT) {
     // make it obvious this is not the grid model: title, and the continuous views switched on
     document.querySelectorAll("[data-cont-default]").forEach(el => { el.checked = true; });
@@ -614,9 +630,9 @@ function startReplay(DATA, view) {
     fleet.innerHTML = fr.d.map((d, k) => {
       const col = colorOf(d), desc = describe(d);
       const sub = [desc.alt ? `Layer ${altOf(d)}` : "", desc.why].filter(Boolean).join(" · ");
-      return `<button class="frow${k === selected ? " sel" : ""}" data-k="${k}" aria-pressed="${k === selected}">` +
+      return `<button class="frow${k === selected ? " sel" : ""}" data-k="${k}" aria-pressed="${k === selected}" title="${esc(desc.text + (sub ? " · " + sub : ""))}">` +
         `<span class="fid" style="background:${col};color:${textOn(col)}">${k}</span>` +
-        `<span class="ftext">${esc(desc.text)}${sub ? `<small>${esc(sub)}</small>` : ""}</span>` +
+        `<span class="ftext"><span class="fmain">${esc(desc.text)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</span>` +
         `<span class="fbat" title="battery ${d[4]}%">${d[4]}%<span class="bar"><i style="width:${d[4]}%;background:${socColor(d[4])}"></i></span></span></button>`;
     }).join("");
 
@@ -628,7 +644,7 @@ function startReplay(DATA, view) {
       fr.d.forEach((d, k) => { if (d[8] === here) { if (STATES[d[3]] === "swapping") swapping.push(k); else if (STATES[d[3]] === "queued") queued.push(k); } });
       const line = [swapping.length ? `swapping drone ${swapping.join(", ")}` : "",
                     queued.length ? `drone ${queued.join(", ")} waiting` : ""].filter(Boolean).join(" · ") || "free";
-      return `<div class="station"><div><b>Station ${j}</b></div><div class="meta">${line}</div>` +
+      return `<div class="station"><div><b>Station ${j}</b></div><div class="meta" title="${line}">${line}</div>` +
              `<div class="packs" title="${charged} of ${total} spare packs fully charged">${packs}<span>${charged} of ${total} spare packs charged</span></div></div>`;
     }).join("");
 
@@ -699,7 +715,7 @@ function startReplay(DATA, view) {
                                (d[6] ? " · on board" : " · not collected yet")]);
     const st = STATES[d[3]];
     if (d[8] >= 0 && st !== "queued" && st !== "swapping" && st !== "loading")
-      facts.push(["Going to", placeByEnc.has(d[8]) ? placeName(d[8]) : `the customer (ring #${d[5]} on the map)`]);
+      facts.push(["Going to", placeByEnc.has(d[8]) ? placeName(d[8]) : `${dropPlace(o)} (ring #${d[5]} on the map)`]);
     if (d[12] >= 0 && d[12] > fr.t) facts.push(["Arrives", `t=${d[12]} (in ${d[12] - fr.t} tick${d[12] - fr.t === 1 ? "" : "s"})`]);
     if (d[11] >= 0) facts.push(["After that", `lands at ${placeName(d[11])}`]);
     const recent = byDrone[selected].filter(([fi]) => fi <= i).slice(-6).reverse();
@@ -922,7 +938,7 @@ function startReplay(DATA, view) {
 
   const api = {
     W, H, L, frames, LAST, N, STATES, FLAG, TRIP, T, FONT, DATA, enc, decode, altOf, heights, hubs, stations,
-    CONT, TICK_S, CELL_M, TRACK, trackAt, trailAt, losAt, orcaAt, windAt,
+    CONT, TICK_S, CELL_M, TRACK, trackAt, trailAt, losAt, orcaAt, windAt, CUST_H, custHeight,
     describe, colorOf, socColor, textOn, esc, placeName, placeByEnc, orders, orderById, flashes, byDrone,
     routeAhead, opt, select, showTip, hideTip, droneTip, render,
     get selected() { return selected; }, get pos() { return pos; }, get playing() { return playing; },
@@ -975,6 +991,8 @@ startReplay(DATA, (() => {
   const LAYER_M = (DATA.meta && DATA.meta.layer_m) || 30;
   const LH = LAYER_M * MPU;                          // one flight layer, true scale
   const ROOF = h => (h + .5) * LAYER_M * MPU;         // roof of an h-layer building block (15 m under layer h + 1)
+  /** Where a customer's parcel is set down: the roof of its building (h layers up), or the ground (house, open ground). */
+  const custRoof = (x, y) => { const h = A.custHeight(x, y); return h > 0 ? h * LH : 0; };
   const G = 9.81, UP = new THREE.Vector3(0, 1, 0);
   const V = new THREE.Vector3(), V2 = new THREE.Vector3(), P = new THREE.Vector3(), S3 = new THREE.Vector3();
   const Q = new THREE.Quaternion(), QY = new THREE.Quaternion(), O = new THREE.Object3D();
@@ -1174,9 +1192,12 @@ startReplay(DATA, (() => {
           }
         }
       }
-      // customers: a painted drop zone
+      // customers on the ground (a house's garden when customers live in buildings): a painted drop zone
       c.strokeStyle = "rgba(255,255,255,.85)"; c.lineWidth = 1.6;
       for (const [x, y] of DATA.world.customers) {
+        const ch = A.custHeight(x, y);
+        if (ch > 0) continue;                                                      // drop pad on the roof instead
+        if (ch === 0) { c.fillStyle = "#6c8d4b"; c.fillRect(x * PX + rw + sw, y * PX + rw + sw, PX - 2 * rw - 2 * sw, PX - 2 * rw - 2 * sw); }
         const cx = (x + .5) * PX, cy = (y + .5) * PX;
         c.beginPath(); c.arc(cx, cy, PX * .16, 0, 7); c.stroke();
         c.beginPath(); c.moveTo(cx - PX * .08, cy); c.lineTo(cx + PX * .08, cy); c.moveTo(cx, cy - PX * .08); c.lineTo(cx, cy + PX * .08); c.stroke();
@@ -1370,9 +1391,18 @@ startReplay(DATA, (() => {
 
   /** Every block of the planning grid becomes one to four buildings, none taller than the block's roof. */
   function buildCity() {
-    const walls = FACADES.map(() => builder()), roofs = builder(), unitList = [], pickCells = [];
+    const walls = FACADES.map(() => builder()), roofs = builder(), unitList = [], pickCells = [], custPads = [];
     for (const [b, h] of A.heights) {
       const [cx, cy] = A.decode(b);
+      if (A.custHeight(cx, cy) > 0) {                   // a customer's building: its roof, h layers up, takes the parcels
+        const r = rng(cx * 7919 + cy * 104729 + 23), top = h * LH, m = .2;
+        const tint = new THREE.Color().setHSL(.07 + .05 * r(), .1 + .1 * r(), .8 + .15 * r());
+        addBox(walls[h >= 2 ? 1 : 2], roofs, cx + m, cy + m, cx + 1 - m, cy + 1 - m, 0, top, tint,
+               new THREE.Color().setHSL(0, 0, .5 + .15 * r()), Math.floor(r() * 8) / 4);
+        custPads.push([cx + .5, top, cy + .5]);
+        pickCells.push([cx, cy, h, top]);
+        continue;
+      }
       const r = rng(cx * 7919 + cy * 104729 + 17), roof = ROOF(h);
       pickCells.push([cx, cy, h]);
       const style = h >= 3 ? (r() < .7 ? 0 : 1) : h === 2 ? (r() < .5 ? 0 : 1) : (r() < .65 ? 2 : 1);
@@ -1400,6 +1430,19 @@ startReplay(DATA, (() => {
         }
       });
     }
+    // houses (customers on the ground floor): a pitched roof at the back of the garden; the parcel goes onto the lawn
+    for (const [x, y] of DATA.world.customers) {
+      if (A.custHeight(x, y) !== 0) continue;
+      const r = rng(x * 6151 + y * 3079 + 11), north = r() < .5;
+      const x0 = x + .27 + .04 * r(), x1 = x + .73 - .04 * r(), z0 = north ? y + .1 : y + .76, z1 = z0 + .14;
+      const wallH = (6 + 2 * r()) * MPU, ridge = wallH + (3.5 + 1.5 * r()) * MPU, zm = (z0 + z1) / 2;
+      addBox(walls[2], roofs, x0, z0, x1, z1, 0, wallH, new THREE.Color().setHSL(.09, .25, .86 + .1 * r()), new THREE.Color("#7a4a3a"), 0);
+      const tile = new THREE.Color().setHSL(.03 + .02 * r(), .45, .38 + .08 * r()), gable = new THREE.Color().setHSL(.09, .2, .85);
+      quad(roofs, [[x0, wallH, z1], [x1, wallH, z1], [x1, ridge, zm], [x0, ridge, zm]], [0, .7, .7], [0, 0, 1, 0, 1, 1, 0, 1], tile);
+      quad(roofs, [[x1, wallH, z0], [x0, wallH, z0], [x0, ridge, zm], [x1, ridge, zm]], [0, .7, -.7], [0, 0, 1, 0, 1, 1, 0, 1], tile);
+      quad(roofs, [[x0, wallH, z0], [x0, wallH, z1], [x0, ridge, zm], [x0, ridge, zm]], [-1, 0, 0], [0, 0, 1, 0, .5, 1, .5, 1], gable);
+      quad(roofs, [[x1, wallH, z1], [x1, wallH, z0], [x1, ridge, zm], [x1, ridge, zm]], [1, 0, 0], [0, 0, 1, 0, .5, 1, .5, 1], gable);
+    }
     walls.forEach((wb, s) => {
       if (!wb.p.length) return;
       const st = FACADES[s], map = facadeTex(s, false), em = facadeTex(s, true);
@@ -1410,13 +1453,26 @@ startReplay(DATA, (() => {
       const mesh = new THREE.Mesh(toGeometry(wb), m); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
     });
     const roofMesh = new THREE.Mesh(toGeometry(roofs), mat.roof); roofMesh.castShadow = roofMesh.receiveShadow = true; scene.add(roofMesh);
+    // customers' rooftop drop pads: where the winch sets the parcel down
+    if (custPads.length) {
+      const padTex = canvasTex(128, 128, (c, w) => {
+        c.fillStyle = "#3e4248"; c.beginPath(); c.arc(w / 2, w / 2, w / 2, 0, 7); c.fill();
+        c.strokeStyle = "#f4f4f2"; c.lineWidth = 7; c.beginPath(); c.arc(w / 2, w / 2, w * .38, 0, 7); c.stroke();
+        c.lineWidth = 5; c.beginPath(); c.moveTo(w * .28, w / 2); c.lineTo(w * .72, w / 2); c.moveTo(w / 2, w * .28); c.lineTo(w / 2, w * .72); c.stroke();
+        c.fillStyle = "#e0a63a"; c.fillRect(w * .43, w * .43, w * .14, w * .14);
+      });
+      const pads = new THREE.InstancedMesh(new THREE.CircleGeometry(.17, 40).rotateX(-Math.PI / 2),
+                                           new THREE.MeshStandardMaterial({ map: padTex, roughness: .8, transparent: true }), custPads.length);
+      custPads.forEach(([x, top, z], j) => { O.position.set(x, top + .003, z); O.rotation.set(0, 0, 0); O.scale.set(1, 1, 1); O.updateMatrix(); pads.setMatrixAt(j, O.matrix); });
+      pads.receiveShadow = true; scene.add(pads);
+    }
     units = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat.unit, Math.max(1, unitList.length));
     unitList.forEach(([x, y, z, sx, sy, sz], j) => { O.position.set(x, y + sy / 2, z); O.rotation.set(0, 0, 0); O.scale.set(sx, sy, sz); O.updateMatrix(); units.setMatrixAt(j, O.matrix); });
     units.castShadow = units.receiveShadow = true; scene.add(units);
 
     // invisible block volumes: what the cursor hits to name a building's height
     pickMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat.pick, Math.max(1, pickCells.length));
-    pickCells.forEach(([x, y, h], j) => { O.position.set(x + .5, ROOF(h) / 2, y + .5); O.rotation.set(0, 0, 0); O.scale.set(1, ROOF(h), 1); O.updateMatrix(); pickMesh.setMatrixAt(j, O.matrix); });
+    pickCells.forEach(([x, y, h, top], j) => { const hh = top || ROOF(h); O.position.set(x + .5, hh / 2, y + .5); O.rotation.set(0, 0, 0); O.scale.set(1, hh, 1); O.updateMatrix(); pickMesh.setMatrixAt(j, O.matrix); });
     pickMesh.userData.cells = pickCells; scene.add(pickMesh);
 
     // trees: clusters in the parks, rows along the roads (never on pads or customers' drop zones)
@@ -1619,7 +1675,8 @@ startReplay(DATA, (() => {
       if (lowering) {
         let n0 = 0; for (let j = i; j >= 0 && j > i - 4 && frames[j].d[k][9] === A.FLAG.LOWERING; j--) n0++;
         const prog = THREE.MathUtils.clamp((n0 - 1 + f) / 2, 0, 1);
-        const py = lerp(y - .16 * s, .1 * s, prog);              // the box's centre, from under the drone to the street
+        const od = A.orderById.get(a[5]), floor = od ? custRoof(od.x, od.y) : 0;
+        const py = lerp(y - .16 * s, floor + .1 * s, prog);      // the box's centre, from under the drone to the roof or street
         MP.compose(V.set(x, py + .3 * s, zc), QY.setFromAxisAngle(UP, yaw[k]), S3.set(s, s, s));
         winchPos.set([x, y + .04 * s, zc, x, py + .1 * s, zc], 6 * k);
       } else {
@@ -1670,11 +1727,12 @@ startReplay(DATA, (() => {
         const h = held.get(o.oid);
         const col = C(!h ? T.muted : h.carrying ? T["c-parcel"] : T["c-pickup"]);
         if (sel >= 0 && (!h || h.k !== sel)) col.lerp(C("#777"), .5);
-        place(orderRings, n, o.x + .5, .006, o.y + .5, 0, o.express ? 1.15 : 1, 1, o.express ? 1.15 : 1);
+        const oy = custRoof(o.x, o.y);                   // on the roof that takes the parcel, or on the street
+        place(orderRings, n, o.x + .5, oy + .006, o.y + .5, 0, o.express ? 1.15 : 1, 1, o.express ? 1.15 : 1);
         orderRings.setColorAt(n, col);
-        place(orderDots, n, o.x + .5, .007, o.y + .5, 0, o.express ? 1 : 0, 1, o.express ? 1 : 0);
+        place(orderDots, n, o.x + .5, oy + .007, o.y + .5, 0, o.express ? 1 : 0, 1, o.express ? 1 : 0);
         orderDots.setColorAt(n, col);
-        items.push({ key: "o" + o.oid, pos: new THREE.Vector3(o.x + .78, .01, o.y + .5), prio: 4, cls: "lbl order",
+        items.push({ key: "o" + o.oid, pos: new THREE.Vector3(o.x + .78, oy + .01, o.y + .5), prio: 4, cls: "lbl order",
                      html: `${o.express ? "<b>" : ""}#${o.oid}${o.express ? "</b>" : ""}`, w: 30, anchor: "left" });
         n++;
       }
@@ -2018,7 +2076,7 @@ startReplay(DATA, (() => {
     ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObject(pickMesh, false)[0];
-    return hit && hit.instanceId != null ? pickMesh.userData.cells[hit.instanceId][2] : null;
+    return hit && hit.instanceId != null ? pickMesh.userData.cells[hit.instanceId] : null;
   }
   let down = null;
   function bindPointer() {
@@ -2035,8 +2093,10 @@ startReplay(DATA, (() => {
       const k = pickDrone(ev);
       el.style.cursor = k >= 0 ? "pointer" : "grab";
       if (k >= 0) { A.showTip(A.droneTip(k), ev.clientX, ev.clientY); return; }
-      const h = pickBuilding(ev);
-      if (h) A.showTip(`<b>Building block</b> · up to ${Math.round((h + .5) * LAYER_M)} m tall (${h} layer${h > 1 ? "s" : ""})<br><span class="why">` +
+      const cellHit = pickBuilding(ev), h = cellHit && cellHit[2];
+      if (cellHit && cellHit[3]) A.showTip(`<b>A customer's building</b> · roof at ${h * LAYER_M} m<br><span class="why">` +
+                                           `Parcels are winched onto the roof from ${(h + 1) * LAYER_M} m</span>`, ev.clientX, ev.clientY);
+      else if (h) A.showTip(`<b>Building block</b> · up to ${Math.round((h + .5) * LAYER_M)} m tall (${h} layer${h > 1 ? "s" : ""})<br><span class="why">` +
                        (h < L ? `Drones on layer ${h + 1} (${(h + 1) * LAYER_M} m) or higher fly over it` : "Blocks every flight layer") + `</span>`, ev.clientX, ev.clientY);
       else A.hideTip();
     });

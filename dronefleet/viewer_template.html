@@ -27,6 +27,7 @@
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="7" fill="var(--c-idle)"/><circle cx="15" cy="12" r="10" fill="none" stroke="var(--grid)" stroke-width="2.5"/><path d="M15 2 A10 10 0 1 1 5.5 15" fill="none" stroke="var(--good)" stroke-width="2.5"/></svg><span><b>Ring</b> around a drone is its battery: green above 50 %, amber 25–50 %, red below 25 %</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><path d="M2 20 L10 20 L10 8 L26 8" fill="none" stroke="var(--c-parcel)" stroke-width="2" stroke-dasharray="4 3"/></svg><span><b>Dashed line</b>: the route the drone has booked. Routes are booked in space <i>and time</i>, so two routes can cross without the drones ever meeting</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="11" cy="12" r="6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5"/><text x="19" y="16" font-size="9" font-weight="700" fill="var(--ink)">#</text></svg><span><b>Ring with a number</b>: a customer waiting for that order. Grey = no drone yet, blue = a drone is collecting it, orange = on its way</span></div>
+      <div class="row" data-cust hidden><svg viewBox="0 0 30 24"><rect x="2" y="7" width="12" height="15" rx="2" fill="var(--building)"/><circle cx="8" cy="14.5" r="3.6" fill="none" stroke="var(--surface)" stroke-width="1.5"/><path d="M17 15 L22.5 10 L28 15 L28 21 L17 21 Z" fill="var(--base)"/></svg><span><b>Customers live in buildings.</b> A building with a white target takes the parcel on its roof: a 30 m roof is served from 60 m, a 60 m roof from 90 m. A small house gets it in its garden, lowered from 30 m. Darker buildings are taller</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><rect x="3" y="4" width="11" height="16" rx="3" fill="var(--ink)"/><text x="5.5" y="15.5" font-size="9" font-weight="700" fill="var(--surface)">H</text><rect x="16.5" y="5.5" width="11" height="13" rx="3" fill="var(--surface)" stroke="var(--c-energy)" stroke-width="2"/><path d="M23 7.5 L19.5 12.5 L22 12.5 L21 16.5 L25 11 L22.5 11 Z" fill="var(--c-energy)"/></svg><span><b>H</b> = warehouse (hub) where parcels are loaded. <b>Lightning</b> = battery-swap station. Red hatched area = temporary no-fly zone</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="2" y="6" width="8" height="12" rx="2" fill="var(--building)"/><rect x="11" y="6" width="8" height="12" rx="2" fill="var(--building)"/><rect x="11" y="6" width="8" height="12" rx="2" fill="var(--ink)" fill-opacity=".22"/><rect x="20" y="6" width="8" height="12" rx="2" fill="var(--building)"/><rect x="20" y="6" width="8" height="12" rx="2" fill="var(--ink)" fill-opacity=".44"/></svg><span><b>Altitude</b>: <b>L2</b> in a label is the drone's flight layer (1 = lowest, about 30 m each). Darker buildings are taller; a drone can fly over a building on any layer above its height. Drones stacked over the same spot are drawn side by side</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><path d="M2 20 Q10 20 14 13 T24 6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><circle cx="24" cy="6" r="4" fill="var(--c-parcel)"/></svg><span><b>Trail</b>: where the drone actually flew in the last 30 seconds, so you can see smoothed corners, gusts and swerves, not cell-by-cell hops</span></div>
@@ -153,7 +154,17 @@ startReplay(DATA, (() => {
       }
     }
     c.fillStyle = T.base;
-    for (const [x, y] of DATA.world.customers) { c.beginPath(); c.arc((x + .5) * cell, (y + .5) * cell, Math.max(1.5, cell * .08), 0, 7); c.fill(); }
+    for (const [x, y] of DATA.world.customers) {
+      const ch = A.custHeight(x, y), cx = (x + .5) * cell, cy = (y + .5) * cell;
+      if (ch > 0) {                     // a customer's building: a target on the roof that takes the parcel
+        c.strokeStyle = T.surface; c.lineWidth = Math.max(1, cell * .05);
+        c.beginPath(); c.arc(cx, cy, cell * .24, 0, 7); c.stroke();
+        c.beginPath(); c.moveTo(cx - cell * .12, cy); c.lineTo(cx + cell * .12, cy); c.moveTo(cx, cy - cell * .12); c.lineTo(cx, cy + cell * .12); c.stroke();
+      } else if (ch === 0) {            // a house: the parcel goes into its garden
+        const q = cell * .2;
+        c.beginPath(); c.moveTo(cx - q, cy + q); c.lineTo(cx - q, cy - q * .2); c.lineTo(cx, cy - q); c.lineTo(cx + q, cy - q * .2); c.lineTo(cx + q, cy + q); c.closePath(); c.fill();
+      } else { c.beginPath(); c.arc(cx, cy, Math.max(1.5, cell * .08), 0, 7); c.fill(); }
+    }
     staticLayer = off;
   }
 

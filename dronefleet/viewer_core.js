@@ -118,6 +118,16 @@ function startReplay(DATA, view) {
   stations.forEach(([x, y], i) => placeByEnc.set(enc(x, y), `Station ${i}`));
   const placeName = e => placeByEnc.get(e) || "the customer";
   const heights = new Map(DATA.world.blocked.map((b, j) => [b, DATA.world.heights ? DATA.world.heights[j] : L]));
+  // customers in buildings (optional): height in layers, 0 = a house; parcels go onto the roof
+  const CUST_H = DATA.world.customer_heights ? new Map(DATA.world.customers.map(([x, y], j) => [x + "," + y, DATA.world.customer_heights[j]])) : null;
+  const custHeight = (x, y) => CUST_H ? (CUST_H.get(x + "," + y) || 0) : -1;
+  /* Where an order's parcel goes, in words: "the customer's roof (30 m up)", "the customer's garden" or "the customer"
+     (with a preposition, for "Lowering order #3 onto the customer's roof"). */
+  function dropPlace(o, prep = false) {
+    const h = o ? custHeight(o.x, o.y) : -1;
+    if (h < 0) return (prep ? "to " : "") + "the customer";
+    return h === 0 ? (prep ? "into " : "") + "the customer's garden" : (prep ? "onto " : "") + `the customer's roof (${h * LAYER_M} m up)`;
+  }
 
   // ------------------------------------------------------------ orders
   const orders = DATA.orders.map(o => ({ oid: o[0], hub: o[1], x: o[2], y: o[3], created: o[4], deadline: o[5],
@@ -155,7 +165,7 @@ function startReplay(DATA, view) {
       case "loading":
         text = `Loading order #${oid}${ex} at ${tgt}`; tag = `loading #${oid}`; break;
       case "to_customer":
-        if (flag === FLAG.LOWERING) { text = `Lowering order #${oid} to the customer on a winch`; tag = `lowering #${oid}`; }
+        if (flag === FLAG.LOWERING) { text = `Lowering order #${oid} ${dropPlace(o, true)} on a winch`; tag = `lowering #${oid}`; }
         else if (!air) { text = `Taking off with order #${oid}${ex}`; tag = ""; }
         else { text = `Carrying order #${oid}${ex} to the customer`; tag = `#${oid} → customer`; }
         break;
@@ -208,6 +218,7 @@ function startReplay(DATA, view) {
     .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join("");
   document.querySelectorAll("[data-layers]").forEach(el => { el.hidden = L === 1; });
   document.querySelectorAll("[data-continuous]").forEach(el => { el.hidden = !CONT; });
+  document.querySelectorAll("[data-cust]").forEach(el => { el.hidden = !CUST_H; });
   if (CONT) {
     // make it obvious this is not the grid model: title, and the continuous views switched on
     document.querySelectorAll("[data-cont-default]").forEach(el => { el.checked = true; });
@@ -385,7 +396,7 @@ function startReplay(DATA, view) {
                                (d[6] ? " · on board" : " · not collected yet")]);
     const st = STATES[d[3]];
     if (d[8] >= 0 && st !== "queued" && st !== "swapping" && st !== "loading")
-      facts.push(["Going to", placeByEnc.has(d[8]) ? placeName(d[8]) : `the customer (ring #${d[5]} on the map)`]);
+      facts.push(["Going to", placeByEnc.has(d[8]) ? placeName(d[8]) : `${dropPlace(o)} (ring #${d[5]} on the map)`]);
     if (d[12] >= 0 && d[12] > fr.t) facts.push(["Arrives", `t=${d[12]} (in ${d[12] - fr.t} tick${d[12] - fr.t === 1 ? "" : "s"})`]);
     if (d[11] >= 0) facts.push(["After that", `lands at ${placeName(d[11])}`]);
     const recent = byDrone[selected].filter(([fi]) => fi <= i).slice(-6).reverse();
@@ -608,7 +619,7 @@ function startReplay(DATA, view) {
 
   const api = {
     W, H, L, frames, LAST, N, STATES, FLAG, TRIP, T, FONT, DATA, enc, decode, altOf, heights, hubs, stations,
-    CONT, TICK_S, CELL_M, TRACK, trackAt, trailAt, losAt, orcaAt, windAt,
+    CONT, TICK_S, CELL_M, TRACK, trackAt, trailAt, losAt, orcaAt, windAt, CUST_H, custHeight,
     describe, colorOf, socColor, textOn, esc, placeName, placeByEnc, orders, orderById, flashes, byDrone,
     routeAhead, opt, select, showTip, hideTip, droneTip, render,
     get selected() { return selected; }, get pos() { return pos; }, get playing() { return playing; },

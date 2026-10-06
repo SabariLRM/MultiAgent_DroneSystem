@@ -1000,8 +1000,12 @@ followed drone's when you follow one).
     the layers they close, and collision flashes.
 
   You can orbit, zoom down to street level and pan. Clicking a drone follows
-  it with a chase camera and opens the follow card; **Drone view** rides
-  along just behind it. Instanced meshes keep 32 drones and the whole city
+  it with a third-person chase camera and opens the follow card: the camera
+  moves and turns with the drone (smoothly following its heading), and
+  dragging or scrolling looks around it and moves in or out without leaving
+  the chase, so a view from the side or from above stays that way as the
+  drone turns. **Chase camera** puts it back behind the drone; **Drone
+  view** rides along just behind it. Instanced meshes keep 32 drones and the whole city
   at a few dozen draw calls, the camera fits the city to the screen at phone
   width, and both viewers have light and dark themes.
 * **Continuous-flight replays** add each drone's position every 2 s (whole

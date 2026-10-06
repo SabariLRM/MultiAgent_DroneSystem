@@ -228,7 +228,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--raised); border-radi
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><ellipse cx="15" cy="12" rx="12" ry="7" fill="var(--muted)" fill-opacity=".18" stroke="var(--muted)"/><rect x="12" y="10" width="6" height="4" rx="1" fill="var(--c-idle)"/></svg><span><b>Bubble</b> (optional): the separation minimum around a drone, 40 m sideways and 15 m up and down. It turns red, and a <b>red line</b> joins the two drones, when another drone is inside it</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><rect x="3" y="10" width="7" height="4" rx="1" fill="var(--c-parcel)"/><path d="M10 12 L26 12 M26 12 L21 8.5 M26 12 L21 15.5" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/></svg><span><b>Arrow</b> (optional): where the drone will be in 8 seconds at its current velocity. The compass at the top left shows the wind</span></div>
     </div>
-    <p class="tip-line">Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom down to street level. Click a drone to follow it: the camera chases it, and <b>Drone view</b> rides along behind it. The light theme is daytime, the dark theme dusk.</p>
+    <p class="tip-line">Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom down to street level. Click a drone to follow it: the camera chases it like a game's third-person camera (drag to look around it, scroll to zoom, <b>Chase camera</b> to get back behind it), and <b>Drone view</b> rides along behind it. The light theme is daytime, the dark theme dusk.</p>
   </details>
 
   <div class="layout" style="margin-top:16px">
@@ -241,7 +241,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--raised); border-radi
           <div class="camctl">
             <button id="camOverview" title="Show the whole city">Overview</button>
             <button id="camTop" title="Look straight down">Top view</button>
-            <button id="camChase" aria-pressed="false" hidden title="Keep the camera on the followed drone">Chase camera</button>
+            <button id="camChase" aria-pressed="false" hidden title="Follow the drone from behind; drag to look around it, scroll to zoom. Click again to get back behind it">Chase camera</button>
             <button id="camOnboard" aria-pressed="false" hidden title="Ride along just behind the followed drone (Esc to leave)">Drone view</button>
           </div>
           <div class="hint3d">drag to orbit · right-drag to pan · scroll to zoom in to street level · click a drone</div>
@@ -1003,6 +1003,7 @@ startReplay(DATA, (() => {
   let renderer, scene, camera, controls, hemi, sun, skyMat, sky, pmrem = null, envTarget = null;
   let dirty = true, lastT = -1, lastDraw = null, night = false;
   let camMode = "free", flying = null;              // "free" | "chase" | "onboard"
+  let chaseYaw = 0;                                  // chase: the drone heading the camera's orbit is turned to
   const yaw = [];                                     // last heading per drone (kept while hovering)
   function rng(seed) {                                // small deterministic PRNG (mulberry32)
     let a = seed >>> 0;
@@ -1265,7 +1266,7 @@ startReplay(DATA, (() => {
     controls.enableDamping = true; controls.dampingFactor = .08;
     controls.maxPolarAngle = Math.PI * .495; controls.minDistance = .25; controls.maxDistance = Math.max(W, H) * 3;
     controls.screenSpacePanning = false;
-    controls.addEventListener("start", () => { flying = null; if (camMode === "chase") { camMode = "free"; updateCamBtns(); } });
+    controls.addEventListener("start", () => { flying = null; });   // dragging in chase looks around; it does not leave it
 
     // light: sky and ground bounce, and a sun that casts shadows over the whole city
     hemi = new THREE.HemisphereLight(0xffffff, 0x888888, .8); scene.add(hemi);
@@ -1994,6 +1995,8 @@ startReplay(DATA, (() => {
   function setCamMode(m) {
     camMode = A.selected >= 0 ? m : "free";
     controls.enabled = camMode !== "onboard";
+    controls.enablePan = camMode === "free";        // in chase the drone stays at the centre of the orbit
+    if (camMode === "chase") chaseYaw = yaw[A.selected] || 0;
     updateCamBtns();
     if (camMode !== "free") { const c = cameraFor(camMode); if (c) flyTo(c.target, c.position); }
   }
@@ -2004,7 +2007,7 @@ startReplay(DATA, (() => {
   }
   document.getElementById("camOverview").onclick = () => overview(false);
   document.getElementById("camTop").onclick = () => overview(true);
-  chaseBtn.onclick = () => setCamMode(camMode === "chase" ? "free" : "chase");
+  chaseBtn.onclick = () => setCamMode("chase");    // while chasing: back behind the drone
   onboardBtn.onclick = () => setCamMode(camMode === "onboard" ? "free" : "onboard");
 
   function tick() {
@@ -2013,6 +2016,7 @@ startReplay(DATA, (() => {
       const k = Math.min(1, (performance.now() - flying.t0) / 700), e = k * k * (3 - 2 * k);
       const live = camMode !== "free" ? cameraFor(camMode) : null;
       const toT = live ? live.target : flying.toT, toP = live ? live.position : flying.toP;
+      if (camMode === "chase") chaseYaw = yaw[A.selected] || 0;
       controls.target.lerpVectors(flying.fromT, toT, e);
       camera.position.lerpVectors(flying.fromP, toP, e);
       if (k >= 1) flying = null;
@@ -2022,7 +2026,15 @@ startReplay(DATA, (() => {
       if (c) {
         const kk = camMode === "onboard" ? .25 : .12;
         if (camMode === "onboard") { camera.position.lerp(c.position, kk); controls.target.lerp(c.target, kk); }
-        else {                                          // keep the user's orbit around the drone, follow its movement
+        else {
+          // third-person camera: the orbit the user has dragged to (angle and distance) turns with
+          // the drone's heading, smoothly, and moves with it
+          const dy = Math.atan2(Math.sin((yaw[A.selected] || 0) - chaseYaw), Math.cos((yaw[A.selected] || 0) - chaseYaw));
+          if (Math.abs(dy) > 1e-4) {
+            const turn = dy * .08;
+            chaseYaw += turn;
+            camera.position.sub(controls.target).applyAxisAngle(UP, turn).add(controls.target);
+          }
           const delta = c.target.clone().sub(controls.target).multiplyScalar(.2);
           controls.target.add(delta); camera.position.add(delta);
         }
@@ -2106,7 +2118,7 @@ startReplay(DATA, (() => {
 
   return {
     tokens: ["sky", "ground"],
-    followHint: "Click a drone in the scene or in the fleet list: the camera chases it, and Drone view rides along.",
+    followHint: "Click a drone in the scene or in the fleet list: the camera chases it (drag to look around it), and Drone view rides along.",
     clickHint: "Click to follow (the camera chases it)",
     init(api) {
       A = api; T = api.T;

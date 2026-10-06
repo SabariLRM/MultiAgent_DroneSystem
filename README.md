@@ -147,9 +147,12 @@ windsocks, and for the followed drone a translucent "curtain" from its path
 down to the street that shows every climb and descent.
 
 Camera: drag to orbit, right-drag to pan, scroll to zoom down to street
-level. Click a drone to follow it with the **Chase camera**, or press
-**Drone view** to ride along behind it. **Overview** and **Top view** show
-the whole city.
+level. Click a drone to follow it with the **Chase camera**, a third-person
+camera as in a game: it stays with the drone and turns with it, and you can
+drag to look around the drone and scroll to move in or out without leaving
+the chase. Press **Chase camera** again to get back behind the drone, or
+**Drone view** to ride along just behind it. **Overview**, **Top view** or a
+click on empty ground leave the chase.
 
 ### Ready-made replays
 

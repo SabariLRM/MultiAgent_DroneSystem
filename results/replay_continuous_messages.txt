@@ -1,0 +1,1519 @@
+Messages between the agents: seed 7, 12 drones, continuous flight, 574 ticks (1 tick = 10 s)
+============================================================================================
+
+10,101 messages in total. Listed below: the 1,491 that are not routine status reports. Not listed one by one: 6,888 drone status reports to the dispatcher (one per drone and tick) and 1,722 station status broadcasts (one per station and tick); run with --messages-all to include them.
+
+Messages by kind
+
+  drone status reports (every tick)                    6,888
+  station status broadcasts (every tick)               1,722
+  bids (drone to dispatcher)                             480
+  auction losses                                         389
+  auction wins (dispatcher to the winner)                 91
+  pick-up reports                                         91
+  delivery reports                                        91
+  auction announcements (dispatcher to all drones)        86
+  swap reservations (drone to station)                    52
+  swap reservations confirmed                             52
+  swap requests on landing                                52
+  swaps started                                           51
+  swaps done                                              50
+  no-fly-zone notices (air traffic control)                2
+  requests to give way (drone to drone)                    2
+  refusals to bid                                          2
+
+Every message
+
+ tick  from                 to                   act            message
+-----  -------------------- -------------------- -------------- ----------------------------------------
+    2  Dispatcher           all drones           CALL FOR BIDS  Auction round 1: who can deliver this order? #1 (EXPRESS) 1.1 kg Hub 1 -> (20, 15) due t=72
+    2  Drone 0              Dispatcher           BID            My bids in round 1: order #1 for cost 82.6, delivered by t=74, after a battery swap at Station 1
+    2  Drone 1              Dispatcher           BID            My bids in round 1: order #1 for cost 33.5, delivered by t=33
+    2  Drone 2              Dispatcher           BID            My bids in round 1: order #1 for cost 82.6, delivered by t=74, after a battery swap at Station 1
+    2  Drone 3              Dispatcher           BID            My bids in round 1: order #1 for cost 33.5, delivered by t=33
+    2  Drone 4              Dispatcher           BID            My bids in round 1: order #1 for cost 82.6, delivered by t=74, after a battery swap at Station 1
+    2  Drone 5              Dispatcher           BID            My bids in round 1: order #1 for cost 33.5, delivered by t=33
+    2  Drone 6              Dispatcher           BID            My bids in round 1: order #1 for cost 82.6, delivered by t=74, after a battery swap at Station 1
+    2  Drone 7              Dispatcher           BID            My bids in round 1: order #1 for cost 33.5, delivered by t=33
+    2  Drone 8              Dispatcher           BID            My bids in round 1: order #1 for cost 82.6, delivered by t=74, after a battery swap at Station 1
+    2  Drone 9              Dispatcher           BID            My bids in round 1: order #1 for cost 33.5, delivered by t=33
+    2  Drone 10             Dispatcher           BID            My bids in round 1: order #1 for cost 82.6, delivered by t=74, after a battery swap at Station 1
+    2  Drone 11             Dispatcher           BID            My bids in round 1: order #1 for cost 33.5, delivered by t=33
+    3  Dispatcher           Drone 1              ACCEPT         You win order #1 (EXPRESS): 1.1 kg from Hub 1 to the customer at (20, 15), due by t=72.
+    3  Dispatcher           Drone 5              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 8              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 11             REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 2              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 9              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 7              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 6              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 4              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 3              REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 10             REJECT         You did not win anything in round 1.
+    3  Dispatcher           Drone 0              REJECT         You did not win anything in round 1.
+    5  Drone 1              Dispatcher           INFORM         I have picked up order #1.
+    7  Dispatcher           all drones           CALL FOR BIDS  Auction round 2: who can deliver this order? #2 2.3 kg Hub 0 -> (27, 5) due t=147
+    7  Drone 0              Dispatcher           BID            My bids in round 2: order #2 for cost 17.2, delivered by t=23
+    7  Drone 2              Dispatcher           BID            My bids in round 2: order #2 for cost 17.2, delivered by t=23
+    7  Drone 3              Dispatcher           BID            My bids in round 2: order #2 for cost 49.9, delivered by t=54
+    7  Drone 4              Dispatcher           BID            My bids in round 2: order #2 for cost 17.2, delivered by t=23
+    7  Drone 5              Dispatcher           BID            My bids in round 2: order #2 for cost 49.9, delivered by t=54
+    7  Drone 6              Dispatcher           BID            My bids in round 2: order #2 for cost 17.2, delivered by t=23
+    7  Drone 7              Dispatcher           BID            My bids in round 2: order #2 for cost 49.9, delivered by t=54
+    7  Drone 8              Dispatcher           BID            My bids in round 2: order #2 for cost 17.2, delivered by t=23
+    7  Drone 9              Dispatcher           BID            My bids in round 2: order #2 for cost 49.9, delivered by t=54
+    7  Drone 10             Dispatcher           BID            My bids in round 2: order #2 for cost 17.2, delivered by t=23
+    7  Drone 11             Dispatcher           BID            My bids in round 2: order #2 for cost 49.9, delivered by t=54
+    8  Dispatcher           Drone 0              ACCEPT         You win order #2: 2.3 kg from Hub 0 to the customer at (27, 5), due by t=147.
+    8  Dispatcher           Drone 5              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 11             REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 2              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 9              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 7              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 6              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 4              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 3              REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 10             REJECT         You did not win anything in round 2.
+    8  Dispatcher           Drone 8              REJECT         You did not win anything in round 2.
+   10  Drone 0              Dispatcher           INFORM         I have picked up order #2.
+   15  Dispatcher           all drones           CALL FOR BIDS  Auction round 3: who can deliver this order? #3 1.1 kg Hub 1 -> (2, 14) due t=155
+   15  Drone 2              Dispatcher           BID            My bids in round 3: order #3 for cost 48.2, delivered by t=60
+   15  Drone 3              Dispatcher           BID            My bids in round 3: order #3 for cost 15.5, delivered by t=29
+   15  Drone 4              Dispatcher           BID            My bids in round 3: order #3 for cost 48.2, delivered by t=60
+   15  Drone 5              Dispatcher           BID            My bids in round 3: order #3 for cost 15.5, delivered by t=29
+   15  Drone 6              Dispatcher           BID            My bids in round 3: order #3 for cost 48.2, delivered by t=60
+   15  Drone 7              Dispatcher           BID            My bids in round 3: order #3 for cost 15.5, delivered by t=29
+   15  Drone 8              Dispatcher           BID            My bids in round 3: order #3 for cost 48.2, delivered by t=60
+   15  Drone 9              Dispatcher           BID            My bids in round 3: order #3 for cost 15.5, delivered by t=29
+   15  Drone 10             Dispatcher           BID            My bids in round 3: order #3 for cost 48.2, delivered by t=60
+   15  Drone 11             Dispatcher           BID            My bids in round 3: order #3 for cost 15.5, delivered by t=29
+   16  Dispatcher           Drone 11             ACCEPT         You win order #3: 1.1 kg from Hub 1 to the customer at (2, 14), due by t=155.
+   16  Dispatcher           Drone 5              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 2              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 9              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 7              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 6              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 4              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 3              REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 10             REJECT         You did not win anything in round 3.
+   16  Dispatcher           Drone 8              REJECT         You did not win anything in round 3.
+   18  Drone 11             Dispatcher           INFORM         I have picked up order #3.
+   20  Dispatcher           all drones           CALL FOR BIDS  Auction round 4: who can deliver this order? #4 1.4 kg Hub 0 -> (25, 6) due t=160
+   20  Drone 2              Dispatcher           BID            My bids in round 4: order #4 for cost 18.4, delivered by t=37
+   20  Drone 3              Dispatcher           BID            My bids in round 4: order #4 for cost 51.1, delivered by t=68
+   20  Drone 4              Dispatcher           BID            My bids in round 4: order #4 for cost 18.4, delivered by t=37
+   20  Drone 5              Dispatcher           BID            My bids in round 4: order #4 for cost 51.1, delivered by t=68
+   20  Drone 6              Dispatcher           BID            My bids in round 4: order #4 for cost 18.4, delivered by t=37
+   20  Drone 7              Dispatcher           BID            My bids in round 4: order #4 for cost 51.1, delivered by t=68
+   20  Drone 8              Dispatcher           BID            My bids in round 4: order #4 for cost 18.4, delivered by t=37
+   20  Drone 9              Dispatcher           BID            My bids in round 4: order #4 for cost 51.1, delivered by t=68
+   20  Drone 10             Dispatcher           BID            My bids in round 4: order #4 for cost 18.4, delivered by t=37
+   21  Dispatcher           Drone 10             ACCEPT         You win order #4: 1.4 kg from Hub 0 to the customer at (25, 6), due by t=160.
+   21  Dispatcher           Drone 5              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 2              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 9              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 7              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 6              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 4              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 3              REJECT         You did not win anything in round 4.
+   21  Dispatcher           Drone 8              REJECT         You did not win anything in round 4.
+   23  Drone 10             Dispatcher           INFORM         I have picked up order #4.
+   27  Dispatcher           all drones           CALL FOR BIDS  Auction round 5: who can deliver this order? #5 1.8 kg Hub 0 -> (22, 11) due t=167
+   27  Drone 2              Dispatcher           BID            My bids in round 5: order #5 for cost 12.2, delivered by t=38
+   27  Drone 3              Dispatcher           BID            My bids in round 5: order #5 for cost 44.9, delivered by t=69
+   27  Drone 4              Dispatcher           BID            My bids in round 5: order #5 for cost 12.2, delivered by t=38
+   27  Drone 5              Dispatcher           BID            My bids in round 5: order #5 for cost 44.9, delivered by t=69
+   27  Drone 6              Dispatcher           BID            My bids in round 5: order #5 for cost 12.2, delivered by t=38
+   27  Drone 7              Dispatcher           BID            My bids in round 5: order #5 for cost 44.9, delivered by t=69
+   27  Drone 8              Dispatcher           BID            My bids in round 5: order #5 for cost 12.2, delivered by t=38
+   27  Drone 9              Dispatcher           BID            My bids in round 5: order #5 for cost 44.9, delivered by t=69
+   28  Dispatcher           Drone 2              ACCEPT         You win order #5: 1.8 kg from Hub 0 to the customer at (22, 11), due by t=167.
+   28  Dispatcher           Drone 5              REJECT         You did not win anything in round 5.
+   28  Dispatcher           Drone 9              REJECT         You did not win anything in round 5.
+   28  Dispatcher           Drone 7              REJECT         You did not win anything in round 5.
+   28  Dispatcher           Drone 6              REJECT         You did not win anything in round 5.
+   28  Dispatcher           Drone 4              REJECT         You did not win anything in round 5.
+   28  Dispatcher           Drone 3              REJECT         You did not win anything in round 5.
+   28  Dispatcher           Drone 8              REJECT         You did not win anything in round 5.
+   29  Drone 0              Dispatcher           INFORM         I have delivered order #2.
+   30  Drone 2              Dispatcher           INFORM         I have picked up order #5.
+   35  Drone 11             Dispatcher           INFORM         I have delivered order #3.
+   38  Drone 10             Dispatcher           INFORM         I have delivered order #4.
+   38  Dispatcher           all drones           CALL FOR BIDS  Auction round 6: who can deliver this order? #6 0.9 kg Hub 0 -> (23, 15) due t=178
+   38  Drone 0              Dispatcher           BID            My bids in round 6: order #6 for cost 15.6, delivered by t=52
+   38  Drone 3              Dispatcher           BID            My bids in round 6: order #6 for cost 41.9, delivered by t=77
+   38  Drone 4              Dispatcher           BID            My bids in round 6: order #6 for cost 9.2, delivered by t=46
+   38  Drone 5              Dispatcher           BID            My bids in round 6: order #6 for cost 41.9, delivered by t=77
+   38  Drone 6              Dispatcher           BID            My bids in round 6: order #6 for cost 9.2, delivered by t=46
+   38  Drone 7              Dispatcher           BID            My bids in round 6: order #6 for cost 41.9, delivered by t=77
+   38  Drone 8              Dispatcher           BID            My bids in round 6: order #6 for cost 9.2, delivered by t=46
+   38  Drone 9              Dispatcher           BID            My bids in round 6: order #6 for cost 41.9, delivered by t=77
+   38  Drone 10             Dispatcher           BID            My bids in round 6: order #6 for cost 21.9, delivered by t=58
+   38  Drone 11             Dispatcher           BID            My bids in round 6: order #6 for cost 34.5, delivered by t=70
+   39  Drone 1              Dispatcher           INFORM         I have delivered order #1.
+   39  Drone 1              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=56.
+   39  Dispatcher           Drone 4              ACCEPT         You win order #6: 0.9 kg from Hub 0 to the customer at (23, 15), due by t=178.
+   39  Dispatcher           Drone 5              REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 11             REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 9              REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 7              REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 6              REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 3              REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 10             REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 8              REJECT         You did not win anything in round 6.
+   39  Dispatcher           Drone 0              REJECT         You did not win anything in round 6.
+   39  Dispatcher           all drones           CALL FOR BIDS  Auction round 7: who can deliver these orders? #7 1.0 kg Hub 0 -> (29, 19) due t=179; #8 0.4 kg Hub 1 -> (2, 2) due t=179
+   39  Station 1            Drone 1              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+   39  Drone 0              Dispatcher           BID            My bids in round 7: order #7 for cost 52.5, delivered by t=88, after a battery swap at Station 2; order #8 for cost 52.4, delivered by t=88, after a battery swap at Station 1
+   39  Drone 1              Dispatcher           BID            My bids in round 7: order #7 for cost 54.7, delivered by t=91; order #8 for cost 52.5, delivered by t=89
+   39  Drone 3              Dispatcher           BID            My bids in round 7: order #7 for cost 48.5, delivered by t=84; order #8 for cost 11.4, delivered by t=49
+   39  Drone 5              Dispatcher           BID            My bids in round 7: order #7 for cost 48.5, delivered by t=84; order #8 for cost 11.4, delivered by t=49
+   39  Drone 6              Dispatcher           BID            My bids in round 7: order #7 for cost 15.8, delivered by t=53; order #8 for cost 44.1, delivered by t=80
+   39  Drone 7              Dispatcher           BID            My bids in round 7: order #7 for cost 48.5, delivered by t=84; order #8 for cost 11.4, delivered by t=49
+   39  Drone 8              Dispatcher           BID            My bids in round 7: order #7 for cost 15.8, delivered by t=53; order #8 for cost 44.1, delivered by t=80
+   39  Drone 9              Dispatcher           BID            My bids in round 7: order #7 for cost 58.9, delivered by t=94, after a battery swap at Station 1; order #8 for cost 11.4, delivered by t=49
+   39  Drone 10             Dispatcher           BID            My bids in round 7: order #7 for cost 27.4, delivered by t=64; order #8 for cost 35.7, delivered by t=72
+   39  Drone 11             Dispatcher           BID            My bids in round 7: order #7 for cost 42.1, delivered by t=78; order #8 for cost 20.9, delivered by t=58
+   40  Dispatcher           Drone 6              ACCEPT         You win order #7: 1.0 kg from Hub 0 to the customer at (29, 19), due by t=179.
+   40  Dispatcher           Drone 3              ACCEPT         You win order #8: 0.4 kg from Hub 1 to the customer at (2, 2), due by t=179.
+   40  Dispatcher           Drone 5              REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 11             REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 9              REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 0              REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 7              REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 10             REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 8              REJECT         You did not win anything in round 7.
+   40  Dispatcher           Drone 1              REJECT         You did not win anything in round 7.
+   41  Drone 4              Dispatcher           INFORM         I have picked up order #6.
+   42  Drone 3              Dispatcher           INFORM         I have picked up order #8.
+   42  Drone 6              Dispatcher           INFORM         I have picked up order #7.
+   44  Drone 2              Dispatcher           INFORM         I have delivered order #5.
+   47  Drone 4              Dispatcher           INFORM         I have delivered order #6.
+   55  Drone 3              Dispatcher           INFORM         I have delivered order #8.
+   56  Drone 1              Station 1            REQUEST        I have landed here; please swap my battery (40% left).
+   56  Dispatcher           all drones           CALL FOR BIDS  Auction round 8: who can deliver this order? #9 2.2 kg Hub 1 -> (11, 8) due t=196
+   56  Station 1            Drone 1              INFORM         Your battery swap has started.
+   56  Drone 0              Dispatcher           BID            My bids in round 8: order #9 for cost 59.6, delivered by t=112, after a battery swap at Station 1
+   56  Drone 1              Dispatcher           BID            My bids in round 8: order #9 for cost 40.6, delivered by t=94
+   56  Drone 2              Dispatcher           BID            My bids in round 8: order #9 for cost 59.6, delivered by t=112, after a battery swap at Station 1
+   56  Drone 3              Dispatcher           BID            My bids in round 8: order #9 for cost 22.8, delivered by t=77
+   56  Drone 4              Dispatcher           BID            My bids in round 8: order #9 for cost 49.2, delivered by t=102
+   56  Drone 5              Dispatcher           BID            My bids in round 8: order #9 for cost 16.5, delivered by t=71
+   56  Drone 7              Dispatcher           BID            My bids in round 8: order #9 for cost 16.5, delivered by t=71
+   56  Drone 8              Dispatcher           BID            My bids in round 8: order #9 for cost 49.2, delivered by t=102
+   56  Drone 9              Dispatcher           BID            My bids in round 8: order #9 for cost 16.5, delivered by t=71
+   56  Drone 10             Dispatcher           BID            My bids in round 8: order #9 for cost 59.6, delivered by t=112, after a battery swap at Station 1
+   56  Drone 11             Dispatcher           BID            My bids in round 8: order #9 for cost 16.5, delivered by t=71
+   57  Dispatcher           Drone 11             ACCEPT         You win order #9: 2.2 kg from Hub 1 to the customer at (11, 8), due by t=196.
+   57  Dispatcher           Drone 5              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 8              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 2              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 9              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 7              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 4              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 3              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 10             REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 1              REJECT         You did not win anything in round 8.
+   57  Dispatcher           Drone 0              REJECT         You did not win anything in round 8.
+   59  Station 1            Drone 1              INFORM         Swap done: here is a fresh battery pack (100%).
+   59  Drone 11             Dispatcher           INFORM         I have picked up order #9.
+   61  Drone 6              Dispatcher           INFORM         I have delivered order #7.
+   62  Dispatcher           all drones           CALL FOR BIDS  Auction round 9: who can deliver this order? #10 1.4 kg Hub 1 -> (4, 0) due t=202
+   62  Drone 0              Dispatcher           BID            My bids in round 9: order #10 for cost 56.7, delivered by t=115, after a battery swap at Station 1
+   62  Drone 1              Dispatcher           BID            My bids in round 9: order #10 for cost 34.7, delivered by t=94
+   62  Drone 2              Dispatcher           BID            My bids in round 9: order #10 for cost 56.7, delivered by t=115, after a battery swap at Station 1
+   62  Drone 3              Dispatcher           BID            My bids in round 9: order #10 for cost 15.7, delivered by t=76
+   62  Drone 4              Dispatcher           BID            My bids in round 9: order #10 for cost 46.3, delivered by t=105
+   62  Drone 5              Dispatcher           BID            My bids in round 9: order #10 for cost 13.6, delivered by t=74
+   62  Drone 6              Dispatcher           BID            My bids in round 9: order #10 for cost 62.0, delivered by t=120, after a battery swap at Station 0
+   62  Drone 7              Dispatcher           BID            My bids in round 9: order #10 for cost 13.6, delivered by t=74
+   62  Drone 8              Dispatcher           BID            My bids in round 9: order #10 for cost 46.3, delivered by t=105
+   62  Drone 9              Dispatcher           BID            My bids in round 9: order #10 for cost 13.6, delivered by t=74
+   62  Drone 10             Dispatcher           BID            My bids in round 9: order #10 for cost 56.7, delivered by t=115, after a battery swap at Station 1
+   63  Dispatcher           Drone 5              ACCEPT         You win order #10: 1.4 kg from Hub 1 to the customer at (4, 0), due by t=202.
+   63  Dispatcher           Drone 8              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 2              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 9              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 7              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 6              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 4              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 3              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 10             REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 1              REJECT         You did not win anything in round 9.
+   63  Dispatcher           Drone 0              REJECT         You did not win anything in round 9.
+   65  Drone 5              Dispatcher           INFORM         I have picked up order #10.
+   71  Dispatcher           all drones           CALL FOR BIDS  Auction round 10: who can deliver this order? #11 1.6 kg Hub 0 -> (20, 15) due t=211
+   71  Drone 0              Dispatcher           BID            My bids in round 10: order #11 for cost 12.3, delivered by t=82
+   71  Drone 1              Dispatcher           BID            My bids in round 10: order #11 for cost 29.2, delivered by t=98
+   71  Drone 2              Dispatcher           BID            My bids in round 10: order #11 for cost 12.3, delivered by t=82
+   71  Drone 3              Dispatcher           BID            My bids in round 10: order #11 for cost 55.4, delivered by t=123, after a battery swap at Station 1
+   71  Drone 4              Dispatcher           BID            My bids in round 10: order #11 for cost 12.3, delivered by t=82
+   71  Drone 6              Dispatcher           BID            My bids in round 10: order #11 for cost 15.5, delivered by t=85
+   71  Drone 7              Dispatcher           BID            My bids in round 10: order #11 for cost 45.0, delivered by t=113
+   71  Drone 8              Dispatcher           BID            My bids in round 10: order #11 for cost 12.3, delivered by t=82
+   71  Drone 9              Dispatcher           BID            My bids in round 10: order #11 for cost 45.0, delivered by t=113
+   71  Drone 10             Dispatcher           BID            My bids in round 10: order #11 for cost 12.3, delivered by t=82
+   72  Dispatcher           Drone 0              ACCEPT         You win order #11: 1.6 kg from Hub 0 to the customer at (20, 15), due by t=211.
+   72  Dispatcher           Drone 8              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 2              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 9              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 7              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 6              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 4              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 3              REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 10             REJECT         You did not win anything in round 10.
+   72  Dispatcher           Drone 1              REJECT         You did not win anything in round 10.
+   74  Drone 0              Dispatcher           INFORM         I have picked up order #11.
+   77  Drone 11             Dispatcher           INFORM         I have delivered order #9.
+   80  Drone 5              Dispatcher           INFORM         I have delivered order #10.
+   83  Dispatcher           all drones           CALL FOR BIDS  Auction round 11: who can deliver this order? #12 2.0 kg Hub 1 -> (10, 3) due t=223
+   83  Drone 1              Dispatcher           BID            My bids in round 11: order #12 for cost 48.0, delivered by t=128
+   83  Drone 2              Dispatcher           BID            My bids in round 11: order #12 for cost 59.5, delivered by t=139, after a battery swap at Station 1
+   83  Drone 3              Dispatcher           BID            My bids in round 11: order #12 for cost 16.4, delivered by t=98
+   83  Drone 4              Dispatcher           BID            My bids in round 11: order #12 for cost 49.1, delivered by t=129
+   83  Drone 5              Dispatcher           BID            My bids in round 11: order #12 for cost 24.8, delivered by t=106
+   83  Drone 6              Dispatcher           BID            My bids in round 11: order #12 for cost 59.5, delivered by t=139, after a battery swap at Station 1
+   83  Drone 7              Dispatcher           BID            My bids in round 11: order #12 for cost 16.4, delivered by t=98
+   83  Drone 8              Dispatcher           BID            My bids in round 11: order #12 for cost 49.1, delivered by t=129
+   83  Drone 9              Dispatcher           BID            My bids in round 11: order #12 for cost 16.4, delivered by t=98
+   83  Drone 10             Dispatcher           BID            My bids in round 11: order #12 for cost 59.5, delivered by t=139, after a battery swap at Station 1
+   83  Drone 11             Dispatcher           BID            My bids in round 11: order #12 for cost 24.8, delivered by t=106
+   84  Dispatcher           Drone 3              ACCEPT         You win order #12: 2.0 kg from Hub 1 to the customer at (10, 3), due by t=223.
+   84  Dispatcher           Drone 5              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 8              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 11             REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 2              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 9              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 7              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 6              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 4              REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 10             REJECT         You did not win anything in round 11.
+   84  Dispatcher           Drone 1              REJECT         You did not win anything in round 11.
+   86  Drone 3              Dispatcher           INFORM         I have picked up order #12.
+   88  Drone 0              Dispatcher           INFORM         I have delivered order #11.
+   88  Drone 0              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=105.
+   88  Station 1            Drone 0              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+   92  Dispatcher           all drones           CALL FOR BIDS  Auction round 12: who can deliver these orders? #13 0.9 kg Hub 0 -> (15, 16) due t=232; #14 1.8 kg Hub 0 -> (20, 6) due t=232
+   92  Drone 0              Dispatcher           BID            My bids in round 12: order #13 for cost 53.3, delivered by t=143; order #14 for cost 54.3, delivered by t=144
+   92  Drone 1              Dispatcher           BID            My bids in round 12: order #13 for cost 18.3, delivered by t=109; order #14 for cost 19.3, delivered by t=110
+   92  Drone 2              Dispatcher           BID            My bids in round 12: order #13 for cost 18.3, delivered by t=109; order #14 for cost 19.3, delivered by t=110
+   92  Drone 4              Dispatcher           BID            My bids in round 12: order #13 for cost 18.3, delivered by t=109; order #14 for cost 19.3, delivered by t=110
+   92  Drone 5              Dispatcher           BID            My bids in round 12: order #13 for cost 51.0, delivered by t=140; order #14 for cost 52.0, delivered by t=141
+   92  Drone 6              Dispatcher           BID            My bids in round 12: order #13 for cost 18.3, delivered by t=109; order #14 for cost 19.3, delivered by t=110
+   92  Drone 7              Dispatcher           BID            My bids in round 12: order #13 for cost 51.0, delivered by t=140; order #14 for cost 52.0, delivered by t=141
+   92  Drone 8              Dispatcher           BID            My bids in round 12: order #13 for cost 18.3, delivered by t=109; order #14 for cost 19.3, delivered by t=110
+   92  Drone 9              Dispatcher           BID            My bids in round 12: order #13 for cost 51.0, delivered by t=140; order #14 for cost 52.0, delivered by t=141
+   92  Drone 10             Dispatcher           BID            My bids in round 12: order #13 for cost 18.3, delivered by t=109; order #14 for cost 19.3, delivered by t=110
+   92  Drone 11             Dispatcher           BID            My bids in round 12: order #13 for cost 59.3, delivered by t=148, after a battery swap at Station 1; order #14 for cost 60.3, delivered by t=149, after a battery swap at Station 1
+   93  Dispatcher           Drone 1              ACCEPT         You win order #13: 0.9 kg from Hub 0 to the customer at (15, 16), due by t=232.
+   93  Dispatcher           Drone 10             ACCEPT         You win order #14: 1.8 kg from Hub 0 to the customer at (20, 6), due by t=232.
+   93  Dispatcher           Drone 5              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 11             REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 2              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 9              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 7              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 6              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 4              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 8              REJECT         You did not win anything in round 12.
+   93  Dispatcher           Drone 0              REJECT         You did not win anything in round 12.
+   95  Drone 1              Dispatcher           INFORM         I have picked up order #13.
+   95  Drone 10             Dispatcher           INFORM         I have picked up order #14.
+  102  Dispatcher           all drones           CALL FOR BIDS  Auction round 13: who can deliver this order? #15 0.9 kg Hub 0 -> (27, 5) due t=242
+  102  Drone 0              Dispatcher           BID            My bids in round 13: order #15 for cost 42.1, delivered by t=142
+  102  Drone 2              Dispatcher           BID            My bids in round 13: order #15 for cost 17.1, delivered by t=118
+  102  Drone 4              Dispatcher           BID            My bids in round 13: order #15 for cost 17.1, delivered by t=118
+  102  Drone 5              Dispatcher           BID            My bids in round 13: order #15 for cost 49.8, delivered by t=149
+  102  Drone 6              Dispatcher           BID            My bids in round 13: order #15 for cost 17.1, delivered by t=118
+  102  Drone 7              Dispatcher           BID            My bids in round 13: order #15 for cost 49.8, delivered by t=149
+  102  Drone 8              Dispatcher           BID            My bids in round 13: order #15 for cost 17.1, delivered by t=118
+  102  Drone 9              Dispatcher           BID            My bids in round 13: order #15 for cost 49.8, delivered by t=149
+  102  Drone 11             Dispatcher           BID            My bids in round 13: order #15 for cost 60.2, delivered by t=159, after a battery swap at Station 1
+  103  Dispatcher           Drone 2              ACCEPT         You win order #15: 0.9 kg from Hub 0 to the customer at (27, 5), due by t=242.
+  103  Dispatcher           Drone 5              REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 11             REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 9              REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 7              REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 6              REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 4              REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 8              REJECT         You did not win anything in round 13.
+  103  Dispatcher           Drone 0              REJECT         You did not win anything in round 13.
+  104  Drone 3              Dispatcher           INFORM         I have delivered order #12.
+  104  Drone 3              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=117.
+  104  Station 1            Drone 3              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  105  Drone 0              Station 1            REQUEST        I have landed here; please swap my battery (12% left).
+  105  Station 1            Drone 0              INFORM         Your battery swap has started.
+  105  Drone 2              Dispatcher           INFORM         I have picked up order #15.
+  108  Station 1            Drone 0              INFORM         Swap done: here is a fresh battery pack (100%).
+  111  Dispatcher           all drones           CALL FOR BIDS  Auction round 14: who can deliver this order? #16 (EXPRESS) 1.0 kg Hub 0 -> (13, 15) due t=181
+  111  Drone 0              Dispatcher           BID            My bids in round 14: order #16 for cost 38.3, delivered by t=147
+  111  Drone 3              Dispatcher           BID            My bids in round 14: order #16 for cost 47.3, delivered by t=156
+  111  Drone 4              Dispatcher           BID            My bids in round 14: order #16 for cost 19.3, delivered by t=129
+  111  Drone 5              Dispatcher           BID            My bids in round 14: order #16 for cost 52.0, delivered by t=160
+  111  Drone 6              Dispatcher           BID            My bids in round 14: order #16 for cost 19.3, delivered by t=129
+  111  Drone 7              Dispatcher           BID            My bids in round 14: order #16 for cost 52.0, delivered by t=160
+  111  Drone 8              Dispatcher           BID            My bids in round 14: order #16 for cost 19.3, delivered by t=129
+  111  Drone 9              Dispatcher           BID            My bids in round 14: order #16 for cost 52.0, delivered by t=160
+  111  Drone 11             Dispatcher           BID            My bids in round 14: order #16 for cost 62.4, delivered by t=170, after a battery swap at Station 1
+  112  Dispatcher           Drone 4              ACCEPT         You win order #16 (EXPRESS): 1.0 kg from Hub 0 to the customer at (13, 15), due by t=181.
+  112  Dispatcher           Drone 5              REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 11             REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 9              REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 7              REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 6              REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 3              REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 8              REJECT         You did not win anything in round 14.
+  112  Dispatcher           Drone 0              REJECT         You did not win anything in round 14.
+  112  Dispatcher           all drones           CALL FOR BIDS  Auction round 15: who can deliver this order? #17 2.5 kg Hub 0 -> (29, 18) due t=252
+  112  Drone 0              Dispatcher           BID            My bids in round 15: order #17 for cost 33.8, delivered by t=143
+  112  Drone 3              Dispatcher           BID            My bids in round 15: order #17 for cost 41.8, delivered by t=151
+  112  Drone 5              Dispatcher           BID            My bids in round 15: order #17 for cost 57.9, delivered by t=166, after a battery swap at Station 1
+  112  Drone 6              Dispatcher           BID            My bids in round 15: order #17 for cost 14.8, delivered by t=125
+  112  Drone 7              Dispatcher           BID            My bids in round 15: order #17 for cost 47.5, delivered by t=156
+  112  Drone 8              Dispatcher           BID            My bids in round 15: order #17 for cost 14.8, delivered by t=125
+  112  Drone 9              Dispatcher           BID            My bids in round 15: order #17 for cost 57.9, delivered by t=166, after a battery swap at Station 1
+  112  Drone 11             Dispatcher           BID            My bids in round 15: order #17 for cost 57.9, delivered by t=166, after a battery swap at Station 1
+  113  Dispatcher           Drone 6              ACCEPT         You win order #17: 2.5 kg from Hub 0 to the customer at (29, 18), due by t=252.
+  113  Dispatcher           Drone 5              REJECT         You did not win anything in round 15.
+  113  Dispatcher           Drone 11             REJECT         You did not win anything in round 15.
+  113  Dispatcher           Drone 9              REJECT         You did not win anything in round 15.
+  113  Dispatcher           Drone 7              REJECT         You did not win anything in round 15.
+  113  Dispatcher           Drone 3              REJECT         You did not win anything in round 15.
+  113  Dispatcher           Drone 8              REJECT         You did not win anything in round 15.
+  113  Dispatcher           Drone 0              REJECT         You did not win anything in round 15.
+  114  Drone 4              Dispatcher           INFORM         I have picked up order #16.
+  115  Drone 1              Dispatcher           INFORM         I have delivered order #13.
+  115  Drone 6              Dispatcher           INFORM         I have picked up order #17.
+  116  Dispatcher           all drones           CALL FOR BIDS  Auction round 16: who can deliver this order? #18 (EXPRESS) 1.1 kg Hub 1 -> (2, 2) due t=186
+  116  Drone 0              Dispatcher           BID            My bids in round 16: order #18 for cost 32.6, delivered by t=146
+  116  Drone 1              Dispatcher           BID            My bids in round 16: order #18 for cost 48.2, delivered by t=161, after a battery swap at Station 0
+  116  Drone 3              Dispatcher           BID            My bids in round 16: order #18 for cost 36.6, delivered by t=150
+  116  Drone 5              Dispatcher           BID            My bids in round 16: order #18 for cost 11.5, delivered by t=126
+  116  Drone 7              Dispatcher           BID            My bids in round 16: order #18 for cost 11.5, delivered by t=126
+  116  Drone 8              Dispatcher           BID            My bids in round 16: order #18 for cost 44.2, delivered by t=157
+  116  Drone 9              Dispatcher           BID            My bids in round 16: order #18 for cost 11.5, delivered by t=126
+  116  Drone 11             Dispatcher           BID            My bids in round 16: order #18 for cost 11.5, delivered by t=126
+  117  Drone 3              Station 1            REQUEST        I have landed here; please swap my battery (41% left).
+  117  Drone 10             Dispatcher           INFORM         I have delivered order #14.
+  117  Drone 10             Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=125.
+  117  Dispatcher           Drone 11             ACCEPT         You win order #18 (EXPRESS): 1.1 kg from Hub 1 to the customer at (2, 2), due by t=186.
+  117  Dispatcher           Drone 5              REJECT         You did not win anything in round 16.
+  117  Dispatcher           Drone 8              REJECT         You did not win anything in round 16.
+  117  Dispatcher           Drone 9              REJECT         You did not win anything in round 16.
+  117  Dispatcher           Drone 7              REJECT         You did not win anything in round 16.
+  117  Dispatcher           Drone 3              REJECT         You did not win anything in round 16.
+  117  Dispatcher           Drone 1              REJECT         You did not win anything in round 16.
+  117  Dispatcher           Drone 0              REJECT         You did not win anything in round 16.
+  117  Dispatcher           all drones           CALL FOR BIDS  Auction round 17: who can deliver this order? #19 0.5 kg Hub 1 -> (15, 16) due t=257
+  117  Station 1            Drone 10             AGREE          Reserved. Expected wait when you arrive: 48 ticks.
+  117  Station 1            Drone 3              INFORM         Your battery swap has started.
+  117  Drone 0              Dispatcher           BID            My bids in round 17: order #19 for cost 48.9, delivered by t=163
+  117  Drone 1              Dispatcher           BID            My bids in round 17: order #19 for cost 66.7, delivered by t=180, after a battery swap at Station 0
+  117  Drone 3              Dispatcher           BID            My bids in round 17: order #19 for cost 53.0, delivered by t=167
+  117  Drone 5              Dispatcher           BID            My bids in round 17: order #19 for cost 28.9, delivered by t=144
+  117  Drone 7              Dispatcher           BID            My bids in round 17: order #19 for cost 28.9, delivered by t=144
+  117  Drone 8              Dispatcher           BID            My bids in round 17: order #19 for cost 72.0, delivered by t=185, after a battery swap at Station 1
+  117  Drone 9              Dispatcher           BID            My bids in round 17: order #19 for cost 28.9, delivered by t=144
+  117  Drone 10             Dispatcher           BID            My bids in round 17: order #19 for cost 61.0, delivered by t=175
+  118  Dispatcher           Drone 5              ACCEPT         You win order #19: 0.5 kg from Hub 1 to the customer at (15, 16), due by t=257.
+  118  Dispatcher           Drone 8              REJECT         You did not win anything in round 17.
+  118  Dispatcher           Drone 9              REJECT         You did not win anything in round 17.
+  118  Dispatcher           Drone 7              REJECT         You did not win anything in round 17.
+  118  Dispatcher           Drone 3              REJECT         You did not win anything in round 17.
+  118  Dispatcher           Drone 10             REJECT         You did not win anything in round 17.
+  118  Dispatcher           Drone 1              REJECT         You did not win anything in round 17.
+  118  Dispatcher           Drone 0              REJECT         You did not win anything in round 17.
+  119  Drone 11             Dispatcher           INFORM         I have picked up order #18.
+  120  Station 1            Drone 3              INFORM         Swap done: here is a fresh battery pack (100%).
+  120  Drone 5              Dispatcher           INFORM         I have picked up order #19.
+  124  Drone 2              Dispatcher           INFORM         I have delivered order #15.
+  124  Drone 2              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=133.
+  124  Station 2            Drone 2              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  125  Drone 10             Station 1            REQUEST        I have landed here; please swap my battery (39% left).
+  125  Dispatcher           all drones           CALL FOR BIDS  Auction round 18: who can deliver this order? #20 2.1 kg Hub 0 -> (15, 16) due t=265
+  125  Station 1            Drone 10             INFORM         Your battery swap has started.
+  125  Drone 0              Dispatcher           BID            My bids in round 18: order #20 for cost 30.1, delivered by t=153
+  125  Drone 1              Dispatcher           BID            My bids in round 18: order #20 for cost 24.8, delivered by t=148
+  125  Drone 2              Dispatcher           BID            My bids in round 18: order #20 for cost 47.4, delivered by t=170
+  125  Drone 3              Dispatcher           BID            My bids in round 18: order #20 for cost 37.4, delivered by t=160
+  125  Drone 7              Dispatcher           BID            My bids in round 18: order #20 for cost 51.2, delivered by t=173
+  125  Drone 8              Dispatcher           BID            My bids in round 18: order #20 for cost 18.4, delivered by t=142
+  125  Drone 9              Dispatcher           BID            My bids in round 18: order #20 for cost 51.2, delivered by t=173
+  125  Drone 10             Dispatcher           BID            My bids in round 18: order #20 for cost 40.4, delivered by t=163
+  126  Dispatcher           Drone 8              ACCEPT         You win order #20: 2.1 kg from Hub 0 to the customer at (15, 16), due by t=265.
+  126  Dispatcher           Drone 2              REJECT         You did not win anything in round 18.
+  126  Dispatcher           Drone 9              REJECT         You did not win anything in round 18.
+  126  Dispatcher           Drone 7              REJECT         You did not win anything in round 18.
+  126  Dispatcher           Drone 3              REJECT         You did not win anything in round 18.
+  126  Dispatcher           Drone 10             REJECT         You did not win anything in round 18.
+  126  Dispatcher           Drone 1              REJECT         You did not win anything in round 18.
+  126  Dispatcher           Drone 0              REJECT         You did not win anything in round 18.
+  128  Station 1            Drone 10             INFORM         Swap done: here is a fresh battery pack (100%).
+  128  Drone 8              Dispatcher           INFORM         I have picked up order #20.
+  130  Dispatcher           all drones           CALL FOR BIDS  Auction round 19: who can deliver this order? #21 1.6 kg Hub 1 -> (2, 2) due t=270
+  130  Drone 0              Dispatcher           BID            My bids in round 19: order #21 for cost 41.0, delivered by t=168
+  130  Drone 1              Dispatcher           BID            My bids in round 19: order #21 for cost 60.9, delivered by t=187, after a battery swap at Station 0
+  130  Drone 2              Dispatcher           BID            My bids in round 19: order #21 for cost 52.3, delivered by t=179
+  130  Drone 3              Dispatcher           BID            My bids in round 19: order #21 for cost 31.5, delivered by t=159
+  130  Drone 7              Dispatcher           BID            My bids in round 19: order #21 for cost 11.5, delivered by t=140
+  130  Drone 9              Dispatcher           BID            My bids in round 19: order #21 for cost 11.5, delivered by t=140
+  130  Drone 10             Dispatcher           BID            My bids in round 19: order #21 for cost 32.6, delivered by t=160
+  131  Drone 6              Dispatcher           INFORM         I have delivered order #17.
+  131  Drone 6              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=151.
+  131  Dispatcher           Drone 7              ACCEPT         You win order #21: 1.6 kg from Hub 1 to the customer at (2, 2), due by t=270.
+  131  Dispatcher           Drone 2              REJECT         You did not win anything in round 19.
+  131  Dispatcher           Drone 9              REJECT         You did not win anything in round 19.
+  131  Dispatcher           Drone 10             REJECT         You did not win anything in round 19.
+  131  Dispatcher           Drone 3              REJECT         You did not win anything in round 19.
+  131  Dispatcher           Drone 1              REJECT         You did not win anything in round 19.
+  131  Dispatcher           Drone 0              REJECT         You did not win anything in round 19.
+  131  Station 2            Drone 6              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  132  Drone 11             Dispatcher           INFORM         I have delivered order #18.
+  132  Drone 11             Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=163.
+  132  Dispatcher           all drones           CALL FOR BIDS  Auction round 20: who can deliver this order? #22 1.4 kg Hub 1 -> (3, 9) due t=272
+  132  Station 0            Drone 11             AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  132  Drone 0              Dispatcher           BID            My bids in round 20: order #22 for cost 41.1, delivered by t=170
+  132  Drone 1              Dispatcher           BID            My bids in round 20: order #22 for cost 58.8, delivered by t=187, after a battery swap at Station 0
+  132  Drone 2              Dispatcher           BID            My bids in round 20: order #22 for cost 48.2, delivered by t=177
+  132  Drone 3              Dispatcher           BID            My bids in round 20: order #22 for cost 31.6, delivered by t=161
+  132  Drone 6              Dispatcher           BID            My bids in round 20: order #22 for cost 66.2, delivered by t=195
+  132  Drone 9              Dispatcher           BID            My bids in round 20: order #22 for cost 9.4, delivered by t=140
+  132  Drone 10             Dispatcher           BID            My bids in round 20: order #22 for cost 30.5, delivered by t=160
+  132  Drone 11             Dispatcher           BID            My bids in round 20: order #22 for cost 67.7, delivered by t=197
+  133  Drone 2              Station 2            REQUEST        I have landed here; please swap my battery (35% left).
+  133  Dispatcher           Drone 9              ACCEPT         You win order #22: 1.4 kg from Hub 1 to the customer at (3, 9), due by t=272.
+  133  Dispatcher           Drone 11             REJECT         You did not win anything in round 20.
+  133  Dispatcher           Drone 2              REJECT         You did not win anything in round 20.
+  133  Dispatcher           Drone 6              REJECT         You did not win anything in round 20.
+  133  Dispatcher           Drone 3              REJECT         You did not win anything in round 20.
+  133  Dispatcher           Drone 10             REJECT         You did not win anything in round 20.
+  133  Dispatcher           Drone 1              REJECT         You did not win anything in round 20.
+  133  Dispatcher           Drone 0              REJECT         You did not win anything in round 20.
+  133  Station 2            Drone 2              INFORM         Your battery swap has started.
+  133  Drone 7              Dispatcher           INFORM         I have picked up order #21.
+  135  Drone 4              Dispatcher           INFORM         I have delivered order #16.
+  135  Drone 9              Dispatcher           INFORM         I have picked up order #22.
+  136  Station 2            Drone 2              INFORM         Swap done: here is a fresh battery pack (100%).
+  138  Dispatcher           all drones           CALL FOR BIDS  Auction round 21: who can deliver this order? #23 1.4 kg Hub 1 -> (1, 16) due t=278
+  138  Drone 0              Dispatcher           BID            My bids in round 21: order #23 for cost 51.4, delivered by t=186
+  138  Drone 1              Dispatcher           BID            My bids in round 21: order #23 for cost 68.1, delivered by t=202, after a battery swap at Station 0
+  138  Drone 2              Dispatcher           BID            My bids in round 21: order #23 for cost 53.5, delivered by t=188
+  138  Drone 3              Dispatcher           BID            My bids in round 21: order #23 for cost 45.1, delivered by t=180
+  138  Drone 4              Dispatcher           BID            My bids in round 21: order #23 for cost 56.5, delivered by t=191, after a battery swap at Station 0
+  138  Drone 6              Dispatcher           BID            My bids in round 21: order #23 for cost 69.5, delivered by t=204
+  138  Drone 10             Dispatcher           BID            My bids in round 21: order #23 for cost 39.8, delivered by t=175
+  138  Drone 11             Dispatcher           BID            My bids in round 21: order #23 for cost 71.0, delivered by t=206
+  139  Dispatcher           Drone 10             ACCEPT         You win order #23: 1.4 kg from Hub 1 to the customer at (1, 16), due by t=278.
+  139  Dispatcher           Drone 11             REJECT         You did not win anything in round 21.
+  139  Dispatcher           Drone 2              REJECT         You did not win anything in round 21.
+  139  Dispatcher           Drone 6              REJECT         You did not win anything in round 21.
+  139  Dispatcher           Drone 4              REJECT         You did not win anything in round 21.
+  139  Dispatcher           Drone 3              REJECT         You did not win anything in round 21.
+  139  Dispatcher           Drone 1              REJECT         You did not win anything in round 21.
+  139  Dispatcher           Drone 0              REJECT         You did not win anything in round 21.
+  139  Dispatcher           all drones           CALL FOR BIDS  Auction round 22: who can deliver these orders? #24 1.8 kg Hub 0 -> (29, 18) due t=279; #25 2.1 kg Hub 1 -> (1, 16) due t=279
+  139  Drone 0              Dispatcher           BID            My bids in round 22: order #24 for cost 14.7, delivered by t=152; order #25 for cost 51.5, delivered by t=187
+  139  Drone 1              Dispatcher           BID            My bids in round 22: order #24 for cost 14.7, delivered by t=152; order #25 for cost 66.9, delivered by t=202, after a battery swap at Station 1
+  139  Drone 2              Dispatcher           BID            My bids in round 22: order #24 for cost 32.6, delivered by t=169; order #25 for cost 53.6, delivered by t=189
+  139  Drone 3              Dispatcher           BID            My bids in round 22: order #24 for cost 25.3, delivered by t=162; order #25 for cost 44.1, delivered by t=180
+  139  Drone 4              Dispatcher           BID            My bids in round 22: order #24 for cost 51.5, delivered by t=187, after a battery swap at Station 0; order #25 for cost 57.7, delivered by t=193, after a battery swap at Station 0
+  139  Drone 6              Dispatcher           BID            My bids in round 22: order #24 for cost 47.6, delivered by t=184; order #25 for cost 68.6, delivered by t=204
+  139  Drone 11             Dispatcher           BID            My bids in round 22: order #24 for cost 63.9, delivered by t=200; order #25 for cost 70.0, delivered by t=206
+  140  Dispatcher           Drone 0              ACCEPT         You win order #24: 1.8 kg from Hub 0 to the customer at (29, 18), due by t=279.
+  140  Dispatcher           Drone 3              ACCEPT         You win order #25: 2.1 kg from Hub 1 to the customer at (1, 16), due by t=279.
+  140  Dispatcher           Drone 11             REJECT         You did not win anything in round 22.
+  140  Dispatcher           Drone 2              REJECT         You did not win anything in round 22.
+  140  Dispatcher           Drone 6              REJECT         You did not win anything in round 22.
+  140  Dispatcher           Drone 4              REJECT         You did not win anything in round 22.
+  140  Dispatcher           Drone 1              REJECT         You did not win anything in round 22.
+  140  Dispatcher           all drones           CALL FOR BIDS  Auction round 23: who can deliver this order? #26 (EXPRESS) 1.3 kg Hub 0 -> (15, 14) due t=210
+  140  Drone 1              Dispatcher           BID            My bids in round 23: order #26 for cost 16.3, delivered by t=155
+  140  Drone 2              Dispatcher           BID            My bids in round 23: order #26 for cost 34.3, delivered by t=172
+  140  Drone 4              Dispatcher           BID            My bids in round 23: order #26 for cost 29.0, delivered by t=167
+  140  Drone 6              Dispatcher           BID            My bids in round 23: order #26 for cost 48.3, delivered by t=186
+  140  Drone 11             Dispatcher           BID            My bids in round 23: order #26 for cost 64.5, delivered by t=202
+  141  Drone 9              Dispatcher           INFORM         I have delivered order #22.
+  141  Dispatcher           Drone 1              ACCEPT         You win order #26 (EXPRESS): 1.3 kg from Hub 0 to the customer at (15, 14), due by t=210.
+  141  Dispatcher           Drone 11             REJECT         You did not win anything in round 23.
+  141  Dispatcher           Drone 6              REJECT         You did not win anything in round 23.
+  141  Dispatcher           Drone 2              REJECT         You did not win anything in round 23.
+  141  Dispatcher           Drone 4              REJECT         You did not win anything in round 23.
+  142  Dispatcher           all drones           CALL FOR BIDS  Auction round 24: who can deliver these orders? #28 (EXPRESS) 1.5 kg Hub 0 -> (13, 15) due t=212; #27 0.8 kg Hub 0 -> (20, 12) due t=282
+  142  Drone 0              Dispatcher           INFORM         I have picked up order #24.
+  142  Drone 2              Dispatcher           BID            My bids in round 24: order #28 for cost 37.3, delivered by t=177; order #27 for cost 31.1, delivered by t=171
+  142  Drone 4              Dispatcher           BID            My bids in round 24: order #28 for cost 30.0, delivered by t=170; order #27 for cost 23.7, delivered by t=164
+  142  Drone 6              Dispatcher           BID            My bids in round 24: order #28 for cost 49.3, delivered by t=189; order #27 for cost 43.1, delivered by t=183
+  142  Drone 9              Dispatcher           BID            My bids in round 24: order #28 for cost 62.4, delivered by t=201, after a battery swap at Station 1; order #27 for cost 42.7, delivered by t=182
+  142  Drone 11             Dispatcher           BID            My bids in round 24: order #28 for cost 65.6, delivered by t=205; order #27 for cost 59.3, delivered by t=199
+  143  Dispatcher           Drone 4              ACCEPT         You win order #28 (EXPRESS): 1.5 kg from Hub 0 to the customer at (13, 15), due by t=212.
+  143  Dispatcher           Drone 2              ACCEPT         You win order #27: 0.8 kg from Hub 0 to the customer at (20, 12), due by t=282.
+  143  Dispatcher           Drone 11             REJECT         You did not win anything in round 24.
+  143  Dispatcher           Drone 9              REJECT         You did not win anything in round 24.
+  143  Dispatcher           Drone 6              REJECT         You did not win anything in round 24.
+  143  Drone 1              Dispatcher           INFORM         I have picked up order #26.
+  144  Dispatcher           all drones           CALL FOR BIDS  Auction round 25: who can deliver this order? #29 0.4 kg Hub 0 -> (20, 12) due t=284
+  144  Drone 6              Dispatcher           BID            My bids in round 25: order #29 for cost 41.0, delivered by t=183
+  144  Drone 9              Dispatcher           BID            My bids in round 25: order #29 for cost 45.8, delivered by t=187
+  144  Drone 11             Dispatcher           BID            My bids in round 25: order #29 for cost 57.3, delivered by t=199
+  145  Drone 8              Dispatcher           INFORM         I have delivered order #20.
+  145  Dispatcher           Drone 6              ACCEPT         You win order #29: 0.4 kg from Hub 0 to the customer at (20, 12), due by t=284.
+  145  Dispatcher           Drone 11             REJECT         You did not win anything in round 25.
+  145  Dispatcher           Drone 9              REJECT         You did not win anything in round 25.
+  146  Drone 7              Dispatcher           INFORM         I have delivered order #21.
+  150  Drone 5              Dispatcher           INFORM         I have delivered order #19.
+  150  Drone 5              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=162.
+  150  Station 0            Drone 5              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  151  Drone 6              Station 2            REQUEST        I have landed here; please swap my battery (26% left).
+  151  Station 2            Drone 6              INFORM         Your battery swap has started.
+  154  Dispatcher           all drones           CALL FOR BIDS  Auction round 26: who can deliver this order? #30 1.8 kg Hub 0 -> (29, 18) due t=294
+  154  Station 2            Drone 6              INFORM         Swap done: here is a fresh battery pack (100%).
+  154  Drone 4              Dispatcher           INFORM         I have picked up order #28.
+  154  Drone 5              Dispatcher           BID            My bids in round 26: order #30 for cost 47.9, delivered by t=199
+  154  Drone 7              Dispatcher           BID            My bids in round 26: order #30 for cost 55.7, delivered by t=206, after a battery swap at Station 1
+  154  Drone 8              Dispatcher           BID            My bids in round 26: order #30 for cost 22.1, delivered by t=174
+  154  Drone 9              Dispatcher           BID            My bids in round 26: order #30 for cost 57.8, delivered by t=208, after a battery swap at Station 1
+  154  Drone 11             Dispatcher           BID            My bids in round 26: order #30 for cost 48.9, delivered by t=200
+  155  Dispatcher           Drone 8              ACCEPT         You win order #30: 1.8 kg from Hub 0 to the customer at (29, 18), due by t=294.
+  155  Dispatcher           Drone 5              REJECT         You did not win anything in round 26.
+  155  Dispatcher           Drone 7              REJECT         You did not win anything in round 26.
+  155  Dispatcher           Drone 11             REJECT         You did not win anything in round 26.
+  155  Dispatcher           Drone 9              REJECT         You did not win anything in round 26.
+  158  Drone 0              Dispatcher           INFORM         I have delivered order #24.
+  158  Dispatcher           all drones           CALL FOR BIDS  Auction round 27: who can deliver this order? #31 1.9 kg Hub 1 -> (0, 7) due t=298
+  158  Drone 0              Dispatcher           BID            My bids in round 27: order #31 for cost 61.1, delivered by t=215, after a battery swap at Station 0
+  158  Drone 5              Dispatcher           BID            My bids in round 27: order #31 for cost 41.9, delivered by t=197
+  158  Drone 7              Dispatcher           BID            My bids in round 27: order #31 for cost 10.6, delivered by t=167
+  158  Drone 9              Dispatcher           BID            My bids in round 27: order #31 for cost 10.6, delivered by t=167
+  158  Drone 11             Dispatcher           BID            My bids in round 27: order #31 for cost 42.9, delivered by t=198
+  159  Dispatcher           Drone 7              ACCEPT         You win order #31: 1.9 kg from Hub 1 to the customer at (0, 7), due by t=298.
+  159  Dispatcher           Drone 5              REJECT         You did not win anything in round 27.
+  159  Dispatcher           Drone 11             REJECT         You did not win anything in round 27.
+  159  Dispatcher           Drone 9              REJECT         You did not win anything in round 27.
+  159  Dispatcher           Drone 0              REJECT         You did not win anything in round 27.
+  161  Drone 1              Dispatcher           INFORM         I have delivered order #26.
+  161  Drone 1              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=175.
+  161  Dispatcher           all drones           CALL FOR BIDS  Auction round 28: who can deliver this order? #32 1.1 kg Hub 0 -> (31, 10) due t=301
+  161  Station 0            Drone 1              AGREE          Reserved. Expected wait when you arrive: 46 ticks.
+  161  Drone 0              Dispatcher           BID            My bids in round 28: order #32 for cost 26.0, delivered by t=185
+  161  Drone 1              Dispatcher           BID            My bids in round 28: order #32 for cost 55.6, delivered by t=214
+  161  Drone 5              Dispatcher           BID            My bids in round 28: order #32 for cost 42.6, delivered by t=201
+  161  Drone 7              Dispatcher           INFORM         I have picked up order #31.
+  161  Drone 9              Dispatcher           BID            My bids in round 28: order #32 for cost 59.5, delivered by t=217, after a battery swap at Station 1
+  161  Drone 11             Dispatcher           BID            My bids in round 28: order #32 for cost 43.6, delivered by t=202
+  162  Drone 5              Station 0            REQUEST        I have landed here; please swap my battery (48% left).
+  162  Dispatcher           Drone 0              ACCEPT         You win order #32: 1.1 kg from Hub 0 to the customer at (31, 10), due by t=301.
+  162  Dispatcher           Drone 5              REJECT         You did not win anything in round 28.
+  162  Dispatcher           Drone 11             REJECT         You did not win anything in round 28.
+  162  Dispatcher           Drone 9              REJECT         You did not win anything in round 28.
+  162  Dispatcher           Drone 1              REJECT         You did not win anything in round 28.
+  162  Station 0            Drone 5              INFORM         Your battery swap has started.
+  162  Drone 10             Dispatcher           INFORM         I have picked up order #23.
+  163  Drone 11             Station 0            REQUEST        I have landed here; please swap my battery (14% left).
+  163  Dispatcher           all drones           CALL FOR BIDS  Auction round 29: who can deliver these orders? #33 1.9 kg Hub 0 -> (16, 17) due t=303; #34 2.1 kg Hub 0 -> (29, 19) due t=303
+  163  Drone 1              Dispatcher           BID            My bids in round 29: order #33 for cost 55.6, delivered by t=216; order #34 for cost 53.0, delivered by t=213
+  163  Drone 5              Dispatcher           BID            My bids in round 29: order #33 for cost 43.6, delivered by t=204; order #34 for cost 41.0, delivered by t=201
+  163  Drone 8              Dispatcher           INFORM         I have picked up order #30.
+  163  Drone 9              Dispatcher           BID            My bids in round 29: order #33 for cost 61.5, delivered by t=221, after a battery swap at Station 1; order #34 for cost 58.9, delivered by t=218, after a battery swap at Station 1
+  163  Drone 11             Dispatcher           BID            My bids in round 29: order #33 for cost 46.6, delivered by t=207; order #34 for cost 44.0, delivered by t=204
+  164  Dispatcher           Drone 5              ACCEPT         You win order #33: 1.9 kg from Hub 0 to the customer at (16, 17), due by t=303.
+  164  Dispatcher           Drone 11             ACCEPT         You win order #34: 2.1 kg from Hub 0 to the customer at (29, 19), due by t=303.
+  164  Dispatcher           Drone 1              REJECT         You did not win anything in round 29.
+  164  Dispatcher           Drone 9              REJECT         You did not win anything in round 29.
+  164  Dispatcher           all drones           CALL FOR BIDS  Auction round 30: who can deliver this order? #35 2.4 kg Hub 0 -> (29, 19) due t=304
+  164  Drone 1              Dispatcher           BID            My bids in round 30: order #35 for cost 101.0, delivered by t=262
+  164  Drone 9              Dispatcher           BID            My bids in round 30: order #35 for cost 59.0, delivered by t=219, after a battery swap at Station 1
+  165  Dispatcher           Drone 9              ACCEPT         You win order #35: 2.4 kg from Hub 0 to the customer at (29, 19), due by t=304.
+  165  Dispatcher           Drone 1              REJECT         You did not win anything in round 30.
+  165  Station 0            Drone 5              INFORM         Swap done: here is a fresh battery pack (100%).
+  165  Station 0            Drone 11             INFORM         Your battery swap has started.
+  165  Drone 9              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=187.
+  166  Station 1            Drone 9              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  166  Drone 2              Dispatcher           INFORM         I have picked up order #27.
+  167  Drone 3              Dispatcher           INFORM         I have picked up order #25.
+  168  Station 0            Drone 11             INFORM         Swap done: here is a fresh battery pack (100%).
+  170  Drone 7              Dispatcher           INFORM         I have delivered order #31.
+  171  Dispatcher           all drones           CALL FOR BIDS  Auction round 31: who can deliver these orders? #36 2.3 kg Hub 1 -> (17, 6) due t=311; #37 0.7 kg Hub 1 -> (27, 5) due t=311
+  171  Drone 1              Dispatcher           BID            My bids in round 31: order #36 for cost 53.7, delivered by t=222; order #37 for cost 65.3, delivered by t=233
+  171  Drone 7              Dispatcher           BID            My bids in round 31: order #36 for cost 27.8, delivered by t=197; order #37 for cost 39.3, delivered by t=208
+  172  Dispatcher           Drone 7              ACCEPT         You win order #36: 2.3 kg from Hub 1 to the customer at (17, 6), due by t=311.
+  172  Dispatcher           Drone 1              ACCEPT         You win order #37: 0.7 kg from Hub 1 to the customer at (27, 5), due by t=311.
+  172  Dispatcher           all drones           CALL FOR BIDS  Auction round 32: who can deliver this order? #38 (EXPRESS) 0.3 kg Hub 1 -> (3, 9) due t=242
+  172  Drone 0              Dispatcher           INFORM         I have picked up order #32.
+  175  Drone 1              Station 0            REQUEST        I have landed here; please swap my battery (25% left).
+  175  Drone 4              Dispatcher           INFORM         I have delivered order #28.
+  175  Drone 4              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=186.
+  175  Station 0            Drone 4              AGREE          Reserved. Expected wait when you arrive: 45 ticks.
+  175  Station 0            Drone 1              INFORM         Your battery swap has started.
+  176  Dispatcher           all drones           CALL FOR BIDS  Auction round 33: who can deliver this order? #38 (EXPRESS) 0.3 kg Hub 1 -> (3, 9) due t=242
+  176  Drone 4              Dispatcher           BID            My bids in round 33: order #38 for cost 160.6, delivered by t=265
+  177  Dispatcher           Drone 4              ACCEPT         You win order #38 (EXPRESS): 0.3 kg from Hub 1 to the customer at (3, 9), due by t=242.
+  177  Dispatcher           all drones           CALL FOR BIDS  Auction round 34: who can deliver this order? #39 2.4 kg Hub 0 -> (23, 15) due t=317
+  177  Drone 6              Dispatcher           INFORM         I have picked up order #29.
+  178  Station 0            Drone 1              INFORM         Swap done: here is a fresh battery pack (100%).
+  180  Drone 8              Dispatcher           INFORM         I have delivered order #30.
+  180  Drone 8              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=200.
+  180  Station 2            Drone 8              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  180  Drone 7              Dispatcher           INFORM         I have picked up order #36.
+  181  Drone 2              Dispatcher           INFORM         I have delivered order #27.
+  181  Dispatcher           all drones           CALL FOR BIDS  Auction round 35: who can deliver this order? #39 2.4 kg Hub 0 -> (23, 15) due t=317
+  181  Drone 2              Dispatcher           BID            My bids in round 35: order #39 for cost 16.7, delivered by t=196
+  181  Drone 8              Dispatcher           BID            My bids in round 35: order #39 for cost 49.2, delivered by t=228
+  182  Drone 10             Dispatcher           INFORM         I have delivered order #23.
+  182  Dispatcher           Drone 2              ACCEPT         You win order #39: 2.4 kg from Hub 0 to the customer at (23, 15), due by t=317.
+  182  Dispatcher           Drone 8              REJECT         You did not win anything in round 35.
+  185  Dispatcher           all drones           CALL FOR BIDS  Auction round 36: who can deliver this order? #40 0.3 kg Hub 1 -> (8, 13) due t=325
+  185  Drone 8              Dispatcher           BID            My bids in round 36: order #40 for cost 71.2, delivered by t=253
+  185  Drone 10             Dispatcher           BID            My bids in round 36: order #40 for cost 32.1, delivered by t=215
+  186  Drone 3              Dispatcher           INFORM         I have delivered order #25.
+  186  Drone 3              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=219.
+  186  Drone 4              Station 0            REQUEST        I have landed here; please swap my battery (19% left).
+  186  Dispatcher           Drone 10             ACCEPT         You win order #40: 0.3 kg from Hub 1 to the customer at (8, 13), due by t=325.
+  186  Dispatcher           Drone 8              REJECT         You did not win anything in round 36.
+  186  Dispatcher           all drones           CALL FOR BIDS  Auction round 37: who can deliver this order? #41 1.5 kg Hub 1 -> (3, 9) due t=326
+  186  Station 1            Drone 3              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  186  Drone 3              Dispatcher           BID            My bids in round 37: order #41 for cost 66.5, delivered by t=250
+  186  Drone 8              Dispatcher           BID            My bids in round 37: order #41 for cost 61.2, delivered by t=244
+  187  Drone 9              Station 1            REQUEST        I have landed here; please swap my battery (54% left).
+  187  Dispatcher           Drone 8              ACCEPT         You win order #41: 1.5 kg from Hub 1 to the customer at (3, 9), due by t=326.
+  187  Dispatcher           Drone 3              REJECT         You did not win anything in round 37.
+  187  Dispatcher           all drones           CALL FOR BIDS  Auction round 38: who can deliver this order? #42 (EXPRESS) 1.5 kg Hub 1 -> (10, 0) due t=257
+  187  Station 1            Drone 9              INFORM         Your battery swap has started.
+  187  Drone 3              Dispatcher           BID            My bids in round 38: order #42 for cost 84.8, delivered by t=260
+  188  Dispatcher           Drone 3              ACCEPT         You win order #42 (EXPRESS): 1.5 kg from Hub 1 to the customer at (10, 0), due by t=257.
+  190  Drone 0              Dispatcher           INFORM         I have delivered order #32.
+  190  Drone 0              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=204.
+  190  Station 1            Drone 9              INFORM         Swap done: here is a fresh battery pack (100%).
+  190  Station 2            Drone 0              AGREE          Reserved. Expected wait when you arrive: 4 ticks.
+  191  Air traffic control  all drones           INFORM         No-fly zone over cells (16, 11) to (19, 13), closed from t=199 to t=268. Re-plan if your route crosses it.
+  192  Drone 6              Dispatcher           INFORM         I have delivered order #29.
+  192  Drone 5              Dispatcher           INFORM         I have picked up order #33.
+  194  Drone 5              Drone 11             REQUEST        Please re-plan your route: Drone 5 has claimed airspace you had booked (it was blocked and has priority).
+  194  Drone 2              Dispatcher           INFORM         I have picked up order #39.
+  196  Drone 11             Dispatcher           INFORM         I have picked up order #34.
+  200  Drone 8              Station 2            REQUEST        I have landed here; please swap my battery (19% left).
+  200  Dispatcher           all drones           CALL FOR BIDS  Auction round 39: who can deliver this order? #43 2.5 kg Hub 0 -> (31, 10) due t=340
+  200  Station 2            Drone 8              INFORM         Your battery swap has started.
+  200  Drone 0              Dispatcher           BID            My bids in round 39: order #43 for cost 41.5, delivered by t=239
+  200  Drone 6              Dispatcher           BID            My bids in round 39: order #43 for cost 19.8, delivered by t=218
+  200  Drone 10             Dispatcher           INFORM         I have picked up order #40.
+  201  Drone 2              Dispatcher           INFORM         I have delivered order #39.
+  201  Dispatcher           Drone 6              ACCEPT         You win order #43: 2.5 kg from Hub 0 to the customer at (31, 10), due by t=340.
+  201  Dispatcher           Drone 0              REJECT         You did not win anything in round 39.
+  201  Station 0            Drone 4              INFORM         Your battery swap has started.
+  202  Drone 7              Dispatcher           INFORM         I have delivered order #36.
+  202  Drone 7              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=205.
+  202  Station 1            Drone 7              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  203  Station 2            Drone 8              INFORM         Swap done: here is a fresh battery pack (100%).
+  204  Drone 0              Station 2            REQUEST        I have landed here; please swap my battery (33% left).
+  204  Station 0            Drone 4              INFORM         Swap done: here is a fresh battery pack (95%).
+  204  Station 2            Drone 0              INFORM         Your battery swap has started.
+  205  Drone 7              Station 1            REQUEST        I have landed here; please swap my battery (37% left).
+  205  Air traffic control  all drones           INFORM         No-fly zone over cells (24, 7) to (28, 9), closed from t=213 to t=281. Re-plan if your route crosses it.
+  205  Dispatcher           all drones           CALL FOR BIDS  Auction round 40: who can deliver these orders? #44 (EXPRESS) 1.1 kg Hub 1 -> (0, 7) due t=275; #45 1.8 kg Hub 0 -> (29, 19) due t=345
+  205  Station 1            Drone 7              INFORM         Your battery swap has started.
+  205  Drone 0              Dispatcher           BID            My bids in round 40: order #44 for cost 48.4, delivered by t=250; order #45 for cost 36.8, delivered by t=239
+  205  Drone 2              Dispatcher           BID            My bids in round 40: order #44 for cost 53.7, delivered by t=255, after a battery swap at Station 1; order #45 for cost 15.8, delivered by t=219
+  205  Drone 6              Dispatcher           INFORM         I have picked up order #43.
+  205  Drone 7              Dispatcher           BID            My bids in round 40: order #44 for cost 34.7, delivered by t=237; order #45 for cost 37.8, delivered by t=240
+  206  Dispatcher           Drone 7              ACCEPT         You win order #44 (EXPRESS): 1.1 kg from Hub 1 to the customer at (0, 7), due by t=275.
+  206  Dispatcher           Drone 2              ACCEPT         You win order #45: 1.8 kg from Hub 0 to the customer at (29, 19), due by t=345.
+  206  Dispatcher           Drone 0              REJECT         You did not win anything in round 40.
+  207  Station 2            Drone 0              INFORM         Swap done: here is a fresh battery pack (100%).
+  207  Drone 1              Dispatcher           INFORM         I have picked up order #37.
+  208  Station 1            Drone 7              INFORM         Swap done: here is a fresh battery pack (100%).
+  208  Drone 2              Dispatcher           INFORM         I have picked up order #45.
+  213  Drone 5              Dispatcher           INFORM         I have delivered order #33.
+  213  Drone 11             Dispatcher           INFORM         I have delivered order #34.
+  214  Drone 9              Dispatcher           INFORM         I have picked up order #35.
+  217  Dispatcher           all drones           CALL FOR BIDS  Auction round 41: who can deliver this order? #46 2.1 kg Hub 0 -> (3, 9) due t=357
+  217  Drone 0              Dispatcher           BID            My bids in round 41: order #46 for cost 53.0, delivered by t=266
+  217  Drone 5              Dispatcher           BID            My bids in round 41: order #46 for cost 72.9, delivered by t=285, after a battery swap at Station 1
+  217  Drone 11             Dispatcher           BID            My bids in round 41: order #46 for cost 78.2, delivered by t=290, after a battery swap at Station 2
+  218  Dispatcher           Drone 0              ACCEPT         You win order #46: 2.1 kg from Hub 0 to the customer at (3, 9), due by t=357.
+  218  Dispatcher           Drone 5              REJECT         You did not win anything in round 41.
+  218  Dispatcher           Drone 11             REJECT         You did not win anything in round 41.
+  219  Drone 3              Station 1            REQUEST        I have landed here; please swap my battery (21% left).
+  219  Station 1            Drone 3              INFORM         Your battery swap has started.
+  220  Drone 10             Dispatcher           INFORM         I have delivered order #40.
+  220  Drone 10             Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=243.
+  220  Station 1            Drone 10             AGREE          Reserved. Expected wait when you arrive: 37 ticks.
+  222  Station 1            Drone 3              INFORM         Swap done: here is a fresh battery pack (100%).
+  223  Drone 6              Dispatcher           INFORM         I have delivered order #43.
+  223  Drone 6              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=246.
+  223  Station 1            Drone 6              AGREE          Reserved. Expected wait when you arrive: 33 ticks.
+  225  Drone 2              Dispatcher           INFORM         I have delivered order #45.
+  225  Drone 2              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=246.
+  225  Station 2            Drone 2              AGREE          Reserved. Expected wait when you arrive: 10 ticks.
+  230  Drone 9              Dispatcher           INFORM         I have delivered order #35.
+  232  Dispatcher           all drones           CALL FOR BIDS  Auction round 42: who can deliver this order? #47 0.4 kg Hub 1 -> (12, 5) due t=372
+  232  Drone 2              Dispatcher           BID            My bids in round 42: order #47 for cost 68.0, delivered by t=297
+  232  Drone 5              Dispatcher           BID            My bids in round 42: order #47 for cost 59.3, delivered by t=288, after a battery swap at Station 1
+  232  Drone 6              Dispatcher           BID            My bids in round 42: order #47 for cost 54.3, delivered by t=284
+  232  Drone 7              Dispatcher           INFORM         I have picked up order #44.
+  232  Drone 9              Dispatcher           BID            My bids in round 42: order #47 for cost 65.6, delivered by t=294, after a battery swap at Station 0
+  232  Drone 10             Dispatcher           BID            My bids in round 42: order #47 for cost 51.3, delivered by t=281
+  232  Drone 11             Dispatcher           BID            My bids in round 42: order #47 for cost 59.3, delivered by t=288, after a battery swap at Station 1
+  233  Dispatcher           Drone 10             ACCEPT         You win order #47: 0.4 kg from Hub 1 to the customer at (12, 5), due by t=372.
+  233  Dispatcher           Drone 5              REJECT         You did not win anything in round 42.
+  233  Dispatcher           Drone 11             REJECT         You did not win anything in round 42.
+  233  Dispatcher           Drone 2              REJECT         You did not win anything in round 42.
+  233  Dispatcher           Drone 9              REJECT         You did not win anything in round 42.
+  233  Dispatcher           Drone 6              REJECT         You did not win anything in round 42.
+  234  Drone 4              Dispatcher           INFORM         I have picked up order #38.
+  235  Dispatcher           all drones           CALL FOR BIDS  Auction round 43: who can deliver this order? #48 1.8 kg Hub 1 -> (2, 11) due t=375
+  235  Drone 2              Dispatcher           BID            My bids in round 43: order #48 for cost 61.4, delivered by t=293
+  235  Drone 5              Dispatcher           BID            My bids in round 43: order #48 for cost 55.7, delivered by t=287, after a battery swap at Station 1
+  235  Drone 6              Dispatcher           BID            My bids in round 43: order #48 for cost 47.7, delivered by t=280
+  235  Drone 9              Dispatcher           BID            My bids in round 43: order #48 for cost 60.9, delivered by t=292, after a battery swap at Station 0
+  235  Drone 11             Dispatcher           BID            My bids in round 43: order #48 for cost 55.7, delivered by t=287, after a battery swap at Station 1
+  236  Dispatcher           Drone 6              ACCEPT         You win order #48: 1.8 kg from Hub 1 to the customer at (2, 11), due by t=375.
+  236  Dispatcher           Drone 5              REJECT         You did not win anything in round 43.
+  236  Dispatcher           Drone 11             REJECT         You did not win anything in round 43.
+  236  Dispatcher           Drone 9              REJECT         You did not win anything in round 43.
+  236  Dispatcher           Drone 2              REJECT         You did not win anything in round 43.
+  236  Drone 0              Dispatcher           INFORM         I have picked up order #46.
+  239  Dispatcher           all drones           CALL FOR BIDS  Auction round 44: who can deliver this order? #49 2.5 kg Hub 1 -> (2, 2) due t=379
+  239  Drone 2              Dispatcher           BID            My bids in round 44: order #49 for cost 56.4, delivered by t=292
+  239  Drone 5              Dispatcher           BID            My bids in round 44: order #49 for cost 54.6, delivered by t=290, after a battery swap at Station 1
+  239  Drone 9              Dispatcher           BID            My bids in round 44: order #49 for cost 57.8, delivered by t=293, after a battery swap at Station 1
+  239  Drone 11             Dispatcher           BID            My bids in round 44: order #49 for cost 54.6, delivered by t=290, after a battery swap at Station 1
+  240  Drone 1              Dispatcher           INFORM         I have delivered order #37.
+  240  Drone 1              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=249.
+  240  Drone 4              Dispatcher           INFORM         I have delivered order #38.
+  240  Dispatcher           Drone 11             ACCEPT         You win order #49: 2.5 kg from Hub 1 to the customer at (2, 2), due by t=379.
+  240  Dispatcher           Drone 5              REJECT         You did not win anything in round 44.
+  240  Dispatcher           Drone 9              REJECT         You did not win anything in round 44.
+  240  Dispatcher           Drone 2              REJECT         You did not win anything in round 44.
+  240  Station 2            Drone 1              AGREE          Reserved. Expected wait when you arrive: 13 ticks.
+  240  Drone 11             Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=262.
+  241  Dispatcher           all drones           CALL FOR BIDS  Auction round 45: who can deliver these orders? #50 (EXPRESS) 0.3 kg Hub 0 -> (15, 16) due t=311; #51 0.7 kg Hub 1 -> (3, 16) due t=381
+  241  Station 1            Drone 11             AGREE          Reserved. Expected wait when you arrive: 39 ticks.
+  241  Drone 1              Dispatcher           BID            My bids in round 45: order #50 for cost 47.2, delivered by t=286; order #51 for cost 62.2, delivered by t=300
+  241  Drone 2              Dispatcher           BID            My bids in round 45: order #50 for cost 44.2, delivered by t=283; order #51 for cost 59.2, delivered by t=297
+  241  Drone 4              Dispatcher           BID            My bids in round 45: order #50 for cost 60.3, delivered by t=298, after a battery swap at Station 1; order #51 for cost 18.5, delivered by t=258
+  241  Drone 5              Dispatcher           BID            My bids in round 45: order #50 for cost 18.3, delivered by t=258; order #51 for cost 59.5, delivered by t=297, after a battery swap at Station 1
+  241  Drone 8              Dispatcher           INFORM         I have picked up order #41.
+  241  Drone 9              Dispatcher           BID            My bids in round 45: order #50 for cost 20.4, delivered by t=260; order #51 for cost 60.6, delivered by t=298, after a battery swap at Station 1
+  242  Dispatcher           Drone 5              ACCEPT         You win order #50 (EXPRESS): 0.3 kg from Hub 0 to the customer at (15, 16), due by t=311.
+  242  Dispatcher           Drone 4              ACCEPT         You win order #51: 0.7 kg from Hub 1 to the customer at (3, 16), due by t=381.
+  242  Dispatcher           Drone 1              REJECT         You did not win anything in round 45.
+  242  Dispatcher           Drone 9              REJECT         You did not win anything in round 45.
+  242  Dispatcher           Drone 2              REJECT         You did not win anything in round 45.
+  243  Drone 10             Station 1            REQUEST        I have landed here; please swap my battery (14% left).
+  243  Station 1            Drone 10             INFORM         Your battery swap has started.
+  244  Drone 7              Dispatcher           INFORM         I have delivered order #44.
+  244  Drone 5              Dispatcher           INFORM         I have picked up order #50.
+  245  Drone 4              Dispatcher           INFORM         I have picked up order #51.
+  246  Drone 2              Station 2            REQUEST        I have landed here; please swap my battery (21% left).
+  246  Drone 6              Station 1            REQUEST        I have landed here; please swap my battery (20% left).
+  246  Drone 8              Drone 4              REQUEST        Please re-plan your route: Drone 8 has claimed airspace you had booked (it was blocked and has priority).
+  246  Station 1            Drone 10             INFORM         Swap done: here is a fresh battery pack (100%).
+  246  Station 2            Drone 2              INFORM         Your battery swap has started.
+  246  Drone 3              Dispatcher           INFORM         I have picked up order #42.
+  249  Drone 1              Station 2            REQUEST        I have landed here; please swap my battery (45% left).
+  249  Station 2            Drone 2              INFORM         Swap done: here is a fresh battery pack (100%).
+  252  Drone 8              Dispatcher           INFORM         I have delivered order #41.
+  253  Station 1            Drone 6              INFORM         Your battery swap has started.
+  255  Station 2            Drone 1              INFORM         Your battery swap has started.
+  256  Station 1            Drone 6              INFORM         Swap done: here is a fresh battery pack (96%).
+  258  Station 2            Drone 1              INFORM         Swap done: here is a fresh battery pack (96%).
+  262  Drone 11             Station 1            REQUEST        I have landed here; please swap my battery (33% left).
+  264  Drone 4              Dispatcher           INFORM         I have delivered order #51.
+  264  Drone 4              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=280.
+  264  Drone 5              Dispatcher           INFORM         I have delivered order #50.
+  264  Drone 5              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=276.
+  264  Station 0            Drone 4              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  264  Station 0            Drone 5              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  268  Drone 3              Dispatcher           INFORM         I have delivered order #42.
+  268  Dispatcher           all drones           CALL FOR BIDS  Auction round 46: who can deliver this order? #52 1.8 kg Hub 0 -> (14, 8) due t=408
+  268  Drone 1              Dispatcher           BID            My bids in round 46: order #52 for cost 41.7, delivered by t=307
+  268  Drone 2              Dispatcher           BID            My bids in round 46: order #52 for cost 32.2, delivered by t=298
+  268  Drone 3              Dispatcher           BID            My bids in round 46: order #52 for cost 66.9, delivered by t=331, after a battery swap at Station 2
+  268  Drone 4              Dispatcher           BID            My bids in round 46: order #52 for cost 60.9, delivered by t=326
+  268  Drone 5              Dispatcher           BID            My bids in round 46: order #52 for cost 56.9, delivered by t=322
+  268  Drone 7              Dispatcher           BID            My bids in round 46: order #52 for cost 73.2, delivered by t=337, after a battery swap at Station 0
+  268  Drone 8              Dispatcher           BID            My bids in round 46: order #52 for cost 73.2, delivered by t=337, after a battery swap at Station 0
+  268  Drone 9              Dispatcher           BID            My bids in round 46: order #52 for cost 23.7, delivered by t=290
+  269  Dispatcher           Drone 9              ACCEPT         You win order #52: 1.8 kg from Hub 0 to the customer at (14, 8), due by t=408.
+  269  Dispatcher           Drone 5              REJECT         You did not win anything in round 46.
+  269  Dispatcher           Drone 8              REJECT         You did not win anything in round 46.
+  269  Dispatcher           Drone 2              REJECT         You did not win anything in round 46.
+  269  Dispatcher           Drone 7              REJECT         You did not win anything in round 46.
+  269  Dispatcher           Drone 4              REJECT         You did not win anything in round 46.
+  269  Dispatcher           Drone 3              REJECT         You did not win anything in round 46.
+  269  Dispatcher           Drone 1              REJECT         You did not win anything in round 46.
+  270  Drone 10             Dispatcher           INFORM         I have picked up order #47.
+  271  Drone 0              Dispatcher           INFORM         I have delivered order #46.
+  271  Drone 0              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=294.
+  271  Station 0            Drone 0              AGREE          Reserved. Expected wait when you arrive: 37 ticks.
+  271  Drone 9              Dispatcher           INFORM         I have picked up order #52.
+  276  Drone 5              Station 0            REQUEST        I have landed here; please swap my battery (20% left).
+  276  Station 0            Drone 5              INFORM         Your battery swap has started.
+  278  Station 1            Drone 11             INFORM         Your battery swap has started.
+  279  Station 0            Drone 5              INFORM         Swap done: here is a fresh battery pack (100%).
+  280  Drone 4              Station 0            REQUEST        I have landed here; please swap my battery (37% left).
+  280  Station 0            Drone 4              INFORM         Your battery swap has started.
+  280  Drone 6              Dispatcher           INFORM         I have picked up order #48.
+  281  Station 1            Drone 11             INFORM         Swap done: here is a fresh battery pack (95%).
+  283  Station 0            Drone 4              INFORM         Swap done: here is a fresh battery pack (100%).
+  284  Dispatcher           all drones           CALL FOR BIDS  Auction round 47: who can deliver this order? #53 2.2 kg Hub 0 -> (12, 5) due t=424
+  284  Drone 0              Dispatcher           BID            My bids in round 47: order #53 for cost 64.4, delivered by t=345
+  284  Drone 1              Dispatcher           BID            My bids in round 47: order #53 for cost 30.3, delivered by t=312
+  284  Drone 2              Dispatcher           BID            My bids in round 47: order #53 for cost 29.2, delivered by t=311
+  284  Drone 3              Dispatcher           BID            My bids in round 47: order #53 for cost 77.2, delivered by t=357, after a battery swap at Station 1
+  284  Drone 4              Dispatcher           BID            My bids in round 47: order #53 for cost 51.4, delivered by t=332
+  284  Drone 5              Dispatcher           BID            My bids in round 47: order #53 for cost 51.4, delivered by t=332
+  284  Drone 7              Dispatcher           BID            My bids in round 47: order #53 for cost 77.3, delivered by t=357, after a battery swap at Station 1
+  284  Drone 8              Dispatcher           BID            My bids in round 47: order #53 for cost 77.3, delivered by t=357, after a battery swap at Station 1
+  285  Dispatcher           Drone 2              ACCEPT         You win order #53: 2.2 kg from Hub 0 to the customer at (12, 5), due by t=424.
+  285  Dispatcher           Drone 5              REJECT         You did not win anything in round 47.
+  285  Dispatcher           Drone 8              REJECT         You did not win anything in round 47.
+  285  Dispatcher           Drone 7              REJECT         You did not win anything in round 47.
+  285  Dispatcher           Drone 4              REJECT         You did not win anything in round 47.
+  285  Dispatcher           Drone 3              REJECT         You did not win anything in round 47.
+  285  Dispatcher           Drone 1              REJECT         You did not win anything in round 47.
+  285  Dispatcher           Drone 0              REJECT         You did not win anything in round 47.
+  287  Drone 2              Dispatcher           INFORM         I have picked up order #53.
+  288  Drone 10             Dispatcher           INFORM         I have delivered order #47.
+  294  Drone 0              Station 0            REQUEST        I have landed here; please swap my battery (25% left).
+  294  Drone 6              Dispatcher           INFORM         I have delivered order #48.
+  294  Dispatcher           all drones           CALL FOR BIDS  Auction round 48: who can deliver this order? #54 1.2 kg Hub 1 -> (9, 10) due t=434
+  294  Station 0            Drone 0              INFORM         Your battery swap has started.
+  294  Drone 0              Dispatcher           BID            My bids in round 48: order #54 for cost 43.7, delivered by t=335
+  294  Drone 1              Dispatcher           BID            My bids in round 48: order #54 for cost 49.1, delivered by t=340
+  294  Drone 3              Dispatcher           BID            My bids in round 48: order #54 for cost 16.4, delivered by t=309
+  294  Drone 4              Dispatcher           BID            My bids in round 48: order #54 for cost 43.9, delivered by t=335
+  294  Drone 5              Dispatcher           BID            My bids in round 48: order #54 for cost 47.0, delivered by t=338
+  294  Drone 6              Dispatcher           BID            My bids in round 48: order #54 for cost 22.8, delivered by t=315
+  294  Drone 7              Dispatcher           BID            My bids in round 48: order #54 for cost 16.4, delivered by t=309
+  294  Drone 8              Dispatcher           BID            My bids in round 48: order #54 for cost 16.4, delivered by t=309
+  294  Drone 10             Dispatcher           BID            My bids in round 48: order #54 for cost 24.9, delivered by t=317
+  295  Dispatcher           Drone 3              ACCEPT         You win order #54: 1.2 kg from Hub 1 to the customer at (9, 10), due by t=434.
+  295  Dispatcher           Drone 5              REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 8              REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 7              REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 6              REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 4              REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 10             REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 1              REJECT         You did not win anything in round 48.
+  295  Dispatcher           Drone 0              REJECT         You did not win anything in round 48.
+  296  Drone 9              Dispatcher           INFORM         I have delivered order #52.
+  296  Drone 9              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=315.
+  296  Station 0            Drone 9              AGREE          Reserved. Expected wait when you arrive: 41 ticks.
+  297  Station 0            Drone 0              INFORM         Swap done: here is a fresh battery pack (100%).
+  297  Drone 3              Dispatcher           INFORM         I have picked up order #54.
+  299  Dispatcher           all drones           CALL FOR BIDS  Auction round 49: who can deliver this order? #55 (EXPRESS) 2.1 kg Hub 0 -> (29, 18) due t=369
+  299  Drone 0              Dispatcher           BID            My bids in round 49: order #55 for cost 36.9, delivered by t=333
+  299  Drone 1              Dispatcher           BID            My bids in round 49: order #55 for cost 14.7, delivered by t=312
+  299  Drone 4              Dispatcher           BID            My bids in round 49: order #55 for cost 30.6, delivered by t=327
+  299  Drone 5              Dispatcher           BID            My bids in round 49: order #55 for cost 27.4, delivered by t=324
+  299  Drone 6              Dispatcher           BID            My bids in round 49: order #55 for cost 59.9, delivered by t=355, after a battery swap at Station 1
+  299  Drone 7              Dispatcher           BID            My bids in round 49: order #55 for cost 57.8, delivered by t=353, after a battery swap at Station 1
+  299  Drone 8              Dispatcher           BID            My bids in round 49: order #55 for cost 57.8, delivered by t=353, after a battery swap at Station 1
+  299  Drone 9              Dispatcher           BID            My bids in round 49: order #55 for cost 68.9, delivered by t=365
+  299  Drone 10             Dispatcher           BID            My bids in round 49: order #55 for cost 55.7, delivered by t=351, after a battery swap at Station 1
+  300  Dispatcher           Drone 1              ACCEPT         You win order #55 (EXPRESS): 2.1 kg from Hub 0 to the customer at (29, 18), due by t=369.
+  300  Dispatcher           Drone 5              REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 8              REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 9              REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 7              REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 6              REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 4              REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 10             REJECT         You did not win anything in round 49.
+  300  Dispatcher           Drone 0              REJECT         You did not win anything in round 49.
+  302  Drone 1              Dispatcher           INFORM         I have picked up order #55.
+  304  Dispatcher           all drones           CALL FOR BIDS  Auction round 50: who can deliver this order? #56 1.8 kg Hub 0 -> (30, 19) due t=444
+  304  Drone 0              Dispatcher           BID            My bids in round 50: order #56 for cost 38.1, delivered by t=339
+  304  Drone 4              Dispatcher           BID            My bids in round 50: order #56 for cost 27.5, delivered by t=329
+  304  Drone 5              Dispatcher           BID            My bids in round 50: order #56 for cost 24.3, delivered by t=326
+  304  Drone 6              Dispatcher           BID            My bids in round 50: order #56 for cost 57.9, delivered by t=358, after a battery swap at Station 1
+  304  Drone 7              Dispatcher           BID            My bids in round 50: order #56 for cost 60.0, delivered by t=360, after a battery swap at Station 1
+  304  Drone 8              Dispatcher           BID            My bids in round 50: order #56 for cost 60.0, delivered by t=360, after a battery swap at Station 1
+  304  Drone 9              Dispatcher           BID            My bids in round 50: order #56 for cost 66.1, delivered by t=367
+  304  Drone 10             Dispatcher           BID            My bids in round 50: order #56 for cost 60.0, delivered by t=360, after a battery swap at Station 1
+  305  Dispatcher           Drone 5              ACCEPT         You win order #56: 1.8 kg from Hub 0 to the customer at (30, 19), due by t=444.
+  305  Dispatcher           Drone 9              REJECT         You did not win anything in round 50.
+  305  Dispatcher           Drone 7              REJECT         You did not win anything in round 50.
+  305  Dispatcher           Drone 6              REJECT         You did not win anything in round 50.
+  305  Dispatcher           Drone 4              REJECT         You did not win anything in round 50.
+  305  Dispatcher           Drone 10             REJECT         You did not win anything in round 50.
+  305  Dispatcher           Drone 8              REJECT         You did not win anything in round 50.
+  305  Dispatcher           Drone 0              REJECT         You did not win anything in round 50.
+  306  Dispatcher           all drones           CALL FOR BIDS  Auction round 51: who can deliver this order? #57 (EXPRESS) 1.0 kg Hub 0 -> (21, 20) due t=376
+  306  Drone 0              Dispatcher           BID            My bids in round 51: order #57 for cost 39.7, delivered by t=343
+  306  Drone 4              Dispatcher           BID            My bids in round 51: order #57 for cost 24.9, delivered by t=329
+  306  Drone 6              Dispatcher           BID            My bids in round 51: order #57 for cost 59.5, delivered by t=362, after a battery swap at Station 1
+  306  Drone 7              Dispatcher           BID            My bids in round 51: order #57 for cost 59.5, delivered by t=362, after a battery swap at Station 1
+  306  Drone 8              Dispatcher           BID            My bids in round 51: order #57 for cost 59.5, delivered by t=362, after a battery swap at Station 1
+  306  Drone 9              Dispatcher           BID            My bids in round 51: order #57 for cost 63.6, delivered by t=367
+  306  Drone 10             Dispatcher           BID            My bids in round 51: order #57 for cost 59.5, delivered by t=362, after a battery swap at Station 1
+  306  Drone 11             Dispatcher           INFORM         I have picked up order #49.
+  307  Dispatcher           Drone 4              ACCEPT         You win order #57 (EXPRESS): 1.0 kg from Hub 0 to the customer at (21, 20), due by t=376.
+  307  Dispatcher           Drone 9              REJECT         You did not win anything in round 51.
+  307  Dispatcher           Drone 7              REJECT         You did not win anything in round 51.
+  307  Dispatcher           Drone 6              REJECT         You did not win anything in round 51.
+  307  Dispatcher           Drone 10             REJECT         You did not win anything in round 51.
+  307  Dispatcher           Drone 8              REJECT         You did not win anything in round 51.
+  307  Dispatcher           Drone 0              REJECT         You did not win anything in round 51.
+  312  Dispatcher           all drones           CALL FOR BIDS  Auction round 52: who can deliver this order? #58 (EXPRESS) 0.4 kg Hub 1 -> (27, 5) due t=382
+  312  Drone 0              Dispatcher           BID            My bids in round 52: order #58 for cost 65.6, delivered by t=374
+  312  Drone 6              Dispatcher           BID            My bids in round 52: order #58 for cost 34.0, delivered by t=344
+  312  Drone 7              Dispatcher           BID            My bids in round 52: order #58 for cost 34.0, delivered by t=344
+  312  Drone 8              Dispatcher           BID            My bids in round 52: order #58 for cost 94.2, delivered by t=387, after a battery swap at Station 1
+  312  Drone 9              Dispatcher           BID            My bids in round 52: order #58 for cost 89.2, delivered by t=386
+  312  Drone 10             Dispatcher           BID            My bids in round 52: order #58 for cost 34.0, delivered by t=344
+  313  Dispatcher           Drone 10             ACCEPT         You win order #58 (EXPRESS): 0.4 kg from Hub 1 to the customer at (27, 5), due by t=382.
+  313  Dispatcher           Drone 9              REJECT         You did not win anything in round 52.
+  313  Dispatcher           Drone 7              REJECT         You did not win anything in round 52.
+  313  Dispatcher           Drone 6              REJECT         You did not win anything in round 52.
+  313  Dispatcher           Drone 8              REJECT         You did not win anything in round 52.
+  313  Dispatcher           Drone 0              REJECT         You did not win anything in round 52.
+  313  Dispatcher           all drones           CALL FOR BIDS  Auction round 53: who can deliver this order? #59 1.1 kg Hub 0 -> (22, 11) due t=453
+  313  Drone 0              Dispatcher           BID            My bids in round 53: order #59 for cost 28.0, delivered by t=339
+  313  Drone 5              Dispatcher           INFORM         I have picked up order #56.
+  313  Drone 6              Dispatcher           BID            My bids in round 53: order #59 for cost 55.2, delivered by t=365, after a battery swap at Station 1
+  313  Drone 7              Dispatcher           BID            My bids in round 53: order #59 for cost 55.2, delivered by t=365, after a battery swap at Station 1
+  313  Drone 8              Dispatcher           BID            My bids in round 53: order #59 for cost 55.2, delivered by t=365, after a battery swap at Station 1
+  313  Drone 9              Dispatcher           BID            My bids in round 53: order #59 for cost 52.3, delivered by t=363
+  314  Dispatcher           Drone 0              ACCEPT         You win order #59: 1.1 kg from Hub 0 to the customer at (22, 11), due by t=453.
+  314  Dispatcher           Drone 8              REJECT         You did not win anything in round 53.
+  314  Dispatcher           Drone 7              REJECT         You did not win anything in round 53.
+  314  Dispatcher           Drone 9              REJECT         You did not win anything in round 53.
+  314  Dispatcher           Drone 6              REJECT         You did not win anything in round 53.
+  315  Drone 3              Dispatcher           INFORM         I have delivered order #54.
+  315  Drone 3              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=334.
+  315  Drone 9              Station 0            REQUEST        I have landed here; please swap my battery (15% left).
+  315  Dispatcher           all drones           CALL FOR BIDS  Auction round 54: who can deliver this order? #60 (EXPRESS) 1.0 kg Hub 1 -> (17, 6) due t=385
+  315  Station 1            Drone 3              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  315  Drone 3              Dispatcher           BID            My bids in round 54: order #60 for cost 65.4, delivered by t=378
+  315  Drone 6              Dispatcher           BID            My bids in round 54: order #60 for cost 22.3, delivered by t=336
+  315  Drone 7              Dispatcher           BID            My bids in round 54: order #60 for cost 22.3, delivered by t=336
+  315  Drone 8              Dispatcher           BID            My bids in round 54: order #60 for cost 22.3, delivered by t=336
+  315  Drone 9              Dispatcher           BID            My bids in round 54: order #60 for cost 62.6, delivered by t=375
+  315  Drone 10             Dispatcher           INFORM         I have picked up order #58.
+  316  Dispatcher           Drone 6              ACCEPT         You win order #60 (EXPRESS): 1.0 kg from Hub 1 to the customer at (17, 6), due by t=385.
+  316  Dispatcher           Drone 8              REJECT         You did not win anything in round 54.
+  316  Dispatcher           Drone 7              REJECT         You did not win anything in round 54.
+  316  Dispatcher           Drone 9              REJECT         You did not win anything in round 54.
+  316  Dispatcher           Drone 3              REJECT         You did not win anything in round 54.
+  316  Drone 4              Dispatcher           INFORM         I have picked up order #57.
+  317  Drone 2              Dispatcher           INFORM         I have delivered order #53.
+  317  Drone 2              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=337.
+  317  Station 0            Drone 2              AGREE          Reserved. Expected wait when you arrive: 15 ticks.
+  318  Drone 1              Dispatcher           INFORM         I have delivered order #55.
+  318  Drone 6              Dispatcher           INFORM         I have picked up order #60.
+  319  Drone 11             Dispatcher           INFORM         I have delivered order #49.
+  327  Station 0            Drone 9              INFORM         Your battery swap has started.
+  329  Dispatcher           all drones           CALL FOR BIDS  Auction round 55: who can deliver this order? #61 2.0 kg Hub 1 -> (2, 11) due t=469
+  329  Drone 1              Dispatcher           BID            My bids in round 55: order #61 for cost 55.7, delivered by t=381, after a battery swap at Station 1
+  329  Drone 2              Dispatcher           BID            My bids in round 55: order #61 for cost 62.8, delivered by t=389
+  329  Drone 3              Dispatcher           BID            My bids in round 55: order #61 for cost 41.7, delivered by t=368
+  329  Drone 7              Dispatcher           BID            My bids in round 55: order #61 for cost 12.6, delivered by t=340
+  329  Drone 8              Dispatcher           BID            My bids in round 55: order #61 for cost 12.6, delivered by t=340
+  329  Drone 9              Dispatcher           BID            My bids in round 55: order #61 for cost 39.8, delivered by t=366
+  329  Drone 11             Dispatcher           BID            My bids in round 55: order #61 for cost 12.6, delivered by t=340
+  330  Dispatcher           Drone 11             ACCEPT         You win order #61: 2.0 kg from Hub 1 to the customer at (2, 11), due by t=469.
+  330  Dispatcher           Drone 2              REJECT         You did not win anything in round 55.
+  330  Dispatcher           Drone 9              REJECT         You did not win anything in round 55.
+  330  Dispatcher           Drone 7              REJECT         You did not win anything in round 55.
+  330  Dispatcher           Drone 3              REJECT         You did not win anything in round 55.
+  330  Dispatcher           Drone 8              REJECT         You did not win anything in round 55.
+  330  Dispatcher           Drone 1              REJECT         You did not win anything in round 55.
+  330  Station 0            Drone 9              INFORM         Swap done: here is a fresh battery pack (95%).
+  330  Drone 0              Dispatcher           INFORM         I have picked up order #59.
+  332  Drone 5              Dispatcher           INFORM         I have delivered order #56.
+  332  Drone 11             Dispatcher           INFORM         I have picked up order #61.
+  334  Drone 3              Station 1            REQUEST        I have landed here; please swap my battery (17% left).
+  334  Drone 4              Dispatcher           INFORM         I have delivered order #57.
+  334  Station 1            Drone 3              INFORM         Your battery swap has started.
+  337  Drone 2              Station 0            REQUEST        I have landed here; please swap my battery (32% left).
+  337  Dispatcher           all drones           CALL FOR BIDS  Auction round 56: who can deliver this order? #62 1.1 kg Hub 0 -> (13, 15) due t=477
+  337  Station 0            Drone 2              INFORM         Your battery swap has started.
+  337  Station 1            Drone 3              INFORM         Swap done: here is a fresh battery pack (100%).
+  337  Drone 1              Dispatcher           BID            My bids in round 56: order #62 for cost 19.3, delivered by t=355
+  337  Drone 2              Dispatcher           BID            My bids in round 56: order #62 for cost 44.5, delivered by t=379
+  337  Drone 3              Dispatcher           BID            My bids in round 56: order #62 for cost 41.3, delivered by t=376
+  337  Drone 4              Dispatcher           BID            My bids in round 56: order #62 for cost 31.0, delivered by t=366
+  337  Drone 5              Dispatcher           BID            My bids in round 56: order #62 for cost 28.9, delivered by t=364
+  337  Drone 7              Dispatcher           BID            My bids in round 56: order #62 for cost 62.4, delivered by t=396, after a battery swap at Station 1
+  337  Drone 8              Dispatcher           BID            My bids in round 56: order #62 for cost 62.4, delivered by t=396, after a battery swap at Station 1
+  337  Drone 9              Dispatcher           BID            My bids in round 56: order #62 for cost 41.5, delivered by t=376
+  338  Dispatcher           Drone 1              ACCEPT         You win order #62: 1.1 kg from Hub 0 to the customer at (13, 15), due by t=477.
+  338  Dispatcher           Drone 5              REJECT         You did not win anything in round 56.
+  338  Dispatcher           Drone 8              REJECT         You did not win anything in round 56.
+  338  Dispatcher           Drone 2              REJECT         You did not win anything in round 56.
+  338  Dispatcher           Drone 9              REJECT         You did not win anything in round 56.
+  338  Dispatcher           Drone 7              REJECT         You did not win anything in round 56.
+  338  Dispatcher           Drone 4              REJECT         You did not win anything in round 56.
+  338  Dispatcher           Drone 3              REJECT         You did not win anything in round 56.
+  340  Drone 6              Dispatcher           INFORM         I have delivered order #60.
+  340  Drone 6              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=343.
+  340  Station 0            Drone 2              INFORM         Swap done: here is a fresh battery pack (97%).
+  340  Station 1            Drone 6              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  340  Drone 1              Dispatcher           INFORM         I have picked up order #62.
+  343  Drone 6              Station 1            REQUEST        I have landed here; please swap my battery (35% left).
+  343  Station 1            Drone 6              INFORM         Your battery swap has started.
+  344  Drone 0              Dispatcher           INFORM         I have delivered order #59.
+  345  Dispatcher           all drones           CALL FOR BIDS  Auction round 57: who can deliver this order? #63 (EXPRESS) 1.0 kg Hub 1 -> (21, 20) due t=415
+  345  Drone 0              Dispatcher           BID            My bids in round 57: order #63 for cost 131.2, delivered by t=429, after a battery swap at Station 0
+  345  Drone 2              Dispatcher           BID            My bids in round 57: order #63 for cost 64.0, delivered by t=405
+  345  Drone 3              Dispatcher           BID            My bids in round 57: order #63 for cost 59.8, delivered by t=401
+  345  Drone 4              Dispatcher           BID            My bids in round 57: order #63 for cost 131.2, delivered by t=429, after a battery swap at Station 0
+  345  Drone 5              Dispatcher           BID            My bids in round 57: order #63 for cost 131.2, delivered by t=429, after a battery swap at Station 0
+  345  Drone 6              Dispatcher           BID            My bids in round 57: order #63 for cost 63.9, delivered by t=405
+  345  Drone 7              Dispatcher           BID            My bids in round 57: order #63 for cost 139.3, delivered by t=431, after a battery swap at Station 0
+  345  Drone 8              Dispatcher           BID            My bids in round 57: order #63 for cost 139.3, delivered by t=431, after a battery swap at Station 0
+  345  Drone 9              Dispatcher           BID            My bids in round 57: order #63 for cost 74.4, delivered by t=415, after a battery swap at Station 0
+  346  Drone 11             Dispatcher           INFORM         I have delivered order #61.
+  346  Drone 11             Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=368.
+  346  Dispatcher           Drone 3              ACCEPT         You win order #63 (EXPRESS): 1.0 kg from Hub 1 to the customer at (21, 20), due by t=415.
+  346  Dispatcher           Drone 5              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 2              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 9              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 7              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 6              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 4              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 8              REJECT         You did not win anything in round 57.
+  346  Dispatcher           Drone 0              REJECT         You did not win anything in round 57.
+  346  Station 0            Drone 11             AGREE          Reserved. Expected wait when you arrive: 21 ticks.
+  346  Station 1            Drone 6              INFORM         Swap done: here is a fresh battery pack (100%).
+  348  Drone 10             Dispatcher           INFORM         I have delivered order #58.
+  348  Drone 10             Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=357.
+  348  Station 2            Drone 10             AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  349  Dispatcher           all drones           CALL FOR BIDS  Auction round 58: who can deliver this order? #64 1.6 kg Hub 1 -> (13, 15) due t=489
+  349  Drone 0              Dispatcher           BID            My bids in round 58: order #64 for cost 66.8, delivered by t=412, after a battery swap at Station 1
+  349  Drone 2              Dispatcher           BID            My bids in round 58: order #64 for cost 50.1, delivered by t=396
+  349  Drone 4              Dispatcher           BID            My bids in round 58: order #64 for cost 68.9, delivered by t=414, after a battery swap at Station 1
+  349  Drone 5              Dispatcher           BID            My bids in round 58: order #64 for cost 68.9, delivered by t=414, after a battery swap at Station 1
+  349  Drone 6              Dispatcher           BID            My bids in round 58: order #64 for cost 46.9, delivered by t=393
+  349  Drone 7              Dispatcher           BID            My bids in round 58: order #64 for cost 25.8, delivered by t=373
+  349  Drone 8              Dispatcher           BID            My bids in round 58: order #64 for cost 25.8, delivered by t=373
+  349  Drone 9              Dispatcher           BID            My bids in round 58: order #64 for cost 60.6, delivered by t=406
+  349  Drone 10             Dispatcher           BID            My bids in round 58: order #64 for cost 71.6, delivered by t=417
+  349  Drone 11             Dispatcher           BID            My bids in round 58: order #64 for cost 72.1, delivered by t=418
+  350  Dispatcher           Drone 7              ACCEPT         You win order #64: 1.6 kg from Hub 1 to the customer at (13, 15), due by t=489.
+  350  Dispatcher           Drone 5              REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 11             REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 2              REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 9              REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 6              REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 4              REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 10             REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 8              REJECT         You did not win anything in round 58.
+  350  Dispatcher           Drone 0              REJECT         You did not win anything in round 58.
+  352  Drone 7              Dispatcher           INFORM         I have picked up order #64.
+  353  Dispatcher           all drones           CALL FOR BIDS  Auction round 59: who can deliver this order? #65 1.0 kg Hub 0 -> (20, 6) due t=493
+  353  Drone 0              Dispatcher           BID            My bids in round 59: order #65 for cost 20.3, delivered by t=372
+  353  Drone 2              Dispatcher           BID            My bids in round 59: order #65 for cost 39.2, delivered by t=390
+  353  Drone 4              Dispatcher           BID            My bids in round 59: order #65 for cost 19.2, delivered by t=371
+  353  Drone 5              Dispatcher           BID            My bids in round 59: order #65 for cost 19.2, delivered by t=371
+  353  Drone 6              Dispatcher           BID            My bids in round 59: order #65 for cost 37.1, delivered by t=388
+  353  Drone 8              Dispatcher           BID            My bids in round 59: order #65 for cost 62.3, delivered by t=412, after a battery swap at Station 1
+  353  Drone 9              Dispatcher           BID            My bids in round 59: order #65 for cost 28.7, delivered by t=380
+  353  Drone 10             Dispatcher           BID            My bids in round 59: order #65 for cost 44.1, delivered by t=395
+  353  Drone 11             Dispatcher           BID            My bids in round 59: order #65 for cost 59.3, delivered by t=410
+  354  Dispatcher           Drone 4              ACCEPT         You win order #65: 1.0 kg from Hub 0 to the customer at (20, 6), due by t=493.
+  354  Dispatcher           Drone 5              REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 11             REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 2              REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 9              REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 6              REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 10             REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 8              REJECT         You did not win anything in round 59.
+  354  Dispatcher           Drone 0              REJECT         You did not win anything in round 59.
+  355  Dispatcher           all drones           CALL FOR BIDS  Auction round 60: who can deliver this order? #66 0.4 kg Hub 1 -> (23, 15) due t=495
+  355  Drone 0              Dispatcher           BID            My bids in round 60: order #66 for cost 79.8, delivered by t=430, after a battery swap at Station 1
+  355  Drone 2              Dispatcher           BID            My bids in round 60: order #66 for cost 71.3, delivered by t=422, after a battery swap at Station 0
+  355  Drone 5              Dispatcher           BID            My bids in round 60: order #66 for cost 79.8, delivered by t=430, after a battery swap at Station 1
+  355  Drone 6              Dispatcher           BID            My bids in round 60: order #66 for cost 56.7, delivered by t=408
+  355  Drone 8              Dispatcher           BID            My bids in round 60: order #66 for cost 81.9, delivered by t=432, after a battery swap at Station 1
+  355  Drone 9              Dispatcher           BID            My bids in round 60: order #66 for cost 81.9, delivered by t=432, after a battery swap at Station 0
+  355  Drone 10             Dispatcher           REFUSE         I cannot take any of the orders in round 60.
+  355  Drone 11             Dispatcher           BID            My bids in round 60: order #66 for cost 76.9, delivered by t=428
+  356  Dispatcher           Drone 6              ACCEPT         You win order #66: 0.4 kg from Hub 1 to the customer at (23, 15), due by t=495.
+  356  Dispatcher           Drone 5              REJECT         You did not win anything in round 60.
+  356  Dispatcher           Drone 11             REJECT         You did not win anything in round 60.
+  356  Dispatcher           Drone 2              REJECT         You did not win anything in round 60.
+  356  Dispatcher           Drone 9              REJECT         You did not win anything in round 60.
+  356  Dispatcher           Drone 8              REJECT         You did not win anything in round 60.
+  356  Dispatcher           Drone 0              REJECT         You did not win anything in round 60.
+  356  Dispatcher           all drones           CALL FOR BIDS  Auction round 61: who can deliver these orders? #67 1.4 kg Hub 1 -> (12, 5) due t=496; #68 2.2 kg Hub 0 -> (30, 22) due t=496
+  356  Drone 0              Dispatcher           BID            My bids in round 61: order #67 for cost 59.4, delivered by t=412, after a battery swap at Station 1; order #68 for cost 20.4, delivered by t=374
+  356  Drone 2              Dispatcher           BID            My bids in round 61: order #67 for cost 48.0, delivered by t=401; order #68 for cost 37.2, delivered by t=390
+  356  Drone 4              Dispatcher           INFORM         I have picked up order #65.
+  356  Drone 5              Dispatcher           BID            My bids in round 61: order #67 for cost 59.4, delivered by t=412, after a battery swap at Station 1; order #68 for cost 59.2, delivered by t=411, after a battery swap at Station 2
+  356  Drone 8              Dispatcher           BID            My bids in round 61: order #67 for cost 16.3, delivered by t=371; order #68 for cost 63.5, delivered by t=415, after a battery swap at Station 1
+  356  Drone 9              Dispatcher           BID            My bids in round 61: order #67 for cost 50.1, delivered by t=403; order #68 for cost 26.7, delivered by t=380
+  356  Drone 10             Dispatcher           BID            My bids in round 61: order #67 for cost 55.1, delivered by t=408; order #68 for cost 42.3, delivered by t=395
+  356  Drone 11             Dispatcher           BID            My bids in round 61: order #67 for cost 55.6, delivered by t=409; order #68 for cost 57.5, delivered by t=410
+  357  Drone 10             Station 2            REQUEST        I have landed here; please swap my battery (25% left).
+  357  Dispatcher           Drone 8              ACCEPT         You win order #67: 1.4 kg from Hub 1 to the customer at (12, 5), due by t=496.
+  357  Dispatcher           Drone 0              ACCEPT         You win order #68: 2.2 kg from Hub 0 to the customer at (30, 22), due by t=496.
+  357  Dispatcher           Drone 5              REJECT         You did not win anything in round 61.
+  357  Dispatcher           Drone 11             REJECT         You did not win anything in round 61.
+  357  Dispatcher           Drone 2              REJECT         You did not win anything in round 61.
+  357  Dispatcher           Drone 9              REJECT         You did not win anything in round 61.
+  357  Dispatcher           Drone 10             REJECT         You did not win anything in round 61.
+  357  Station 2            Drone 10             INFORM         Your battery swap has started.
+  359  Drone 0              Dispatcher           INFORM         I have picked up order #68.
+  359  Drone 8              Dispatcher           INFORM         I have picked up order #67.
+  360  Station 2            Drone 10             INFORM         Swap done: here is a fresh battery pack (100%).
+  361  Drone 1              Dispatcher           INFORM         I have delivered order #62.
+  361  Drone 1              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=372.
+  361  Station 0            Drone 1              AGREE          Reserved. Expected wait when you arrive: 20 ticks.
+  364  Dispatcher           all drones           CALL FOR BIDS  Auction round 62: who can deliver this order? #69 2.5 kg Hub 1 -> (15, 16) due t=504
+  364  Drone 1              Dispatcher           BID            My bids in round 62: order #69 for cost 64.5, delivered by t=425
+  364  Drone 2              Dispatcher           BID            My bids in round 62: order #69 for cost 73.4, delivered by t=433, after a battery swap at Station 0
+  364  Drone 5              Dispatcher           BID            My bids in round 62: order #69 for cost 72.3, delivered by t=432, after a battery swap at Station 1
+  364  Drone 9              Dispatcher           BID            My bids in round 62: order #69 for cost 72.3, delivered by t=432, after a battery swap at Station 1
+  364  Drone 10             Dispatcher           BID            My bids in round 62: order #69 for cost 64.0, delivered by t=424
+  364  Drone 11             Dispatcher           BID            My bids in round 62: order #69 for cost 60.5, delivered by t=421
+  365  Dispatcher           Drone 11             ACCEPT         You win order #69: 2.5 kg from Hub 1 to the customer at (15, 16), due by t=504.
+  365  Dispatcher           Drone 5              REJECT         You did not win anything in round 62.
+  365  Dispatcher           Drone 2              REJECT         You did not win anything in round 62.
+  365  Dispatcher           Drone 9              REJECT         You did not win anything in round 62.
+  365  Dispatcher           Drone 10             REJECT         You did not win anything in round 62.
+  365  Dispatcher           Drone 1              REJECT         You did not win anything in round 62.
+  368  Drone 11             Station 0            REQUEST        I have landed here; please swap my battery (27% left).
+  368  Station 0            Drone 11             INFORM         Your battery swap has started.
+  368  Drone 3              Dispatcher           INFORM         I have picked up order #63.
+  371  Station 0            Drone 11             INFORM         Swap done: here is a fresh battery pack (100%).
+  372  Drone 1              Station 0            REQUEST        I have landed here; please swap my battery (22% left).
+  372  Dispatcher           all drones           CALL FOR BIDS  Auction round 63: who can deliver this order? #70 1.1 kg Hub 0 -> (27, 23) due t=512
+  372  Drone 1              Dispatcher           BID            My bids in round 63: order #70 for cost 62.3, delivered by t=431
+  372  Drone 2              Dispatcher           BID            My bids in round 63: order #70 for cost 20.1, delivered by t=390
+  372  Drone 5              Dispatcher           BID            My bids in round 63: order #70 for cost 59.0, delivered by t=427, after a battery swap at Station 2
+  372  Drone 9              Dispatcher           BID            My bids in round 63: order #70 for cost 20.1, delivered by t=390
+  372  Drone 10             Dispatcher           BID            My bids in round 63: order #70 for cost 36.0, delivered by t=405
+  373  Dispatcher           Drone 2              ACCEPT         You win order #70: 1.1 kg from Hub 0 to the customer at (27, 23), due by t=512.
+  373  Dispatcher           Drone 5              REJECT         You did not win anything in round 63.
+  373  Dispatcher           Drone 1              REJECT         You did not win anything in round 63.
+  373  Dispatcher           Drone 9              REJECT         You did not win anything in round 63.
+  373  Dispatcher           Drone 10             REJECT         You did not win anything in round 63.
+  375  Drone 2              Dispatcher           INFORM         I have picked up order #70.
+  377  Drone 4              Dispatcher           INFORM         I have delivered order #65.
+  377  Drone 4              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=385.
+  377  Drone 8              Dispatcher           INFORM         I have delivered order #67.
+  377  Drone 8              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=388.
+  377  Station 1            Drone 4              AGREE          Reserved. Expected wait when you arrive: 9 ticks.
+  377  Station 1            Drone 8              AGREE          Reserved. Expected wait when you arrive: 10 ticks.
+  378  Drone 6              Dispatcher           INFORM         I have picked up order #66.
+  379  Drone 7              Dispatcher           INFORM         I have delivered order #64.
+  379  Drone 7              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=390.
+  379  Dispatcher           all drones           CALL FOR BIDS  Auction round 64: who can deliver this order? #71 2.4 kg Hub 1 -> (14, 8) due t=519
+  379  Station 0            Drone 7              AGREE          Reserved. Expected wait when you arrive: 34 ticks.
+  379  Drone 1              Dispatcher           BID            My bids in round 64: order #71 for cost 59.8, delivered by t=436
+  379  Drone 4              Dispatcher           BID            My bids in round 64: order #71 for cost 49.7, delivered by t=426
+  379  Drone 5              Dispatcher           BID            My bids in round 64: order #71 for cost 62.7, delivered by t=438, after a battery swap at Station 1
+  379  Drone 7              Dispatcher           BID            My bids in round 64: order #71 for cost 59.8, delivered by t=436
+  379  Drone 8              Dispatcher           BID            My bids in round 64: order #71 for cost 52.7, delivered by t=429
+  379  Drone 9              Dispatcher           BID            My bids in round 64: order #71 for cost 52.3, delivered by t=428
+  379  Drone 10             Dispatcher           BID            My bids in round 64: order #71 for cost 47.0, delivered by t=423
+  380  Drone 0              Dispatcher           INFORM         I have delivered order #68.
+  380  Drone 0              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=405.
+  380  Dispatcher           Drone 10             ACCEPT         You win order #71: 2.4 kg from Hub 1 to the customer at (14, 8), due by t=519.
+  380  Dispatcher           Drone 5              REJECT         You did not win anything in round 64.
+  380  Dispatcher           Drone 9              REJECT         You did not win anything in round 64.
+  380  Dispatcher           Drone 7              REJECT         You did not win anything in round 64.
+  380  Dispatcher           Drone 4              REJECT         You did not win anything in round 64.
+  380  Dispatcher           Drone 8              REJECT         You did not win anything in round 64.
+  380  Dispatcher           Drone 1              REJECT         You did not win anything in round 64.
+  380  Station 0            Drone 0              AGREE          Reserved. Expected wait when you arrive: 35 ticks.
+  385  Drone 4              Station 1            REQUEST        I have landed here; please swap my battery (27% left).
+  385  Dispatcher           all drones           CALL FOR BIDS  Auction round 65: who can deliver this order? #72 0.3 kg Hub 1 -> (20, 12) due t=525
+  385  Station 1            Drone 4              INFORM         Your battery swap has started.
+  385  Drone 0              Dispatcher           BID            My bids in round 65: order #72 for cost 77.3, delivered by t=459
+  385  Drone 1              Dispatcher           BID            My bids in round 65: order #72 for cost 64.3, delivered by t=446
+  385  Drone 4              Dispatcher           BID            My bids in round 65: order #72 for cost 54.1, delivered by t=436
+  385  Drone 5              Dispatcher           BID            My bids in round 65: order #72 for cost 73.1, delivered by t=454, after a battery swap at Station 1
+  385  Drone 7              Dispatcher           BID            My bids in round 65: order #72 for cost 64.3, delivered by t=446
+  385  Drone 8              Dispatcher           BID            My bids in round 65: order #72 for cost 57.1, delivered by t=439
+  385  Drone 9              Dispatcher           BID            My bids in round 65: order #72 for cost 73.1, delivered by t=454, after a battery swap at Station 1
+  386  Dispatcher           Drone 4              ACCEPT         You win order #72: 0.3 kg from Hub 1 to the customer at (20, 12), due by t=525.
+  386  Dispatcher           Drone 5              REJECT         You did not win anything in round 65.
+  386  Dispatcher           Drone 9              REJECT         You did not win anything in round 65.
+  386  Dispatcher           Drone 0              REJECT         You did not win anything in round 65.
+  386  Dispatcher           Drone 7              REJECT         You did not win anything in round 65.
+  386  Dispatcher           Drone 8              REJECT         You did not win anything in round 65.
+  386  Dispatcher           Drone 1              REJECT         You did not win anything in round 65.
+  388  Drone 8              Station 1            REQUEST        I have landed here; please swap my battery (32% left).
+  388  Station 0            Drone 1              INFORM         Your battery swap has started.
+  388  Station 1            Drone 4              INFORM         Swap done: here is a fresh battery pack (100%).
+  390  Drone 7              Station 0            REQUEST        I have landed here; please swap my battery (32% left).
+  391  Station 0            Drone 1              INFORM         Swap done: here is a fresh battery pack (95%).
+  391  Station 0            Drone 7              INFORM         Your battery swap has started.
+  393  Station 1            Drone 8              INFORM         Your battery swap has started.
+  394  Drone 2              Dispatcher           INFORM         I have delivered order #70.
+  394  Dispatcher           all drones           CALL FOR BIDS  Auction round 66: who can deliver this order? #73 0.8 kg Hub 1 -> (10, 3) due t=534
+  394  Station 0            Drone 7              INFORM         Swap done: here is a fresh battery pack (96%).
+  394  Drone 0              Dispatcher           BID            My bids in round 66: order #73 for cost 97.5, delivered by t=489
+  394  Drone 1              Dispatcher           BID            My bids in round 66: order #73 for cost 40.5, delivered by t=432
+  394  Drone 2              Dispatcher           BID            My bids in round 66: order #73 for cost 80.4, delivered by t=470, after a battery swap at Station 2
+  394  Drone 5              Dispatcher           BID            My bids in round 66: order #73 for cost 72.0, delivered by t=462, after a battery swap at Station 2
+  394  Drone 7              Dispatcher           BID            My bids in round 66: order #73 for cost 43.5, delivered by t=435
+  394  Drone 8              Dispatcher           BID            My bids in round 66: order #73 for cost 40.3, delivered by t=432
+  394  Drone 9              Dispatcher           BID            My bids in round 66: order #73 for cost 48.9, delivered by t=440
+  395  Dispatcher           Drone 8              ACCEPT         You win order #73: 0.8 kg from Hub 1 to the customer at (10, 3), due by t=534.
+  395  Dispatcher           Drone 5              REJECT         You did not win anything in round 66.
+  395  Dispatcher           Drone 2              REJECT         You did not win anything in round 66.
+  395  Dispatcher           Drone 9              REJECT         You did not win anything in round 66.
+  395  Dispatcher           Drone 7              REJECT         You did not win anything in round 66.
+  395  Dispatcher           Drone 1              REJECT         You did not win anything in round 66.
+  395  Dispatcher           Drone 0              REJECT         You did not win anything in round 66.
+  395  Dispatcher           all drones           CALL FOR BIDS  Auction round 67: who can deliver this order? #74 2.2 kg Hub 0 -> (31, 10) due t=535
+  395  Drone 0              Dispatcher           BID            My bids in round 67: order #74 for cost 70.7, delivered by t=463
+  395  Drone 1              Dispatcher           BID            My bids in round 67: order #74 for cost 38.7, delivered by t=431
+  395  Drone 2              Dispatcher           BID            My bids in round 67: order #74 for cost 29.2, delivered by t=422
+  395  Drone 5              Dispatcher           BID            My bids in round 67: order #74 for cost 16.5, delivered by t=410
+  395  Drone 7              Dispatcher           BID            My bids in round 67: order #74 for cost 38.7, delivered by t=431
+  395  Drone 9              Dispatcher           BID            My bids in round 67: order #74 for cost 16.5, delivered by t=410
+  396  Dispatcher           Drone 5              ACCEPT         You win order #74: 2.2 kg from Hub 0 to the customer at (31, 10), due by t=535.
+  396  Dispatcher           Drone 2              REJECT         You did not win anything in round 67.
+  396  Dispatcher           Drone 9              REJECT         You did not win anything in round 67.
+  396  Dispatcher           Drone 7              REJECT         You did not win anything in round 67.
+  396  Dispatcher           Drone 1              REJECT         You did not win anything in round 67.
+  396  Dispatcher           Drone 0              REJECT         You did not win anything in round 67.
+  396  Station 1            Drone 8              INFORM         Swap done: here is a fresh battery pack (96%).
+  398  Dispatcher           all drones           CALL FOR BIDS  Auction round 68: who can deliver this order? #75 (EXPRESS) 1.8 kg Hub 1 -> (3, 9) due t=468
+  398  Drone 0              Dispatcher           BID            My bids in round 68: order #75 for cost 62.7, delivered by t=458
+  398  Drone 1              Dispatcher           BID            My bids in round 68: order #75 for cost 32.6, delivered by t=428
+  398  Drone 2              Dispatcher           BID            My bids in round 68: order #75 for cost 63.1, delivered by t=457, after a battery swap at Station 1
+  398  Drone 5              Dispatcher           INFORM         I have picked up order #74.
+  398  Drone 7              Dispatcher           BID            My bids in round 68: order #75 for cost 33.7, delivered by t=429
+  398  Drone 9              Dispatcher           BID            My bids in round 68: order #75 for cost 42.1, delivered by t=437
+  399  Dispatcher           Drone 1              ACCEPT         You win order #75 (EXPRESS): 1.8 kg from Hub 1 to the customer at (3, 9), due by t=468.
+  399  Dispatcher           Drone 7              REJECT         You did not win anything in round 68.
+  399  Dispatcher           Drone 9              REJECT         You did not win anything in round 68.
+  399  Dispatcher           Drone 0              REJECT         You did not win anything in round 68.
+  399  Dispatcher           Drone 2              REJECT         You did not win anything in round 68.
+  399  Dispatcher           all drones           CALL FOR BIDS  Auction round 69: who can deliver this order? #76 2.1 kg Hub 0 -> (12, 5) due t=539
+  399  Drone 0              Dispatcher           BID            My bids in round 69: order #76 for cost 79.3, delivered by t=475
+  399  Drone 2              Dispatcher           BID            My bids in round 69: order #76 for cost 73.3, delivered by t=468, after a battery swap at Station 2
+  399  Drone 7              Dispatcher           BID            My bids in round 69: order #76 for cost 51.3, delivered by t=447
+  399  Drone 9              Dispatcher           BID            My bids in round 69: order #76 for cost 29.2, delivered by t=426
+  400  Dispatcher           Drone 9              ACCEPT         You win order #76: 2.1 kg from Hub 0 to the customer at (12, 5), due by t=539.
+  400  Dispatcher           Drone 7              REJECT         You did not win anything in round 69.
+  400  Dispatcher           Drone 0              REJECT         You did not win anything in round 69.
+  400  Dispatcher           Drone 2              REJECT         You did not win anything in round 69.
+  400  Dispatcher           all drones           CALL FOR BIDS  Auction round 70: who can deliver this order? #77 2.3 kg Hub 0 -> (3, 9) due t=540
+  400  Drone 0              Dispatcher           REFUSE         I cannot take any of the orders in round 70.
+  400  Drone 2              Dispatcher           BID            My bids in round 70: order #77 for cost 78.2, delivered by t=473, after a battery swap at Station 2
+  400  Drone 7              Dispatcher           BID            My bids in round 70: order #77 for cost 82.4, delivered by t=477, after a battery swap at Station 1
+  401  Dispatcher           Drone 2              ACCEPT         You win order #77: 2.3 kg from Hub 0 to the customer at (3, 9), due by t=540.
+  401  Dispatcher           Drone 7              REJECT         You did not win anything in round 70.
+  401  Dispatcher           all drones           CALL FOR BIDS  Auction round 71: who can deliver this order? #78 1.7 kg Hub 1 -> (15, 5) due t=541
+  401  Drone 0              Dispatcher           BID            My bids in round 71: order #78 for cost 71.6, delivered by t=470
+  401  Drone 2              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=421.
+  401  Drone 7              Dispatcher           BID            My bids in round 71: order #78 for cost 45.6, delivered by t=444
+  401  Drone 11             Dispatcher           INFORM         I have picked up order #69.
+  402  Dispatcher           Drone 7              ACCEPT         You win order #78: 1.7 kg from Hub 1 to the customer at (15, 5), due by t=541.
+  402  Dispatcher           Drone 0              REJECT         You did not win anything in round 71.
+  402  Station 2            Drone 2              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  402  Drone 9              Dispatcher           INFORM         I have picked up order #76.
+  405  Drone 0              Station 0            REQUEST        I have landed here; please swap my battery (17% left).
+  408  Drone 3              Dispatcher           INFORM         I have delivered order #63.
+  408  Drone 3              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=431.
+  408  Station 1            Drone 3              AGREE          Reserved. Expected wait when you arrive: 10 ticks.
+  409  Drone 10             Dispatcher           INFORM         I have picked up order #71.
+  411  Dispatcher           all drones           CALL FOR BIDS  Auction round 72: who can deliver this order? #79 1.0 kg Hub 1 -> (2, 2) due t=551
+  411  Drone 0              Dispatcher           BID            My bids in round 72: order #79 for cost 70.7, delivered by t=479
+  411  Drone 3              Dispatcher           BID            My bids in round 72: order #79 for cost 55.6, delivered by t=464
+  412  Dispatcher           Drone 3              ACCEPT         You win order #79: 1.0 kg from Hub 1 to the customer at (2, 2), due by t=551.
+  412  Dispatcher           Drone 0              REJECT         You did not win anything in round 72.
+  412  Dispatcher           all drones           CALL FOR BIDS  Auction round 73: who can deliver this order? #80 1.3 kg Hub 0 -> (19, 9) due t=552
+  412  Drone 0              Dispatcher           BID            My bids in round 73: order #80 for cost 73.4, delivered by t=483
+  412  Drone 4              Dispatcher           INFORM         I have picked up order #72.
+  413  Dispatcher           Drone 0              ACCEPT         You win order #80: 1.3 kg from Hub 0 to the customer at (19, 9), due by t=552.
+  415  Drone 6              Dispatcher           INFORM         I have delivered order #66.
+  415  Drone 6              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=435.
+  415  Dispatcher           all drones           CALL FOR BIDS  Auction round 74: who can deliver this order? #81 1.5 kg Hub 1 -> (22, 11) due t=555
+  415  Station 1            Drone 6              AGREE          Reserved. Expected wait when you arrive: 11 ticks.
+  415  Drone 6              Dispatcher           BID            My bids in round 74: order #81 for cost 75.4, delivered by t=487
+  416  Drone 5              Dispatcher           INFORM         I have delivered order #74.
+  416  Drone 5              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=430.
+  416  Dispatcher           Drone 6              ACCEPT         You win order #81: 1.5 kg from Hub 1 to the customer at (22, 11), due by t=555.
+  416  Station 2            Drone 5              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  419  Dispatcher           all drones           CALL FOR BIDS  Auction round 75: who can deliver this order? #82 (EXPRESS) 2.0 kg Hub 1 -> (27, 5) due t=489
+  419  Drone 5              Dispatcher           BID            My bids in round 75: order #82 for cost 110.1, delivered by t=498
+  420  Dispatcher           Drone 5              ACCEPT         You win order #82 (EXPRESS): 2.0 kg from Hub 1 to the customer at (27, 5), due by t=489.
+  420  Drone 8              Dispatcher           INFORM         I have picked up order #73.
+  421  Drone 2              Station 2            REQUEST        I have landed here; please swap my battery (41% left).
+  421  Dispatcher           all drones           CALL FOR BIDS  Auction round 76: who can deliver these orders? #83 0.8 kg Hub 0 -> (30, 22) due t=561; #84 0.7 kg Hub 1 -> (28, 14) due t=561
+  421  Station 2            Drone 2              INFORM         Your battery swap has started.
+  423  Station 0            Drone 0              INFORM         Your battery swap has started.
+  424  Station 2            Drone 2              INFORM         Swap done: here is a fresh battery pack (100%).
+  425  Dispatcher           all drones           CALL FOR BIDS  Auction round 77: who can deliver these orders? #83 0.8 kg Hub 0 -> (30, 22) due t=561; #84 0.7 kg Hub 1 -> (28, 14) due t=561
+  426  Station 0            Drone 0              INFORM         Swap done: here is a fresh battery pack (95%).
+  426  Drone 1              Dispatcher           INFORM         I have picked up order #75.
+  429  Dispatcher           all drones           CALL FOR BIDS  Auction round 78: who can deliver these orders? #83 0.8 kg Hub 0 -> (30, 22) due t=561; #84 0.7 kg Hub 1 -> (28, 14) due t=561
+  430  Drone 5              Station 2            REQUEST        I have landed here; please swap my battery (22% left).
+  430  Station 2            Drone 5              INFORM         Your battery swap has started.
+  431  Drone 3              Station 1            REQUEST        I have landed here; please swap my battery (28% left).
+  431  Drone 10             Dispatcher           INFORM         I have delivered order #71.
+  431  Drone 10             Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=444.
+  431  Drone 11             Dispatcher           INFORM         I have delivered order #69.
+  431  Drone 11             Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=450.
+  431  Station 1            Drone 10             AGREE          Reserved. Expected wait when you arrive: 47 ticks.
+  431  Station 1            Drone 11             AGREE          Reserved. Expected wait when you arrive: 41 ticks.
+  431  Station 1            Drone 3              INFORM         Your battery swap has started.
+  431  Drone 7              Dispatcher           INFORM         I have picked up order #78.
+  432  Drone 1              Dispatcher           INFORM         I have delivered order #75.
+  432  Drone 9              Dispatcher           INFORM         I have delivered order #76.
+  432  Drone 9              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=443.
+  432  Station 1            Drone 9              AGREE          Reserved. Expected wait when you arrive: 49 ticks.
+  433  Dispatcher           all drones           CALL FOR BIDS  Auction round 79: who can deliver these orders? #83 0.8 kg Hub 0 -> (30, 22) due t=561; #84 0.7 kg Hub 1 -> (28, 14) due t=561
+  433  Station 2            Drone 5              INFORM         Swap done: here is a fresh battery pack (100%).
+  433  Drone 1              Dispatcher           BID            My bids in round 79: order #83 for cost 62.2, delivered by t=491, after a battery swap at Station 1; order #84 for cost 85.0, delivered by t=513, after a battery swap at Station 1
+  433  Drone 9              Dispatcher           BID            My bids in round 79: order #83 for cost 55.2, delivered by t=485; order #84 for cost 77.9, delivered by t=507
+  433  Drone 10             Dispatcher           BID            My bids in round 79: order #83 for cost 55.2, delivered by t=485; order #84 for cost 77.9, delivered by t=507
+  433  Drone 11             Dispatcher           BID            My bids in round 79: order #83 for cost 59.2, delivered by t=489; order #84 for cost 81.9, delivered by t=511
+  434  Dispatcher           Drone 10             ACCEPT         You win order #83: 0.8 kg from Hub 0 to the customer at (30, 22), due by t=561.
+  434  Dispatcher           Drone 9              ACCEPT         You win order #84: 0.7 kg from Hub 1 to the customer at (28, 14), due by t=561.
+  434  Dispatcher           Drone 11             REJECT         You did not win anything in round 79.
+  434  Dispatcher           Drone 1              REJECT         You did not win anything in round 79.
+  434  Station 1            Drone 3              INFORM         Swap done: here is a fresh battery pack (100%).
+  435  Drone 6              Station 1            REQUEST        I have landed here; please swap my battery (33% left).
+  435  Dispatcher           all drones           CALL FOR BIDS  Auction round 80: who can deliver this order? #85 1.7 kg Hub 0 -> (22, 11) due t=575
+  435  Drone 1              Dispatcher           BID            My bids in round 80: order #85 for cost 55.3, delivered by t=487, after a battery swap at Station 1
+  435  Drone 11             Dispatcher           BID            My bids in round 80: order #85 for cost 49.2, delivered by t=482
+  436  Dispatcher           Drone 11             ACCEPT         You win order #85: 1.7 kg from Hub 0 to the customer at (22, 11), due by t=575.
+  436  Dispatcher           Drone 1              REJECT         You did not win anything in round 80.
+  436  Dispatcher           all drones           CALL FOR BIDS  Auction round 81: who can deliver this order? #86 0.8 kg Hub 1 -> (9, 10) due t=576
+  436  Drone 1              Dispatcher           BID            My bids in round 81: order #86 for cost 16.4, delivered by t=451
+  437  Dispatcher           Drone 1              ACCEPT         You win order #86: 0.8 kg from Hub 1 to the customer at (9, 10), due by t=576.
+  438  Drone 8              Dispatcher           INFORM         I have delivered order #73.
+  439  Drone 1              Dispatcher           INFORM         I have picked up order #86.
+  440  Station 1            Drone 6              INFORM         Your battery swap has started.
+  443  Drone 4              Dispatcher           INFORM         I have delivered order #72.
+  443  Drone 4              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=457.
+  443  Drone 9              Station 1            REQUEST        I have landed here; please swap my battery (33% left).
+  443  Station 1            Drone 4              AGREE          Reserved. Expected wait when you arrive: 46 ticks.
+  443  Station 1            Drone 6              INFORM         Swap done: here is a fresh battery pack (95%).
+  444  Drone 10             Station 1            REQUEST        I have landed here; please swap my battery (29% left).
+  445  Station 1            Drone 9              INFORM         Your battery swap has started.
+  447  Drone 2              Dispatcher           INFORM         I have picked up order #77.
+  448  Station 1            Drone 9              INFORM         Swap done: here is a fresh battery pack (96%).
+  450  Drone 11             Station 1            REQUEST        I have landed here; please swap my battery (29% left).
+  450  Dispatcher           all drones           CALL FOR BIDS  Auction round 82: who can deliver this order? #87 2.2 kg Hub 0 -> (22, 11) due t=590
+  450  Drone 4              Dispatcher           BID            My bids in round 82: order #87 for cost 76.2, delivered by t=524
+  450  Drone 8              Dispatcher           BID            My bids in round 82: order #87 for cost 62.7, delivered by t=509, after a battery swap at Station 0
+  451  Dispatcher           Drone 8              ACCEPT         You win order #87: 2.2 kg from Hub 0 to the customer at (22, 11), due by t=590.
+  451  Dispatcher           Drone 4              REJECT         You did not win anything in round 82.
+  451  Drone 8              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=476.
+  452  Drone 7              Dispatcher           INFORM         I have delivered order #78.
+  452  Drone 7              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=475.
+  452  Station 0            Drone 8              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  452  Station 0            Drone 7              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  453  Drone 0              Dispatcher           INFORM         I have picked up order #80.
+  457  Drone 1              Dispatcher           INFORM         I have delivered order #86.
+  457  Drone 1              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=473.
+  457  Drone 4              Station 1            REQUEST        I have landed here; please swap my battery (45% left).
+  457  Station 0            Drone 1              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  459  Drone 3              Dispatcher           INFORM         I have picked up order #79.
+  468  Drone 6              Dispatcher           INFORM         I have picked up order #81.
+  470  Drone 5              Dispatcher           INFORM         I have picked up order #82.
+  472  Drone 0              Dispatcher           INFORM         I have delivered order #80.
+  472  Drone 3              Dispatcher           INFORM         I have delivered order #79.
+  472  Dispatcher           all drones           CALL FOR BIDS  Auction round 83: who can deliver this order? #88 1.5 kg Hub 0 -> (20, 6) due t=612
+  472  Drone 0              Dispatcher           BID            My bids in round 83: order #88 for cost 30.9, delivered by t=501
+  472  Drone 1              Dispatcher           BID            My bids in round 83: order #88 for cost 45.4, delivered by t=515
+  472  Drone 3              Dispatcher           BID            My bids in round 83: order #88 for cost 70.8, delivered by t=539, after a battery swap at Station 2
+  472  Drone 4              Dispatcher           BID            My bids in round 83: order #88 for cost 101.2, delivered by t=571
+  472  Drone 7              Dispatcher           BID            My bids in round 83: order #88 for cost 47.4, delivered by t=517
+  472  Drone 9              Dispatcher           INFORM         I have picked up order #84.
+  473  Drone 1              Station 0            REQUEST        I have landed here; please swap my battery (37% left).
+  473  Dispatcher           Drone 0              ACCEPT         You win order #88: 1.5 kg from Hub 0 to the customer at (20, 6), due by t=612.
+  473  Dispatcher           Drone 3              REJECT         You did not win anything in round 83.
+  473  Dispatcher           Drone 7              REJECT         You did not win anything in round 83.
+  473  Dispatcher           Drone 1              REJECT         You did not win anything in round 83.
+  473  Dispatcher           Drone 4              REJECT         You did not win anything in round 83.
+  473  Station 0            Drone 1              INFORM         Your battery swap has started.
+  475  Drone 7              Station 0            REQUEST        I have landed here; please swap my battery (36% left).
+  476  Drone 8              Station 0            REQUEST        I have landed here; please swap my battery (33% left).
+  476  Station 0            Drone 1              INFORM         Swap done: here is a fresh battery pack (100%).
+  476  Station 0            Drone 7              INFORM         Your battery swap has started.
+  479  Station 0            Drone 7              INFORM         Swap done: here is a fresh battery pack (100%).
+  482  Drone 2              Dispatcher           INFORM         I have delivered order #77.
+  482  Drone 2              Station 0            REQUEST        Please reserve a battery swap for me; I will arrive around t=505.
+  482  Station 0            Drone 2              AGREE          Reserved. Expected wait when you arrive: 21 ticks.
+  483  Dispatcher           all drones           CALL FOR BIDS  Auction round 84: who can deliver this order? #89 0.7 kg Hub 0 -> (17, 6) due t=623
+  483  Drone 1              Dispatcher           BID            My bids in round 84: order #89 for cost 43.4, delivered by t=524
+  483  Drone 2              Dispatcher           BID            My bids in round 84: order #89 for cost 86.4, delivered by t=567
+  483  Drone 3              Dispatcher           BID            My bids in round 84: order #89 for cost 78.0, delivered by t=557, after a battery swap at Station 2
+  483  Drone 4              Dispatcher           BID            My bids in round 84: order #89 for cost 104.3, delivered by t=585
+  483  Drone 7              Dispatcher           BID            My bids in round 84: order #89 for cost 44.4, delivered by t=525
+  484  Dispatcher           Drone 1              ACCEPT         You win order #89: 0.7 kg from Hub 0 to the customer at (17, 6), due by t=623.
+  484  Dispatcher           Drone 3              REJECT         You did not win anything in round 84.
+  484  Dispatcher           Drone 7              REJECT         You did not win anything in round 84.
+  484  Dispatcher           Drone 2              REJECT         You did not win anything in round 84.
+  484  Dispatcher           Drone 4              REJECT         You did not win anything in round 84.
+  486  Station 0            Drone 8              INFORM         Your battery swap has started.
+  486  Station 1            Drone 10             INFORM         Your battery swap has started.
+  489  Station 0            Drone 8              INFORM         Swap done: here is a fresh battery pack (96%).
+  489  Station 1            Drone 10             INFORM         Swap done: here is a fresh battery pack (96%).
+  489  Drone 0              Dispatcher           INFORM         I have picked up order #88.
+  491  Dispatcher           all drones           CALL FOR BIDS  Auction round 85: who can deliver this order? #90 2.3 kg Hub 1 -> (15, 5) due t=631
+  491  Station 1            Drone 11             INFORM         Your battery swap has started.
+  491  Drone 2              Dispatcher           BID            My bids in round 85: order #90 for cost 79.7, delivered by t=568
+  491  Drone 3              Dispatcher           BID            My bids in round 85: order #90 for cost 21.5, delivered by t=511
+  491  Drone 4              Dispatcher           BID            My bids in round 85: order #90 for cost 95.6, delivered by t=584
+  491  Drone 7              Dispatcher           BID            My bids in round 85: order #90 for cost 50.0, delivered by t=538
+  492  Dispatcher           Drone 3              ACCEPT         You win order #90: 2.3 kg from Hub 1 to the customer at (15, 5), due by t=631.
+  492  Dispatcher           Drone 7              REJECT         You did not win anything in round 85.
+  492  Dispatcher           Drone 2              REJECT         You did not win anything in round 85.
+  492  Dispatcher           Drone 4              REJECT         You did not win anything in round 85.
+  494  Station 1            Drone 11             INFORM         Swap done: here is a fresh battery pack (96%).
+  494  Drone 3              Dispatcher           INFORM         I have picked up order #90.
+  495  Station 1            Drone 4              INFORM         Your battery swap has started.
+  498  Dispatcher           all drones           CALL FOR BIDS  Auction round 86: who can deliver this order? #91 (EXPRESS) 0.4 kg Hub 0 -> (29, 18) due t=568
+  498  Station 1            Drone 4              INFORM         Swap done: here is a fresh battery pack (95%).
+  498  Drone 2              Dispatcher           BID            My bids in round 86: order #91 for cost 63.7, delivered by t=559
+  498  Drone 4              Dispatcher           BID            My bids in round 86: order #91 for cost 36.6, delivered by t=532
+  498  Drone 7              Dispatcher           BID            My bids in round 86: order #91 for cost 27.3, delivered by t=523
+  499  Dispatcher           Drone 7              ACCEPT         You win order #91 (EXPRESS): 0.4 kg from Hub 0 to the customer at (29, 18), due by t=568.
+  499  Dispatcher           Drone 2              REJECT         You did not win anything in round 86.
+  499  Dispatcher           Drone 4              REJECT         You did not win anything in round 86.
+  500  Drone 6              Dispatcher           INFORM         I have delivered order #81.
+  500  Drone 6              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=520.
+  500  Station 2            Drone 6              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  503  Drone 5              Dispatcher           INFORM         I have delivered order #82.
+  503  Drone 5              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=512.
+  503  Station 2            Drone 5              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  505  Drone 2              Station 0            REQUEST        I have landed here; please swap my battery (24% left).
+  509  Drone 1              Dispatcher           INFORM         I have picked up order #89.
+  510  Drone 0              Dispatcher           INFORM         I have delivered order #88.
+  510  Drone 0              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=527.
+  510  Station 2            Drone 0              AGREE          Reserved. Expected wait when you arrive: 43 ticks.
+  512  Drone 5              Station 2            REQUEST        I have landed here; please swap my battery (29% left).
+  512  Station 2            Drone 5              INFORM         Your battery swap has started.
+  512  Drone 7              Dispatcher           INFORM         I have picked up order #91.
+  513  Drone 9              Dispatcher           INFORM         I have delivered order #84.
+  513  Drone 9              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=530.
+  513  Station 2            Drone 9              AGREE          Reserved. Expected wait when you arrive: 43 ticks.
+  515  Drone 3              Dispatcher           INFORM         I have delivered order #90.
+  515  Drone 3              Station 2            REQUEST        Please reserve a battery swap for me; I will arrive around t=536.
+  515  Station 2            Drone 3              AGREE          Reserved. Expected wait when you arrive: 39 ticks.
+  515  Station 2            Drone 5              INFORM         Swap done: here is a fresh battery pack (100%).
+  515  Drone 10             Dispatcher           INFORM         I have picked up order #83.
+  516  Drone 8              Dispatcher           INFORM         I have picked up order #87.
+  518  Drone 11             Dispatcher           INFORM         I have picked up order #85.
+  520  Drone 6              Station 2            REQUEST        I have landed here; please swap my battery (33% left).
+  520  Station 2            Drone 6              INFORM         Your battery swap has started.
+  521  Station 0            Drone 2              INFORM         Your battery swap has started.
+  523  Station 2            Drone 6              INFORM         Swap done: here is a fresh battery pack (100%).
+  524  Station 0            Drone 2              INFORM         Swap done: here is a fresh battery pack (96%).
+  527  Drone 0              Station 2            REQUEST        I have landed here; please swap my battery (14% left).
+  527  Drone 11             Dispatcher           INFORM         I have delivered order #85.
+  527  Station 2            Drone 0              INFORM         Your battery swap has started.
+  530  Drone 9              Station 2            REQUEST        I have landed here; please swap my battery (33% left).
+  530  Station 2            Drone 0              INFORM         Swap done: here is a fresh battery pack (100%).
+  531  Drone 8              Dispatcher           INFORM         I have delivered order #87.
+  533  Drone 7              Dispatcher           INFORM         I have delivered order #91.
+  535  Drone 1              Dispatcher           INFORM         I have delivered order #89.
+  536  Drone 3              Station 2            REQUEST        I have landed here; please swap my battery (28% left).
+  537  Drone 10             Dispatcher           INFORM         I have delivered order #83.
+  553  Drone 1              Station 1            REQUEST        Please reserve a battery swap for me; I will arrive around t=575.
+  554  Station 1            Drone 1              AGREE          Reserved. Expected wait when you arrive: 0 ticks.
+  566  Station 2            Drone 9              INFORM         Your battery swap has started.
+  569  Station 2            Drone 9              INFORM         Swap done: here is a fresh battery pack (96%).
+  571  Station 2            Drone 3              INFORM         Your battery swap has started.
+  574  Drone 1              Station 1            REQUEST        I have landed here; please swap my battery (27% left).

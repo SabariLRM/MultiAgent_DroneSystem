@@ -17,7 +17,10 @@ Fast estimates (used when bidding and to price "reach a station afterwards")
 multiply a flight distance in ticks by :func:`step_cost_bound`, the most a
 tick of flight can cost on a route that does not end higher than it starts.
 Every route the agents estimate ends at layer 1 (a drop or a landing), so the
-estimate never undercounts the energy of a shortest route.
+estimate never undercounts the energy of a shortest route. With customers in
+buildings a drop can be higher (above the roof); the leg after it descends
+as much again, so a bid, which sums hub -> drop -> station, is still never
+undercounted.
 """
 
 from __future__ import annotations

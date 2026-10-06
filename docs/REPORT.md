@@ -316,11 +316,34 @@ one layer ≈ 30 m).
   Crossing a one-cell building at 60 m then costs 2.5 extra, climbing over
   it 2 (one climb, one descent), so the drone climbs. Costs only grow, so
   the heuristic stays admissible and the reservation table still rules out
-  every conflict. Parcels are still lowered from layer 1, and towers that
-  reach the top layer are flown around. `run_simulation.py --motion
-  continuous` cruises at 60 m by default, as a delivery drone over a city
-  would and as the viewers should show; `SimConfig` and the experiments
-  keep cruise off unless a row says otherwise (§6.7).
+  every conflict. Towers that reach the top layer are flown around.
+  `run_simulation.py --motion continuous` cruises at 60 m by default, as a
+  delivery drone over a city would and as the viewers should show;
+  `SimConfig` and the experiments keep cruise off unless a row says
+  otherwise (§6.7).
+* **Customers in buildings (optional, off by default).** With
+  `customer_buildings = True` every customer lives in a house or in a
+  building, and parcels are delivered at several heights. A customer of
+  height h (in layers, drawn from `customer_height_weights` = 35 % / 40 % /
+  25 % for h = 0, 1, 2, never above `n_layers - 1`) is a building that
+  blocks layers 1..h, and its parcel is winched onto the roof from layer
+  h + 1: from 30 m into a house's garden, from 60 m onto a 30 m roof, from
+  90 m onto a 60 m roof. The winch always lowers the parcel 30 m. Only the
+  customers change: their heights come from their own random stream, so
+  the streets, the other buildings, the pads and the customer sites are
+  the same as without the option. One function, `GridWorld.drop_cell`,
+  gives the hover cell, and the planner (the drop waypoint's goal), the
+  drone's bids and battery checks, and the order generator's service area
+  all use it. A customer building that would wall another customer in
+  turns that customer into a house. In the grid energy model the bid-time
+  estimate prices every tick at the per-tick bound above, which
+  undercounts a leg that ends higher than it starts (a climb costs 1.2,
+  the bound 1.0); but a bid covers hub -> roof -> station, whose climbs and
+  descents balance, so the sum of its legs is still never undercounted. In
+  continuous flight there is no such bound; as before, the commitment
+  checks use the energy of the planned route, and no drone ran out of
+  battery (§6.7). `run_simulation.py --motion continuous` turns the option
+  on (`--no-customer-buildings` to turn it off).
 
 **One layer reproduces the original model exactly.** Before the change, the
 metrics of seeds 1–3 were recorded. `tests/test_regression.py` re-runs them
@@ -394,6 +417,15 @@ constraint least).
   lowering a parcel or in its take-off or landing column does not react, and
   the others take full responsibility.
 * Buildings within 60 m and a floor 8 m below layer 1 are hard constraints.
+  A drone over a building, above it, also has a floor 5 m over the
+  building's box, in the path follower and in ORCA. The follower tracks a
+  timed reference, so a drone that falls behind horizontally (accelerating
+  out of the hover after a rooftop drop, below) could otherwise start the
+  plan's next descent while still over the roof it was leaving. That
+  happened 3 times in 20 runs when customers were first put in buildings
+  (§6.7); with the floor it does not. Every run without customer buildings
+  is unchanged, except for differences under 0.001 % in energy and
+  distance in 5 of the 10 cruising 32-drone runs.
   A deterministic keep-right bias breaks perfectly symmetric head-on
   encounters and jams.
 * Pure-Python ORCA is fast enough, because encounters are sparse, so the
@@ -474,8 +506,8 @@ grid experiments) reproduces every non-timing metric in
   too; in strong and severe wind the continuous service area is smaller
   (§4.6), out-of-range customers are re-drawn, and the order stream differs.
 * **Runtime:** the grid suite (430 simulations) runs in ≈3 minutes on a
-  laptop; the continuous-flight sections (300 simulations) in ≈6 minutes
-  (348 s), one simulation after another (Python 3.14, Apple silicon).
+  laptop; the continuous-flight sections (320 simulations) in ≈7 minutes
+  (413 s), one simulation after another (Python 3.14, Apple silicon).
 
 ## 6. Results
 
@@ -733,7 +765,7 @@ moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
   per delivery rises by about a third (50.9 → 68.1 at 12 drones with both
   layers), while losses of separation stay at 0–0.8 per run.
 * **Compute.** A continuous run took 0.5–1.9 s on average per configuration
-  (never more than 3.1 s) at 12 and 24 drones, and 3.0 s (at most 4.0 s) at
+  (never more than 3.1 s) at 12 and 24 drones, and 3.5 s (at most 4.6 s) at
   32 drones (next table), against targets of 5 s and 20 s. Pure-Python ORCA
   was fast enough, so no fallback to sampled-velocity RVO was needed.
 
@@ -743,18 +775,21 @@ moderate 5 m/s, 1.5 m/s RMS gusts; strong 8 m/s, 2.5 m/s.
 
 | configuration | delivered | avg time | p95 time | on time | energy/delivery | swaps | above layer 1 | collisions | s per run |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 2.1% | 0 | 0.23 |
-| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 2.6% | 0 | 0.61 |
-| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 2.1% | 0 | 0.90 |
-| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 2.5% | 0 | 0.93 |
-| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 4.9% | 0 | 3.04 |
-| continuous, cruise at 60 m | 100% | 42.3 | 86.2 | 97.4% | 66.0 | 56.6 | 87.0% | 0 | 0.93 |
-| continuous, cruise at 60 m, 32 drones | 100% | 43.6 | 88.0 | 96.4% | 68.5 | 164 | 86.7% | 0 | 3.31 |
-| continuous, cruise at 90 m | 100% | 58.5 | 113 | 89.0% | 79.5 | 64.3 | 88.6% | 0 | 1.09 |
+| grid (default) | 100% | 34.6 | 70.4 | 98.8% | 51.4 | 44.6 | 2.1% | 0 | 0.25 |
+| continuous, calm | 100% | 31.7 | 63.9 | 99.2% | 50.9 | 43.1 | 2.6% | 0 | 0.73 |
+| continuous, moderate wind (default) | 100% | 32.5 | 68.8 | 99.3% | 59.1 | 54.0 | 2.1% | 0 | 1.03 |
+| grid, 32 drones | 100% | 30.5 | 58.2 | 99.5% | 50.9 | 124 | 2.5% | 0 | 1.00 |
+| continuous, moderate wind, 32 drones | 100% | 34.2 | 66.5 | 98.8% | 63.8 | 158 | 4.9% | 0 | 3.53 |
+| continuous, cruise at 60 m | 100% | 42.3 | 86.2 | 97.4% | 66.0 | 56.6 | 87.0% | 0 | 1.06 |
+| continuous, cruise at 60 m, 32 drones | 100% | 43.6 | 88.0 | 96.4% | 68.5 | 164 | 86.7% | 0 | 3.81 |
+| continuous, cruise at 90 m | 100% | 58.5 | 113 | 89.0% | 79.5 | 64.3 | 88.6% | 0 | 1.25 |
+| continuous, 60 m, customers in buildings | 100% | 42.3 | 86.1 | 96.8% | 66.5 | 58.3 | 91.0% | 0 | 1.07 |
+| continuous, 60 m, customers in buildings, 32 drones | 100% | 43.7 | 86.9 | 96.9% | 68.2 | 166 | 90.5% | 0 | 3.85 |
 
-(The cruise rows fly in moderate wind; "above layer 1" is the share of
-flight time spent at 60 m or higher. The rows above them were re-run with
-the cruise rows: only their timings moved, by up to 0.1 s.)
+(The cruise and customer rows fly in moderate wind; "above layer 1" is the
+share of flight time spent at 60 m or higher. All rows were re-run when the
+last two were added; only the timings moved, by up to 0.5 s, because the
+laptop was busier.)
 
 The order streams are identical in these rows (the wind-aware service area
 removed no order in calm or moderate wind), so each comparison is exactly
@@ -795,6 +830,20 @@ paired.
 * Over the 10 seeds 46 % of the building blocks are one layer tall, 36 %
   two and 18 % three. At 60 m a drone can fly over the one-layer blocks; at
   90 m over all but the tallest, which it flies around.
+* **Delivering onto roofs at three heights costs almost nothing on top of
+  the 60 m cruise.** With customers in buildings (33 % houses, 39 % roofs
+  at 30 m, 28 % roofs at 60 m over the 10 seeds), 67 % of the parcels went
+  onto a roof and the mean hover height for a drop was 58.5 m (30 m for
+  every drop before). Delivery time is unchanged (42.3 ticks), energy per
+  delivery rises by 0.8 % (66.5 vs 66.0) and on-time delivery falls 0.6
+  points (96.8 %); at 32 drones 43.7 ticks and 68.2 units. The
+  cruise is already at 60 m, so a drop onto a 30 m roof needs no climb or
+  descent at all; a 60 m roof costs a climb to 90 m, a house a descent to
+  30 m. All 20 runs had 0 collisions, no drone lost and no building
+  intrusion, with 1 and 5 losses of separation in the 10 runs at 12 and
+  32 drones (closest pair 19.9 m). Drones now spend 11 % of their flight
+  time over a building, including every hover over a roof during a drop,
+  so the share of that time at 90 m falls to 70 %.
 
 **How much wind?**
 
@@ -891,16 +940,17 @@ paired.
 | ORCA without reservations collides occasionally (6 of 60 runs) | keep strategic deconfliction; if flying without it, add a longer horizon, acceleration-aware (non-holonomic) velocity obstacles, or priority rules |
 | Point-mass physics: no attitude dynamics, no sensing noise or latency in the neighbours ORCA sees, no vertical gusts | a multirotor model with thrust and tilt limits, ADS-B-like delayed and noisy neighbour states, 3-D turbulence |
 | The power model has no acceleration term and no translational lift (real multirotors often need less power at moderate speed than in a hover) | a blade-element / momentum-theory power model; fit its constants to a real airframe |
+| Rooftop delivery is a hover 30 m over the roof and a winch: no balconies or windows, no landing on the roof, the same drop time at every height, and a customer's height is fixed for the whole run | delivery points on facades (a cell next to the building at the customer's floor), roof landings where there is a pad, drop times that grow with the winch length |
 | The cruise altitude is a fixed set of planning penalties, not a decision: every drone pays for the climbs whether or not they save anything, so cruising costs 30 % (60 m) to 80 % (90 m) in delivery time (§6.7). Climbs and descents take a whole tick each, because the planner has no climbing-while-moving step | price the climb against what it buys (fewer conflicts, shorter routes over low blocks), or separate cruise layers by heading as in §6.6 |
 
 ## 9. How to reproduce
 
 ```bash
-python3 -m unittest discover -s tests -t .      # 127 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous, messages
+python3 -m unittest discover -s tests -t .      # 135 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous, messages, customers
 python3 run_experiments.py --seeds 10           # tables -> results/experiments.md, charts -> results/figures/
 python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D) + replay_messages.txt
 python3 run_simulation.py --view 3d             # the same run in 3D -> results/replay_3d.html
-python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html   # cruises at 60 m
+python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html   # 60 m cruise, rooftop drops
 python3 run_experiments.py --only tactical motion wind   # §6.7 only; the other sections keep their results
 ```
 
@@ -935,6 +985,13 @@ followed drone's when you follow one).
     a box (brown, red for express) and is lowered to the customer on a
     winch. Drones are drawn larger than life, more so when the camera is
     far away;
+  * with customers in buildings, each customer is a house with a pitched
+    roof and a garden (the parcel goes onto the lawn) or a building with a
+    landing target on its roof at 30 or 60 m; waiting orders are rings at
+    the height they will be delivered, and the winch lowers the parcel to
+    the roof. In the 2D view a customer building carries a white target and
+    a house a house symbol, and both views say where the parcel goes
+    ("Lowering order #3 onto the customer's roof (60 m up)");
   * altitude lines from every flying drone to the ground and, for the drone
     you follow, a translucent curtain from its flight path down to the
     street, over the last minute and along its booked route, so climbs over

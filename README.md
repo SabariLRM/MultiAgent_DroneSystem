@@ -97,6 +97,17 @@ longer deliveries at 60 m, 80 % at 90 m; [report
 §6.7](docs/REPORT.md#67-continuous-flight)), so the experiments, and
 `SimConfig` itself, keep it off unless asked.
 
+Continuous runs also put **customers in buildings and deliver at several
+heights**. Each customer is a house, a building with a roof at 30 m, or one
+with a roof at 60 m (about a third each). The drone hovers 30 m above the
+drop point and winches the parcel down: into a house's garden from 30 m,
+onto a 30 m roof from 60 m, onto a 60 m roof from 90 m. Two thirds of the
+parcels go onto a roof, at almost no extra cost over the 60 m cruise. The
+3D view draws the houses and buildings, with a landing target on each
+customer roof, and both views and the message log say where each parcel
+goes ("onto the customer's roof (60 m up)"). `--no-customer-buildings`
+turns it off; `--customer-buildings` turns it on in grid mode too.
+
 In continuous mode every drone has a position and velocity in metres and
 seconds (physics every 0.5 s, agents still decide every 10 s), obeys speed
 (15 m/s), climb (3 m/s), descent (2 m/s) and acceleration (4 m/s²) limits,
@@ -117,7 +128,7 @@ Ready-made continuous replays are in `results/`: `replay_continuous.html`
 (default run; `_3d` for 3D), `replay_continuous_32_drones*.html`, and
 `replay_continuous_reservations_only_3d.html`, reservations without ORCA,
 where the red links show the losses of separation at the pads. All of them
-cruise at 60 m and climb over buildings. Every saved replay has its messages in the **Messages between
+cruise at 60 m, climb over buildings and deliver onto roofs. Every saved replay has its messages in the **Messages between
 the agents** panel; `results/replay_messages.txt` and
 `results/replay_continuous_messages.txt` are the full logs of the two default
 runs.
@@ -133,14 +144,14 @@ python3 run_simulation.py --layers 5 --layer-rule heading --drones 32 --rate 0.4
 python3 run_simulation.py --layers 1                       # the original flat airspace
 ```
 
-Run the controlled experiments (10 seeds × 73 configurations, about 9 minutes):
+Run the controlled experiments (10 seeds × 75 configurations, about 10 minutes):
 
 ```bash
 python3 run_experiments.py
-python3 run_experiments.py --only tactical motion wind   # just the continuous-flight sections (~6 minutes)
+python3 run_experiments.py --only tactical motion wind   # just the continuous-flight sections (~7 minutes)
 ```
 
-Run the test suite (127 unit + integration tests, about 10 s):
+Run the test suite (135 unit + integration tests, about 12 s):
 
 ```bash
 python3 -m unittest discover -s tests -t .
@@ -177,6 +188,7 @@ tests/                   unit tests (planner, reservations, traffic, agents, lay
   test_regression.py     one-layer runs must reproduce the recorded flat-airspace metrics (tests/data/)
   test_continuous.py     controller limits, ORCA scenarios, power model, wind, smoothing, continuous system runs
   test_messages.py       the message log, the cruise-altitude option and the CLI
+  test_customers.py      customers in buildings: drop heights, planning, safety, replay and CLI
 run_simulation.py        CLI: one run -> metrics + replay
 run_experiments.py       CLI: experiment suite -> results/experiments.md, .json, figures/
 docs/REPORT.md           the case-study report (design, algorithms, results, discussion)
@@ -207,6 +219,7 @@ docs/continuous_design.md design of the continuous flight mode (units, controlle
 | `pad_spots` | 4 | continuous: touchdown spots per hub or station |
 | `cruise_layer` | 0 | cruise this many layers above the street or roof below (0 = off; `run_simulation.py --motion continuous` uses 2: 60 m, 90 m over buildings) |
 | `cruise_penalty` / `cruise_high_penalty` / `cruise_line_penalty` | 2.5 / 0.25 / 1.0 | planning cost per cell and layer below / above that height, and per cell off the straight line |
+| `customer_buildings` | `False` | customers live in houses and buildings; parcels go onto roofs at 30 or 60 m (`run_simulation.py --motion continuous` turns it on) |
 | `record_messages` | `False` | keep the plain-English message log (`run_simulation.py` turns it on) |
 
 Scale: one cell ≈ 100 m, one layer ≈ 30 m, one tick ≈ 10 s, cruise ≈ 36 km/h

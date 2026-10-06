@@ -287,3 +287,12 @@ The plan above is the final design. These parts changed after measuring them
   the pad rules and the energy model needed no change: with cruise at 60 m,
   10 seeds at 12 and 32 drones had 0 collisions and no drone lost, at a
   cost of 30 % (12 drones) in delivery time (report §6.7).
+* **Customers in buildings (added later).** Drops used to happen only over
+  open ground. With customers on roofs, a drone that had just finished a
+  drop over a 60 m roof (hovering at 90 m) sometimes started the plan's
+  next descent before it had accelerated out over the street: the path
+  follower tracks a timed reference, and the vertical controller is faster
+  than the horizontal one. 3 of 20 runs had a building intrusion. A roof
+  floor (5 m over the building box, while over its footprint) in the path
+  follower and in ORCA stops it; it does not change any run without
+  customer buildings by more than 0.001 %.

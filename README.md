@@ -41,15 +41,24 @@ arrival time, battery and recent decisions are shown, including why it paused
 (wind gust, giving way, waiting for a clear route). In stacked airspace every
 label also shows the drone's flight layer ("L2").
 
-For a 3D view of the same run (orbit, zoom, click a drone and the camera chases it):
+For a 3D view of the same run:
 
 ```bash
 python3 run_simulation.py --view 3d        # writes results/replay_3d.html
 ```
 
-The 3D viewer loads three.js (a pinned r147 build) from cdn.jsdelivr.net, so it
-**needs an internet connection**; the 2D viewer is fully self-contained and
-**works offline**. `--view both` writes both files.
+The 3D viewer shows the run as a city at true scale: towers with windowed
+facades (each block of the planning grid drawn as one to four buildings no
+taller than the block), a road grid with parks, plazas and trees, hub and
+station pads with their four touchdown spots, a sky, fog and a sun that casts
+shadows. Drones are small quadcopters with spinning rotors and navigation
+lights that lean into their speed and bank into turns; parcels are lowered
+on a winch. Orbit and zoom down to street level, click a drone to chase it,
+or press **Drone view** to ride along behind it. The light theme is daytime,
+the dark theme dusk with lit windows. It loads three.js (a pinned r147 build)
+from cdn.jsdelivr.net, so it **needs an internet connection**; the 2D viewer
+is fully self-contained and **works offline**. `--view both` writes both
+files.
 
 ### Continuous flight
 

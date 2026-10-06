@@ -838,18 +838,30 @@ controls, fleet list, follow card and plain-language event log are identical.
   drawn side by side.
 * The **3D viewer** (`--view 3d`) draws the same run with three.js (a pinned
   r147 build and its OrbitControls, loaded from cdn.jsdelivr.net, so it needs
-  an internet connection):
-  * buildings at their real height (vertical scale exaggerated about 2×), with
-    labelled hub and station pads and customer order rings;
-  * quadcopters coloured by the same state palette, with a battery ring, a
-    parcel and a line down to the ground;
+  an internet connection) as a city at **true scale** (flight layers at 30,
+  60 and 90 m):
+  * every building block of the planning grid becomes one to four towers,
+    never taller than the block's roof, with windowed facades in three
+    styles and rooftop plant, so the picture never contradicts the airspace
+    model; open cells become a road grid with parks, plazas, car parks and
+    trees; hubs and stations are pads with their four touchdown spots and
+    edge lights, and windsocks show the wind in continuous replays;
+  * physically based materials, a sky with a sun, fog, and a sun that casts
+    shadows (the drones' shadows show where they are); the light theme is
+    daytime, the dark theme dusk with lit windows and glowing lights;
+  * quadcopters coloured by the same state palette, with spinning rotors,
+    navigation lights and a glowing battery ring, leaning into their speed
+    and banking into their acceleration; parcels ride between the skids and
+    are lowered to the customer on a winch. Drones are drawn larger than
+    life, more so when the camera is far away;
   * booked routes as 3-D lines, no-fly zones as translucent red volumes over
     the layers they close, and collision flashes.
 
-  You can orbit, zoom and pan. Clicking a drone follows it with a chase camera
-  and opens the follow card. Instanced meshes keep 32 drones at a handful of
-  draw calls, the camera fits the city to the screen at phone width, and both
-  viewers have light and dark themes.
+  You can orbit, zoom down to street level and pan. Clicking a drone follows
+  it with a chase camera and opens the follow card; **Drone view** rides
+  along just behind it. Instanced meshes keep 32 drones and the whole city
+  at a few dozen draw calls, the camera fits the city to the screen at phone
+  width, and both viewers have light and dark themes.
 * **Continuous-flight replays** add each drone's position every 2 s (whole
   metres, delta-encoded in one integer array per drone), interpolated
   between samples. Both views draw a 30-second trail behind every drone

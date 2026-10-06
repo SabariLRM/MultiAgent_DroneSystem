@@ -323,6 +323,38 @@ function startReplay(DATA, view) {
     renderMsgs(i);
   }
 
+  /* The followed drone's height: the last two minutes (solid) and its booked route (dashed). */
+  function altitudeProfile(k, i, col) {
+    const t = frames[i].t, PAST = 12, AHEAD = 18, past = [], ahead = [];
+    if (CONT) {
+      for (let s = Math.max(0, (t - PAST) * TICK_S); s <= t * TICK_S + 1e-9; s += TD) past.push([s / TICK_S, trackAt(k, s).zm]);
+    } else {
+      for (let j = Math.max(0, i - PAST); j <= i; j++) { const d = frames[j].d[k]; past.push([frames[j].t, d[2] ? altOf(d) * LAYER_M : 0]); }
+    }
+    if (routeAhead(k, t, frames[i].d[k])) {         // on its booked route: the planned layers, tick by tick
+      const p = planAt(k, t);
+      ahead.push(past[past.length - 1]);
+      for (let j = t - p[0] + 1; j < p[1].length && p[0] + j <= t + AHEAD; j++) ahead.push([p[0] + j, decode(p[1][j])[2] * LAYER_M]);
+    }
+    const Wd = 300, Hd = 84, l = 34, r = 6, top = 6, bot = 18, zmax = (L + .6) * LAYER_M;
+    const X = tt => l + (tt - (t - PAST)) / (PAST + AHEAD) * (Wd - l - r), Y = z => top + (1 - z / zmax) * (Hd - top - bot);
+    const poly = pts => pts.map(([tt, z], j) => `${j ? "L" : "M"}${X(tt).toFixed(1)},${Y(z).toFixed(1)}`).join(" ");
+    let g = "";
+    for (let z = 0; z <= L; z++) {
+      g += `<line x1="${l}" x2="${Wd - r}" y1="${Y(z * LAYER_M)}" y2="${Y(z * LAYER_M)}" stroke="var(--grid)" stroke-width="1"/>` +
+           `<text x="${l - 5}" y="${Y(z * LAYER_M) + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)">${z ? z * LAYER_M + " m" : "0"}</text>`;
+    }
+    g += `<line x1="${X(t)}" x2="${X(t)}" y1="${top}" y2="${Hd - bot}" stroke="var(--muted)" stroke-dasharray="2 2"/>` +
+         `<text x="${X(t)}" y="${Hd - 5}" text-anchor="middle" font-size="10" fill="var(--muted)">now</text>` +
+         `<text x="${l}" y="${Hd - 5}" font-size="10" fill="var(--muted)">2 min ago</text>` +
+         `<text x="${Wd - r}" y="${Hd - 5}" text-anchor="end" font-size="10" fill="var(--muted)">booked route</text>`;
+    if (past.length > 1) g += `<path d="${poly(past)}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round"/>`;
+    if (ahead.length > 1) g += `<path d="${poly(ahead)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="4 3" opacity=".8"/>`;
+    const nowZ = past.length ? past[past.length - 1][1] : 0;
+    g += `<circle cx="${X(t)}" cy="${Y(nowZ)}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="1.5"/>`;
+    return `<svg class="altprof" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Height over the last two minutes and along the booked route">${g}</svg>`;
+  }
+
   const followMini = document.getElementById("followMini");
   function renderFollow(i) {
     const fr = frames[i];
@@ -362,6 +394,7 @@ function startReplay(DATA, view) {
       `<button id="unfollow">Stop following</button></div>` +
       `<p class="fnow">${esc(desc.text)}</p>${desc.why ? `<p class="fwhy">${esc(desc.why)}</p>` : ""}` +
       `<dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>` +
+      (STATES[d[3]] !== "dead" && L > 1 ? `<h3>Height</h3>${altitudeProfile(selected, i, col)}` : "") +
       `<h3>Recent activity</h3><ul class="mini-log">${recent.length ? recent.map(([, t, e]) => `<li><span class="t">t=${t}</span>${esc(e.replace(/^!! /, ""))}</li>`).join("") : "<li>Nothing yet.</li>"}</ul>`;
     document.getElementById("unfollow").onclick = () => select(-1);
   }

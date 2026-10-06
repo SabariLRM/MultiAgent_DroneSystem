@@ -134,6 +134,7 @@ button:hover, select:hover { border-color: var(--base); }
   border: 1px solid var(--border); border-radius: 5px; padding: 0 4px; margin-left: 4px; }
 #msgList li .txt { display: block; margin-top: 2px; }
 .msg-note { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+.altprof { display: block; width: 100%; max-width: 360px; height: auto; margin: 2px 0 10px; }
 details.sum summary { cursor: pointer; font-weight: 700; font-size: 13px; }
 table.metrics { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
 table.metrics td { padding: 3px 0; border-bottom: 1px solid var(--border); }

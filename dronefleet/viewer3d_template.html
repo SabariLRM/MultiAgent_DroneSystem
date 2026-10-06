@@ -59,11 +59,12 @@
     <summary>How to read this replay</summary>
     <div class="rows">
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-pickup)"/></svg><span><b>Blue drone</b>: flying to a warehouse (hub) to collect a parcel, or loading it</span></div>
-      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-parcel)"/><rect x="12" y="18" width="6" height="5" rx="1" fill="var(--ink)"/></svg><span><b>Orange drone</b>: carrying a parcel to a customer (dark box below it = parcel, diamond = express)</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-parcel)"/><line x1="15" y1="15" x2="15" y2="17" stroke="var(--ink)" stroke-width="1.2"/><rect x="11.5" y="17" width="7" height="6" rx="1" fill="#b98a57"/></svg><span><b>Orange drone</b>: carrying a parcel to a customer. The box hanging under it is the parcel (brown = standard, red = express)</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-energy)"/></svg><span><b>Green drone</b>: going to a swap station for a fresh battery, or being swapped</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-idle)"/></svg><span><b>Grey drone</b>: free, parked at a hub or flying back to one</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><ellipse cx="15" cy="13" rx="11" ry="4" fill="none" stroke="var(--good)" stroke-width="2.5"/><rect x="11" y="10" width="8" height="5" rx="2" fill="var(--c-idle)"/></svg><span><b>Glowing ring around a drone</b> is its battery: green above 50 %, amber 25–50 %, red below 25 %. Red and green lights are its navigation lights; a box under it is a parcel (red = express), lowered to the customer on a winch</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><path d="M3 20 L10 20 L10 13 L18 13 L18 6 L27 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/></svg><span><b>Line</b>: the route the drone has booked, climbs and descents included. Routes are booked in space <i>and time</i>, so lines can cross without the drones ever meeting</span></div>
+      <div class="row" data-layers><svg viewBox="0 0 30 24"><path d="M2 21 L2 16 L9 16 L13 6 L28 6 L28 21 Z" fill="var(--c-parcel)" fill-opacity=".22"/><path d="M2 16 L9 16 L13 6 L28 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/><line x1="2" y1="21" x2="28" y2="21" stroke="var(--muted)"/></svg><span><b>Curtain</b>: for the drone you follow, a see-through wall from its flight path down to the street, over the last minute and along its booked route, so every climb and descent stands out. <b>Altitude lines</b> drop from every flying drone to the ground; the follow card graphs its height</span></div>
       <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="4" y="12" width="8" height="10" fill="var(--building)"/><rect x="15" y="4" width="8" height="18" fill="var(--building)"/><line x1="8" y1="3" x2="8" y2="12" stroke="var(--muted)" stroke-dasharray="2 2"/><circle cx="8" cy="3" r="2.5" fill="var(--c-pickup)"/></svg><span><b>True scale</b>: buildings and flight heights are to scale (layers at 30, 60, 90 m; each planning block of up to 45, 75 or 105 m is drawn as one to four towers no taller than the block). A drone can fly over a block on any layer above it. Drones are drawn larger than life so you can see them, more so when the camera is far away; their shadows show where they are</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><rect x="4" y="4" width="22" height="16" fill="var(--critical)" fill-opacity=".18" stroke="var(--critical)" stroke-width="1.5"/></svg><span><b>Red box</b>: a no-fly zone and the layers it closes (dashed outline = announced, not active yet). <b>Rings</b> on the ground are customers waiting for an order</span></div>
       <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><path d="M2 20 Q10 20 14 13 T24 6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><circle cx="24" cy="6" r="4" fill="var(--c-parcel)"/></svg><span><b>Trail</b>: where the drone actually flew in the last 30 seconds, in 3D: climbs, smoothed corners, gusts and swerves. An <b>amber ring</b> means collision avoidance (ORCA) is steering it around another drone right now</span></div>
@@ -109,7 +110,7 @@
           <label><input type="checkbox" id="optPaths" data-opt checked> Booked routes</label>
           <label><input type="checkbox" id="optOrders" data-opt checked> Customers waiting</label>
           <label><input type="checkbox" id="optGround" data-opt checked> Parked drones</label>
-          <label><input type="checkbox" id="optStalks" data-opt> Altitude lines</label>
+          <label><input type="checkbox" id="optStalks" data-opt checked> Altitude lines</label>
           <label data-continuous hidden><input type="checkbox" id="optTrails" data-opt data-cont-default> Flight trails (30 s)</label>
           <label data-continuous hidden><input type="checkbox" id="optArrows" data-opt data-cont-default> Velocity arrows</label>
           <label data-continuous hidden><input type="checkbox" id="optBubbles" data-opt> Separation bubbles</label>
@@ -254,6 +255,8 @@ startReplay(DATA, (() => {
     dot: new THREE.MeshBasicMaterial({ color: 0xffffff }),
     avoid: new THREE.MeshBasicMaterial({ color: 0xd9a400, side: THREE.DoubleSide }),
     pick: new THREE.MeshBasicMaterial({ visible: false }),
+    curtain: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .2, side: THREE.DoubleSide, depthWrite: false }),
+    curtainTop: new THREE.LineBasicMaterial({ color: 0xffffff }),
   };
   const facadeMats = [];
   const routeMats = [];
@@ -265,6 +268,8 @@ startReplay(DATA, (() => {
   let orderRings, orderDots, stalks, stalkPos, stalkCol, selRing, beam, routeLines = [], selTube = null, selTubeKey = "";
   let arrows, arrowPos, arrowTips, bubbles, losLines, losPos, lastWind = [0, 0];
   let trails, trailPos, trailCol, trailDots, avoidRings;
+  let curtain, curtainPos, curtainTop, curtainTopPos;
+  const CURTAIN_MAX = 320;                            // quads: the last minute flown plus the booked route ahead
   const TRAIL_SEGS = 16;                              // 30 s of 2-s samples, plus the current position
   const zones = [], flashMeshes = [], pads = [], socks = [];
   const MOTORS = [[.336, .336], [-.336, .336], [-.336, -.336], [.336, -.336]];
@@ -507,7 +512,9 @@ startReplay(DATA, (() => {
     bladeIM = inst(box(.33, .006, .032), mat.blade, N * 4);
     navRIM = inst(merge([[new THREE.SphereGeometry(.022, 10, 8), at(-.4, .03, .4)]]), mat.navRed, N, false);
     navGIM = inst(merge([[new THREE.SphereGeometry(.022, 10, 8), at(.4, .03, .4)]]), mat.navGreen, N, false);
-    parcelIM = inst(box(.18, .1, .18), mat.parcel, N);
+    // a parcel hangs under the drone on a short strap (cardboard; red for express)
+    parcelIM = inst(merge([[box(.27, .2, .27), at(0, -.3, 0)], [box(.014, .1, .014), at(0, -.15, 0)],
+                           [box(.276, .025, .05), at(0, -.21, 0)]]), mat.parcel, N);
     for (let k = 0; k < N; k++) { hullIM.setColorAt(k, C("#888")); batteryIM.setColorAt(k, C("#888")); parcelIM.setColorAt(k, C("#b98a57")); yaw.push(0); }
     winchPos = new Float32Array(N * 6);
     const wg = new THREE.BufferGeometry(); wg.setAttribute("position", new THREE.BufferAttribute(winchPos, 3));
@@ -535,6 +542,13 @@ startReplay(DATA, (() => {
     }
     selTubeMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: .85 });
     selRing = new THREE.Mesh(new THREE.RingGeometry(.42, .48, 48).rotateX(-Math.PI / 2), mat.sel); selRing.visible = false; scene.add(selRing);
+    // the followed drone's altitude curtain: a translucent wall from its path down to the street
+    curtainPos = new Float32Array(CURTAIN_MAX * 18);
+    const cg = new THREE.BufferGeometry(); cg.setAttribute("position", new THREE.BufferAttribute(curtainPos, 3));
+    curtain = new THREE.Mesh(cg, mat.curtain); curtain.frustumCulled = false; curtain.visible = false; curtain.renderOrder = 3; scene.add(curtain);
+    curtainTopPos = new Float32Array((CURTAIN_MAX + 1) * 3);
+    const ctg = new THREE.BufferGeometry(); ctg.setAttribute("position", new THREE.BufferAttribute(curtainTopPos, 3));
+    curtainTop = new THREE.Line(ctg, mat.curtainTop); curtainTop.frustumCulled = false; curtainTop.visible = false; scene.add(curtainTop);
     beam = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1, 16, 1, true), mat.beam); beam.visible = false; scene.add(beam);
 
     // no-fly zones: a translucent volume over the closed layers (from the ground if layer 1 is closed)
@@ -802,7 +816,9 @@ startReplay(DATA, (() => {
       if (tl > lim) { tx *= lim / tl; tz *= lim / tl; }
       QY.setFromAxisAngle(UP, yaw[k]);
       if (dead) Q.setFromEuler(new THREE.Euler(.9, yaw[k], .5)); else Q.setFromUnitVectors(UP, V.set(tx, G, tz).normalize()).multiply(QY);
-      MB.compose(P.set(x, y + .14 * s, zc), Q, S3.set(s, s, s));
+      const carrying = !!a[6] && !dead;
+      // on the ground a laden drone stands on its parcel
+      MB.compose(P.set(x, y + (.14 + (carrying && !air ? .26 : 0)) * s, zc), Q, S3.set(s, s, s));
       const col = C(A.colorOf(a)), dim = sel >= 0 && sel !== k;
       if (dim) col.lerp(C(night ? DUSK.fog : DAY.fog), .45);
       hullIM.setColorAt(k, col);
@@ -823,18 +839,18 @@ startReplay(DATA, (() => {
       if (lowering) {
         let n0 = 0; for (let j = i; j >= 0 && j > i - 4 && frames[j].d[k][9] === A.FLAG.LOWERING; j--) n0++;
         const prog = THREE.MathUtils.clamp((n0 - 1 + f) / 2, 0, 1);
-        const py = lerp(y + .05 * s, .05 * s, prog);
-        MP.compose(V.set(x, py, zc), QY.setFromAxisAngle(UP, yaw[k]), S3.set(s, s, s));
-        winchPos.set([x, y + .09 * s, zc, x, py + .05 * s, zc], 6 * k);
+        const py = lerp(y - .16 * s, .1 * s, prog);              // the box's centre, from under the drone to the street
+        MP.compose(V.set(x, py + .3 * s, zc), QY.setFromAxisAngle(UP, yaw[k]), S3.set(s, s, s));
+        winchPos.set([x, y + .04 * s, zc, x, py + .1 * s, zc], 6 * k);
       } else {
-        MP.makeTranslation(0, -.09, 0).premultiply(MB);
+        MP.copy(MB);
         winchPos.fill(0, 6 * k, 6 * k + 6);
       }
       if (carry) { parcelIM.setMatrixAt(k, MP); parcelIM.setColorAt(k, C(a[7] ? "#d4483c" : "#b98a57")); }
       else parcelIM.setMatrixAt(k, hidden);
-      // altitude line (optional)
+      // altitude line down to the street (optional)
       const on = air && showStalks;
-      stalkPos.set(on ? [x, y, zc, x, 0, zc] : [0, 0, 0, 0, 0, 0], 6 * k);
+      stalkPos.set(on ? [x, y, zc, x, .002, zc] : [0, 0, 0, 0, 0, 0], 6 * k);
       const sc = C(T.muted);
       for (let j = 0; j < 2; j++) stalkCol.set([sc.r, sc.g, sc.b], 6 * k + 3 * j);
       // labels: numbers only, or what the drone is doing
@@ -938,6 +954,7 @@ startReplay(DATA, (() => {
       selTubeKey = tubeKey;
     }
     if (sel >= 0) selTubeMat.color.set(A.colorOf(Fa.d[sel]));
+    updateCurtain(sel, i, f, t, sec);
     const sw = sel >= 0 ? worldPos[sel] : null;
     selRing.visible = !!(sw && sw.shown) && camMode !== "onboard";
     if (selRing.visible) { selRing.position.set(sw.x, sw.y + .005, sw.z); selRing.scale.setScalar(sw.s * 1.25); }
@@ -963,6 +980,32 @@ startReplay(DATA, (() => {
     labelItems = items;
     lastT = t;
     dirty = true;
+  }
+
+  /* The followed drone's path as a wall down to the street: where it has flown in the last minute
+     (behind it) and the route it has booked (ahead), so every climb and descent is plain to see. */
+  function updateCurtain(sel, i, f, t, sec) {
+    const w = sel >= 0 ? worldPos[sel] : null;
+    if (!w || w.dead || !w.air || camMode === "onboard") { curtain.visible = curtainTop.visible = false; return; }
+    const pts = [];
+    if (A.CONT) for (const p of A.trailAt(sel, sec, 60)) { if (p.air) pts.push([p.x + .5, Math.max(.004, p.z * LH), p.y + .5]); }
+    else for (let j = Math.max(0, i - 6); j <= i; j++) {
+      const d = frames[j].d[sel]; if (d[2]) pts.push([d[0] + .5, A.altOf(d) * LH, d[1] + .5]);
+    }
+    pts.push([w.x, w.y, w.z]);
+    const route = A.routeAhead(sel, t, frames[i].d[sel]);
+    if (route) for (const c of route.slice(1)) pts.push([c[0] + .5, c[2] * LH, c[1] + .5]);
+    const n = Math.min(pts.length, CURTAIN_MAX + 1);
+    for (let j = 0; j + 1 < n; j++) {
+      const [ax, ay, az] = pts[j], [bx, by, bz] = pts[j + 1];
+      curtainPos.set([ax, ay, az, bx, by, bz, bx, 0, bz, ax, ay, az, bx, 0, bz, ax, 0, az], 18 * j);
+    }
+    for (let j = 0; j < n; j++) curtainTopPos.set(pts[j], 3 * j);
+    curtain.geometry.setDrawRange(0, 6 * Math.max(0, n - 1)); curtain.geometry.attributes.position.needsUpdate = true;
+    curtainTop.geometry.setDrawRange(0, n); curtainTop.geometry.attributes.position.needsUpdate = true;
+    const col = A.colorOf(frames[i].d[sel]);
+    mat.curtain.color.set(col); mat.curtainTop.color.set(col);
+    curtain.visible = curtainTop.visible = n > 1;
   }
 
   /* Continuous flight: trails, avoidance rings, velocity arrows and bubbles (optional), loss-of-separation links. */

@@ -21,7 +21,7 @@
     <summary>How to read this replay</summary>
     <div class="rows">
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-pickup)"/></svg><span><b>Blue drone</b>: flying to a warehouse (hub) to collect a parcel, or loading it</span></div>
-      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-parcel)"/><rect x="19" y="3" width="7" height="7" rx="1.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/></svg><span><b>Orange drone</b>: carrying a parcel to a customer (black square = parcel on board, diamond = express)</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="8" r="7" fill="var(--c-parcel)"/><line x1="15" y1="15" x2="15" y2="17" stroke="var(--ink)" stroke-width="1.2"/><rect x="11" y="17" width="8" height="6" rx="1" fill="#b98a57" stroke="var(--ink)" stroke-width="1"/><line x1="15" y1="17" x2="15" y2="23" stroke="#e8d3a8" stroke-width="1"/></svg><span><b>Orange drone</b>: carrying a parcel to a customer. The box under it is the parcel (brown = standard, red = express)</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-energy)"/></svg><span><b>Green drone</b>: going to a swap station for a fresh battery, or being swapped</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-idle)"/></svg><span><b>Grey drone</b>: free, parked at a hub or flying back to one</span></div>
       <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="7" fill="var(--c-idle)"/><circle cx="15" cy="12" r="10" fill="none" stroke="var(--grid)" stroke-width="2.5"/><path d="M15 2 A10 10 0 1 1 5.5 15" fill="none" stroke="var(--good)" stroke-width="2.5"/></svg><span><b>Ring</b> around a drone is its battery: green above 50 %, amber 25–50 %, red below 25 %</span></div>
@@ -129,6 +129,7 @@ startReplay(DATA, (() => {
     staticLayer = null;
     A.render();
   }
+  const PARCEL = { box: "#b98a57", tape: "#e8d3a8", express: "#d4483c" };
   function rr(c, x, y, w, h, r) {
     c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
     c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
@@ -363,12 +364,15 @@ startReplay(DATA, (() => {
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fillStyle = col; ctx.fill();
       ctx.fillStyle = A.textOn(col); ctx.font = `700 ${Math.round(r * 1.02)}px ${FONT}`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(d.k), cx, cy + .5);
-      if (a[6]) {
-        const s = Math.max(4, r * .62), px = cx + r * .78, py = cy - r * .78;
-        ctx.beginPath();
-        if (a[7]) { ctx.moveTo(px, py - s * .75); ctx.lineTo(px + s * .75, py); ctx.lineTo(px, py + s * .75); ctx.lineTo(px - s * .75, py); ctx.closePath(); }
-        else rr(ctx, px - s / 2, py - s / 2, s, s, 1.5);
-        ctx.fillStyle = T.ink; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = T.surface; ctx.stroke();
+      if (a[6]) {                       // the parcel, hanging under the drone (red = express)
+        const s = Math.max(8, r * 1.05), top = cy + r + rw + Math.max(2, r * .2), px = cx - s / 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy + r); ctx.lineTo(cx, top); ctx.lineWidth = 1.5; ctx.strokeStyle = T.ink; ctx.stroke();
+        rr(ctx, px, top, s, s * .8, 1.5);
+        ctx.fillStyle = a[7] ? PARCEL.express : PARCEL.box; ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = T.ink; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, top + s * .8);
+        ctx.moveTo(px, top + s * .3); ctx.lineTo(px + s, top + s * .3);
+        ctx.lineWidth = Math.max(1, s * .13); ctx.strokeStyle = a[7] ? "#fff3" : PARCEL.tape; ctx.stroke();
       }
       ctx.globalAlpha = 1;
       if (avoiding.has(d.k)) {          // ORCA is steering it around another drone
@@ -379,7 +383,8 @@ startReplay(DATA, (() => {
       if (opts.tags) {
         const desc = A.describe(a);
         const text = A.CONT && d.zm != null ? desc.label.replace(/\bL\d+\b/, `${Math.round(d.zm)} m`) : desc.label;
-        if (text) tags.push({ k: d.k, cx, cy, text, col, alert: a[10] === A.TRIP.EMERGENCY && STATES[a[3]] === "to_station" });
+        if (text) tags.push({ k: d.k, cx, cy, text, col, drop: a[6] ? Math.max(8, r * 1.1) : 0,
+                              alert: a[10] === A.TRIP.EMERGENCY && STATES[a[3]] === "to_station" });
       }
     }
     if (A.CONT) drawSeparation(air, sec, opts.bubbles);
@@ -465,7 +470,7 @@ startReplay(DATA, (() => {
     for (const tg of tags) {
       ctx.font = font;
       const w = ctx.measureText(tg.text).width + 12, h = 18;
-      const cands = [[tg.cx + r + 6, tg.cy - h / 2], [tg.cx - r - 6 - w, tg.cy - h / 2], [tg.cx - w / 2, tg.cy - r - 6 - h], [tg.cx - w / 2, tg.cy + r + 6]];
+      const cands = [[tg.cx + r + 6, tg.cy - h / 2], [tg.cx - r - 6 - w, tg.cy - h / 2], [tg.cx - w / 2, tg.cy - r - 6 - h], [tg.cx - w / 2, tg.cy + r + 6 + (tg.drop || 0)]];
       let spot = null;
       for (const [x, y] of cands) {
         if (x < 0 || y < 0 || x + w > W * cell || y + h > H * cell) continue;

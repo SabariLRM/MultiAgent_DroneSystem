@@ -152,15 +152,20 @@ def experiments() -> dict[str, dict]:
             "question": "Grid cells or continuous flight, at the default configuration?",
             "note": "Default configuration (12 drones, 3 flight layers, 0.16 orders/tick); 32 drones fly with "
                     "0.47 orders/tick and 6 spare packs per station. The grid model's wind is a 3 % chance per "
-                    "move of being held back a tick; continuous flight uses the wind field.",
+                    "move of being held back a tick; continuous flight uses the wind field. \"Cruise at 90 m\" "
+                    "sets cruise_layer = 3: every cell flown below layer 3 costs the planner 0.6 extra per layer, "
+                    "so longer trips climb over the buildings (off by default; 60 m: cruise_layer = 2).",
             "variants": [("grid (default)", dict(n_layers=3)),
                          ("continuous, calm", dict(**CONT, **wind("calm"))),
                          ("continuous, moderate wind (default)", dict(**CONT)),
                          ("grid, 32 drones", dict(n_layers=3, **FLEET32)),
-                         ("continuous, moderate wind, 32 drones", dict(**CONT, **FLEET32))],
+                         ("continuous, moderate wind, 32 drones", dict(**CONT, **FLEET32)),
+                         ("continuous, cruise at 60 m", dict(**CONT, cruise_layer=2)),
+                         ("continuous, cruise at 90 m", dict(**CONT, cruise_layer=3)),
+                         ("continuous, cruise at 90 m, 32 drones", dict(**CONT, **FLEET32, cruise_layer=3))],
             "metrics": ["delivery_rate", "avg_delivery_time", "p95_delivery_time", "on_time_rate",
-                        "energy_per_delivery", "swaps", "collisions", "wall_time_s"],
-            "extra": ["delivered", "orders", "failed", "cells_flown", "hover_ticks"],
+                        "energy_per_delivery", "upper_layer_share", "collisions", "wall_time_s"],
+            "extra": ["delivered", "orders", "failed", "cells_flown", "hover_ticks", "swaps", "dead_drones"],
         },
         "wind": {
             "question": "Continuous flight: how much wind can the energy-safe fleet fly in?",

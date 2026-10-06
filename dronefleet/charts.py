@@ -15,15 +15,15 @@ import math
 from html import escape
 from pathlib import Path
 
-SERIES = ["s1", "s2", "s3"]
+SERIES = ["s1", "s2", "s3", "s4"]
 ORDINAL = ["o1", "o2", "o3"]      # blue ramp, light -> dark (dark -> light on the dark surface)
 STYLE = """
 <style>
   svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
-        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --o1:#86b6ef; --o2:#2a78d6; --o3:#104281; }
+        --base:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#8a5cd0; --o1:#86b6ef; --o2:#2a78d6; --o3:#104281; }
   @media (prefers-color-scheme: dark) {
     svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a;
-          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --o1:#184f95; --o2:#3987e5; --o3:#9ec5f4; }
+          --base:#383835; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#a07ce0; --o1:#184f95; --o2:#3987e5; --o3:#9ec5f4; }
   }
   .bg { fill: var(--surface); }
   text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
@@ -35,7 +35,7 @@ STYLE = """
   .grid { stroke: var(--grid); stroke-width: 1; }
   .base { stroke: var(--base); stroke-width: 1; }
   .err { stroke: var(--muted); stroke-width: 1; }
-  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); }
+  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); } .s4 { fill: var(--s4); }
   .o1 { fill: var(--o1); } .o2 { fill: var(--o2); } .o3 { fill: var(--o3); }
   .l1 { stroke: var(--s1); } .l2 { stroke: var(--s2); } .l3 { stroke: var(--s3); }
   .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
@@ -347,8 +347,9 @@ def write_charts(results: dict, outdir: str | Path) -> list[Path]:
         written.append(_write(out / "tactical.svg", svg))
 
     if "motion" in results:
-        modes = ["grid (default)", "continuous, calm", "continuous, moderate wind (default)"]
-        names = ["grid cells", "continuous, calm", "continuous, moderate wind"]
+        modes = ["grid (default)", "continuous, calm", "continuous, moderate wind (default)",
+                 "continuous, cruise at 90 m"]
+        names = ["grid cells", "continuous, calm", "continuous, moderate wind", "continuous, cruise at 90 m"]
         panels = []
         for key, title, pct in [("avg_delivery_time", "Average delivery time (ticks)", False),
                                 ("energy_per_delivery", "Energy per delivery", False),

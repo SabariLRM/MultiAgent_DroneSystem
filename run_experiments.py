@@ -156,7 +156,10 @@ def experiments() -> dict[str, dict]:
                     "(cruise_layer = 2, the default of run_simulation.py --motion continuous): drones prefer to fly "
                     "2 layers above the street or roof below them and close to the straight line to their goal, so "
                     "they cruise at 60 m and climb to 90 m over buildings; \"90 m\" is cruise_layer = 3. "
-                    "\"Over roofs at 90 m\": share of the time spent over a building that is flown at 90 m.",
+                    "\"Over roofs at 90 m\": share of the time spent over a building that is flown at 90 m. "
+                    "\"Customers in buildings\" (the default of run_simulation.py --motion continuous): customers "
+                    "live in houses (parcel lowered into the garden from 30 m) or buildings with a roof at 30 or 60 m "
+                    "(parcel winched onto the roof from 60 or 90 m).",
             "variants": [("grid (default)", dict(n_layers=3)),
                          ("continuous, calm", dict(**CONT, **wind("calm"))),
                          ("continuous, moderate wind (default)", dict(**CONT)),
@@ -164,12 +167,15 @@ def experiments() -> dict[str, dict]:
                          ("continuous, moderate wind, 32 drones", dict(**CONT, **FLEET32)),
                          ("continuous, cruise at 60 m", dict(**CONT, cruise_layer=2)),
                          ("continuous, cruise at 60 m, 32 drones", dict(**CONT, **FLEET32, cruise_layer=2)),
-                         ("continuous, cruise at 90 m", dict(**CONT, cruise_layer=3))],
+                         ("continuous, cruise at 90 m", dict(**CONT, cruise_layer=3)),
+                         ("continuous, 60 m, customers in buildings", dict(**CONT, cruise_layer=2, customer_buildings=True)),
+                         ("continuous, 60 m, customers in buildings, 32 drones",
+                          dict(**CONT, **FLEET32, cruise_layer=2, customer_buildings=True))],
             "metrics": ["delivery_rate", "avg_delivery_time", "p95_delivery_time", "on_time_rate",
                         "energy_per_delivery", "upper_layer_share", "over_building_top_share", "collisions",
                         "wall_time_s"],
             "extra": ["delivered", "orders", "failed", "cells_flown", "hover_ticks", "swaps", "dead_drones",
-                      "over_building_share", "climbs"],
+                      "over_building_share", "climbs", "drop_height_mean_m", "rooftop_drop_share"],
         },
         "wind": {
             "question": "Continuous flight: how much wind can the energy-safe fleet fly in?",

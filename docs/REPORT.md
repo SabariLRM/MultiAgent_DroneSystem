@@ -948,7 +948,7 @@ paired.
 ```bash
 python3 -m unittest discover -s tests -t .      # 135 tests: planner, reservations, traffic, agents, layers, replay, system, regression, continuous, messages, customers
 python3 run_experiments.py --seeds 10           # tables -> results/experiments.md, charts -> results/figures/
-python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D) + replay_messages.txt
+python3 run_simulation.py                       # one run -> results/replay.html (interactive 2D) + log_messages.txt
 python3 run_simulation.py --view 3d             # the same run in 3D -> results/replay_3d.html
 python3 run_simulation.py --motion continuous --view both --out results/replay_continuous.html   # 60 m cruise, rooftop drops
 python3 run_experiments.py --only tactical motion wind   # §6.7 only; the other sections keep their results

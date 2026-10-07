@@ -81,7 +81,7 @@ The first command runs the grid model with the default settings and writes
 `results/replay.html`. The second runs continuous flight and writes
 `results/replay.html` (2D) and `results/replay_3d.html` (3D). Open them in a
 browser. Each run prints its metrics to the terminal and writes the agents'
-messages to `results/replay_messages.txt`.
+messages to `results/log_messages.txt`.
 
 The 2D replay is self-contained and **works offline**. The 3D replay loads
 three.js (a pinned r147 build) from cdn.jsdelivr.net, so it **needs an
@@ -365,7 +365,10 @@ where a configuration says so.
 ## Replay viewers
 
 `run_simulation.py` writes an HTML replay of the run: `--view 2d` (default),
-`--view 3d`, or `--view both`.
+`--view 3d`, `--view blocks`, `--view both` (2D and 3D) or `--view all` (2D,
+3D and blocks). `blocks` is the original 3D view: the city as coloured blocks
+on a board, one per planning cell, with the same panels and controls as the
+3D city.
 
 ### What both viewers show
 
@@ -440,14 +443,14 @@ All in `results/`; open any of them directly.
 | `replay_continuous.html` (`_3d`) | the default continuous run: 60 m cruise, deliveries onto roofs |
 | `replay_continuous_32_drones.html` (`_3d`) | continuous flight with 32 drones |
 | `replay_continuous_reservations_only_3d.html` | 24 drones with reservations but no ORCA: red links show the losses of separation, mostly at the pads |
-| `replay_messages.txt`, `replay_continuous_messages.txt` | every message of the two default runs, in plain English |
+| `log_messages.txt`, `log_continuous_messages.txt` | every message of the two default runs, in plain English |
 
 ## Agent messages
 
 Agents communicate only through messages with FIPA-ACL performatives (CFP,
 PROPOSE, REFUSE, ACCEPT_PROPOSAL, REJECT_PROPOSAL, REQUEST, AGREE, INFORM,
 FAILURE, CANCEL). `run_simulation.py` writes every message, as a sentence, to
-a text file next to the replay (`results/replay_messages.txt` by default):
+a text file next to the replay (`results/log_messages.txt` by default):
 
 ```
  tick  from                 to                   act            message
@@ -499,8 +502,8 @@ in the **Messages between the agents** panel.
 | `--tactical` | `orca` | continuous: `orca` · `none` (reservations only) |
 | `--cruise-layer N` | 2 (continuous), 0 (grid) | cruise this many layers above the street or roof below; 0 = off |
 | `--customer-buildings` / `--no-customer-buildings` | on (continuous), off (grid) | customers in houses and buildings, parcels onto roofs |
-| `--view` | `2d` | `2d` · `3d` · `both` |
-| `--out FILE` | `results/replay.html` | replay path (`''` = no replay); `--view both` adds `_3d` |
+| `--view` | `2d` | `2d` · `3d` · `blocks` · `both` · `all` |
+| `--out FILE` | `results/replay.html` | replay path (`''` = no replay); `--view both` adds `_3d`, `--view all` also adds `_3d_blocks` |
 | `--messages FILE` | next to the replay | plain-English message log (`''` = none) |
 | `--messages-all` | | also list the routine status reports |
 | `--metrics-json FILE` | | also write the metrics as JSON |

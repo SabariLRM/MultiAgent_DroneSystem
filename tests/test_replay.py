@@ -51,7 +51,11 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(json.loads(payload.replace("<\\/", "</"))["world"]["layers"], 3)
 
     def test_3d_export_pins_one_umd_three_js_version(self):
-        html = render_html(self.data, "3d")
+        for view in ("3d", "blocks"):
+            with self.subTest(view=view):
+                self._check_3d_export(render_html(self.data, view))
+
+    def _check_3d_export(self, html):
         srcs = re.findall(r'<script src="([^"]+)"', html)
         self.assertEqual(len(srcs), 2)
         versions = {re.search(r"cdn\.jsdelivr\.net/npm/three@(\d+\.\d+\.\d+)/", s).group(1) for s in srcs}
@@ -72,6 +76,12 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(run_simulation.replay_paths(None, "3d"), [("3d", Path("results/replay_3d.html"))])
         self.assertEqual(run_simulation.replay_paths("x/run.html", "both"),
                          [("2d", Path("x/run.html")), ("3d", Path("x/run_3d.html"))])
+        self.assertEqual(run_simulation.replay_paths(None, "blocks"), [("blocks", Path("results/replay_3d_blocks.html"))])
+        self.assertEqual(run_simulation.replay_paths("x/run.html", "all"),
+                         [("2d", Path("x/run.html")), ("3d", Path("x/run_3d.html")),
+                          ("blocks", Path("x/run_3d_blocks.html"))])
+        self.assertEqual(run_simulation.messages_path(None, run_simulation.replay_paths("x/run.html", "blocks")),
+                         "x/log_run_messages.txt")
         self.assertEqual(run_simulation.replay_paths("", "3d"), [])
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "r.html"

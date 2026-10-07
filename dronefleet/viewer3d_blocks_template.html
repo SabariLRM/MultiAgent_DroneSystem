@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drone Fleet Replay 3D Blocks</title>
+<style>
+/*__VIEWER_CORE_CSS__*/
+:root { --sky: #eef0f2; --ground: #f7f7f4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sky: #121315; --ground: #1c1c1b; } }
+:root[data-theme="dark"] { --sky: #121315; --ground: #1c1c1b; }
+#sceneWrap { position: relative; width: 100%; height: min(72vh, 680px); min-height: 340px; border-radius: 8px; overflow: hidden;
+  background: var(--sky); touch-action: none; }
+@media (max-width: 600px) { #sceneWrap { height: 56vh; min-height: 300px; } }
+#sceneWrap canvas { display: block; width: 100%; height: 100%; outline: none; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 11px/1 var(--font); color: var(--ink);
+  background: var(--surface); border: 1.5px solid var(--base); border-radius: 9px; padding: 3px 6px; will-change: transform; }
+.lbl b { font-weight: 800; }
+.lbl.num { padding: 2px 5px; border-radius: 8px; font-size: 10.5px; }
+.lbl.sel { border-width: 2px; z-index: 2; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.lbl.alert { color: var(--critical); border-color: var(--critical); }
+.lbl.dim { opacity: .45; }
+.lbl.pad { background: transparent; border: 0; font-weight: 700; font-size: 12px; padding: 0;
+  text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface), 0 0 3px var(--surface); }
+.lbl.order { background: transparent; border: 0; padding: 0; font-size: 10.5px;
+  text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
+.lbl.zone { color: var(--critical); background: transparent; border: 0; padding: 0; font-weight: 700;
+  text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
+.lbl.flash { color: var(--critical); background: transparent; border: 0; font-weight: 800;
+  text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
+.camctl { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.camctl button { font-size: 12px; padding: 3px 9px; background: var(--surface); }
+.camctl button[aria-pressed="true"] { border-color: var(--ink2); font-weight: 650; }
+.wind3d { position: absolute; left: 8px; top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink2);
+  background: var(--surface); border-radius: 8px; padding: 3px 8px 3px 4px; opacity: .94; pointer-events: none; }
+.wind3d svg { width: 30px; height: 30px; }
+.lbl.los { color: var(--critical); background: var(--surface); border-color: var(--critical); font-weight: 800; }
+.hint3d { position: absolute; left: 8px; bottom: 8px; font-size: 11.5px; color: var(--ink2); background: var(--surface);
+  border-radius: 6px; padding: 2px 7px; opacity: .92; pointer-events: none; }
+@media (max-width: 600px) { .hint3d { display: none; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"
+        integrity="sha384-vV17nr/rMaJqmeZkFUzXLpHdQ+ME5QHKdydaqqN+3Ga39RJlNrTatJxHwGV4ml2C" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"
+        integrity="sha384-I0DMsfimAPIqWT8lF+oA997gRgdUi3jhidoTq3fN0zmn35smXZukD01FLnsPRU9i" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Drone fleet replay · 3D blocks</h1>
+    <div class="chips" id="chips"></div>
+    <button id="theme" title="Switch colour theme">Theme: auto</button>
+  </header>
+
+  <details class="card guide" id="guide" open>
+    <summary>How to read this replay</summary>
+    <div class="rows">
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-pickup)"/></svg><span><b>Blue drone</b>: flying to a warehouse (hub) to collect a parcel, or loading it</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-parcel)"/><rect x="12" y="18" width="6" height="5" rx="1" fill="var(--ink)"/></svg><span><b>Orange drone</b>: carrying a parcel to a customer (dark box below it = parcel, diamond = express)</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-energy)"/></svg><span><b>Green drone</b>: going to a swap station for a fresh battery, or being swapped</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><circle cx="15" cy="12" r="8" fill="var(--c-idle)"/></svg><span><b>Grey drone</b>: free, parked at a hub or flying back to one</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><ellipse cx="15" cy="17" rx="11" ry="4" fill="none" stroke="var(--good)" stroke-width="2.5"/><rect x="11" y="8" width="8" height="4" rx="1" fill="var(--c-idle)"/></svg><span><b>Ring under a drone</b> is its battery: green above 50 %, amber 25–50 %, red below 25 %</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><path d="M3 20 L10 20 L10 13 L18 13 L18 6 L27 6" fill="none" stroke="var(--c-parcel)" stroke-width="2"/></svg><span><b>Line</b>: the route the drone has booked, climbs and descents included. Routes are booked in space <i>and time</i>, so lines can cross without the drones ever meeting</span></div>
+      <div class="row" data-layers><svg viewBox="0 0 30 24"><rect x="4" y="12" width="8" height="10" fill="var(--building)"/><rect x="15" y="4" width="8" height="18" fill="var(--building)"/><line x1="8" y1="3" x2="8" y2="12" stroke="var(--muted)" stroke-dasharray="2 2"/><circle cx="8" cy="3" r="2.5" fill="var(--c-pickup)"/></svg><span><b>Altitude</b>: buildings have their real height, and a drone can fly over one on any layer above it. <b>L2</b> in a label is the flight layer (about 30 m each; height is exaggerated). The thin line drops from each drone to the ground</span></div>
+      <div class="row"><svg viewBox="0 0 30 24"><rect x="4" y="4" width="22" height="16" fill="var(--critical)" fill-opacity=".18" stroke="var(--critical)" stroke-width="1.5"/></svg><span><b>Red box</b>: a no-fly zone and the layers it closes (dashed outline = announced, not active yet). <b>Rings</b> on the ground are customers waiting for an order</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><path d="M2 20 Q10 20 14 13 T24 6" fill="none" stroke="var(--c-parcel)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><circle cx="24" cy="6" r="4" fill="var(--c-parcel)"/></svg><span><b>Trail</b>: where the drone actually flew in the last 30 seconds, in 3D: climbs, smoothed corners, gusts and swerves. An <b>amber ring</b> means collision avoidance (ORCA) is steering it around another drone right now</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><ellipse cx="15" cy="12" rx="12" ry="7" fill="var(--muted)" fill-opacity=".18" stroke="var(--muted)"/><rect x="12" y="10" width="6" height="4" rx="1" fill="var(--c-idle)"/></svg><span><b>Bubble</b> (optional): the separation minimum around a drone, 40 m sideways and 15 m up and down. It turns red, and a <b>red line</b> joins the two drones, when another drone is inside it</span></div>
+      <div class="row" data-continuous hidden><svg viewBox="0 0 30 24"><rect x="3" y="10" width="7" height="4" rx="1" fill="var(--c-parcel)"/><path d="M10 12 L26 12 M26 12 L21 8.5 M26 12 L21 15.5" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/></svg><span><b>Arrow</b> (optional): where the drone will be in 8 seconds at its current velocity. The compass at the top left shows the wind</span></div>
+    </div>
+    <p class="tip-line">Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom. Click a drone to follow it: the camera chases it.</p>
+  </details>
+
+  <div class="layout" style="margin-top:16px">
+    <main class="stack">
+      <section class="card">
+        <p class="now" id="now"></p>
+        <div class="kpis" id="kpis"></div>
+        <div id="sceneWrap" aria-label="3D city with drones; drag to orbit, click a drone to follow it">
+          <div id="labels"></div>
+          <div class="camctl">
+            <button id="camOverview" title="Show the whole city">Overview</button>
+            <button id="camTop" title="Look straight down">Top view</button>
+            <button id="camChase" aria-pressed="false" hidden title="Keep the camera on the followed drone">Chase camera</button>
+          </div>
+          <div class="hint3d">drag to orbit · right-drag to pan · scroll to zoom · click a drone</div>
+          <div class="wind3d" id="wind3d" data-continuous hidden aria-label="Wind at the city centre">
+            <svg viewBox="-15 -15 30 30"><circle r="13" fill="none" stroke="var(--grid)" stroke-width="1.5"/>
+              <g id="windArrow"><path d="M0 9 L0 -9 M0 -9 L-4 -3 M0 -9 L4 -3" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"/></g></svg>
+            <span id="windText">wind</span>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="play" aria-label="Play">▶ Play</button>
+          <button id="back" aria-label="Step back one tick">◀</button>
+          <button id="fwd" aria-label="Step forward one tick">▶</button>
+          <select id="speed" aria-label="Playback speed">
+            <option value="2">0.5×</option><option value="4" selected>1×</option><option value="8">2×</option>
+            <option value="16">4×</option><option value="32">8×</option>
+          </select>
+          <input id="slider" type="range" min="0" value="0" step="1" aria-label="Time">
+          <span class="tlabel" id="tlabel">t = 0</span>
+        </div>
+        <div class="toggles">
+          <label><input type="checkbox" id="optTags" data-opt checked> What each drone is doing</label>
+          <label><input type="checkbox" id="optPaths" data-opt checked> Booked routes</label>
+          <label><input type="checkbox" id="optOrders" data-opt checked> Customers waiting</label>
+          <label><input type="checkbox" id="optGround" data-opt checked> Parked drones</label>
+          <label><input type="checkbox" id="optStalks" data-opt checked> Altitude lines</label>
+          <label data-continuous hidden><input type="checkbox" id="optTrails" data-opt data-cont-default> Flight trails (30 s)</label>
+          <label data-continuous hidden><input type="checkbox" id="optArrows" data-opt data-cont-default> Velocity arrows</label>
+          <label data-continuous hidden><input type="checkbox" id="optBubbles" data-opt> Separation bubbles</label>
+        </div>
+        <div class="follow-mini" id="followMini" hidden></div>
+      </section>
+
+      <section class="card">
+        <div class="tl-head">
+          <h2>Orders over time</h2>
+          <div class="legend">
+            <span><i class="sw" style="background:var(--c-pickup)"></i>waiting for a drone</span>
+            <span><i class="sw" style="background:var(--c-parcel)"></i>being delivered</span>
+          </div>
+        </div>
+        <canvas id="timeline" aria-label="Orders waiting and being delivered over time; click to jump"></canvas>
+      </section>
+    </main>
+
+    <aside class="stack">
+      <section class="card follow" id="follow"></section>
+      <section class="card">
+        <h2>Fleet: what every drone is doing</h2>
+        <div class="fleet" id="fleet"></div>
+      </section>
+      <section class="card">
+        <h2>Battery swap stations</h2>
+        <div class="stations" id="stations"></div>
+      </section>
+      <section class="card">
+        <div class="loghead"><h2>What just happened</h2><label id="logFilterWrap" hidden><input type="checkbox" id="logFilter" checked> <span id="logFilterLabel">only this drone</span></label></div>
+        <ul id="log"></ul>
+      </section>
+      <section class="card">
+        <details class="sum"><summary>Run summary</summary><table class="metrics" id="metrics"></table></details>
+      </section>
+    </aside>
+  </div>
+  <p class="foot"><kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> one tick · <kbd>Shift</kbd>+arrows ten ticks · <kbd>Esc</kbd> stop following · one tick ≈ 10 seconds of real time.
+    The 3D view loads three.js from cdn.jsdelivr.net; the 2D replay works offline.</p>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+/*__VIEWER_CORE_JS__*/
+</script>
+<script>
+const DATA = __REPLAY_DATA__;
+/* The 3-D scene (three.js). Everything else comes from the shared core.
+   Axes: grid x -> world X, grid y -> world Z, flight layer z -> world Y (up). */
+startReplay(DATA, (() => {
+  "use strict";
+  const wrap = document.getElementById("sceneWrap"), labelsEl = document.getElementById("labels");
+  if (!window.THREE || !THREE.OrbitControls || !window.WebGLRenderingContext) {
+    wrap.innerHTML = `<div class="offline" style="height:100%"><div><b>The 3D view could not start.</b><br>` +
+      `It needs an internet connection to load three.js from cdn.jsdelivr.net, and WebGL.<br>` +
+      `The side panels below still work, and the 2D replay (replay.html) works offline.</div></div>`;
+    return { init() {}, draw() {}, theme() {}, selected() {} };
+  }
+  const LH = 0.6;                    // world units per flight layer (one cell = 1 unit; height exaggerated about 2x)
+  const DS = 1.3;                    // drone model scale (a real drone is far smaller than a 100 m cell)
+  const V = new THREE.Vector3(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), E = new THREE.Euler(), O = new THREE.Object3D();
+  let A, T, W, H, L, frames, LAST, N, STATES;
+  let renderer, scene, camera, controls, hemi, sun;
+  let dirty = true, lastFrameIdx = -1, lastT = -1, lastDraw = null;
+  let chase = false, flying = null;
+  const yaw = [];                    // last known heading per drone
+  const C = hex => new THREE.Color(hex || "#888888");
+
+  // ------------------------------------------------------------- materials
+  const mat = {
+    ground: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    grid: new THREE.LineBasicMaterial({ color: 0xcccccc, transparent: true, opacity: .8 }),
+    building: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    body: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    arm: new THREE.MeshLambertMaterial({ color: 0x444444 }),
+    blade: new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: .75 }),
+    disc: new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: .12, depthWrite: false, side: THREE.DoubleSide }),
+    halo: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+    shadow: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .16, depthWrite: false }),
+    parcel: new THREE.MeshLambertMaterial({ color: 0x111111 }),
+    stalk: new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .7 }),
+    ring: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+    customer: new THREE.MeshBasicMaterial({ color: 0x999999 }),
+    zoneFill: new THREE.MeshBasicMaterial({ color: 0xd03b3b, transparent: true, opacity: .14, depthWrite: false, side: THREE.DoubleSide }),
+    zoneEdge: new THREE.LineBasicMaterial({ color: 0xd03b3b }),
+    zoneDash: new THREE.LineDashedMaterial({ color: 0xd03b3b, dashSize: .35, gapSize: .25 }),
+    sel: new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide }),
+    beam: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .12, depthWrite: false }),
+    flash: new THREE.MeshBasicMaterial({ color: 0xd03b3b, transparent: true, opacity: 1, side: THREE.DoubleSide, depthWrite: false }),
+    arrow: new THREE.LineBasicMaterial({ color: 0x555555 }),
+    arrowTip: new THREE.MeshBasicMaterial({ color: 0x555555 }),
+    bubble: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .28, depthWrite: false, side: THREE.DoubleSide }),
+    los: new THREE.LineBasicMaterial({ color: 0xd03b3b }),
+    trail: new THREE.LineBasicMaterial({ vertexColors: true }),
+    dot: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    avoid: new THREE.MeshBasicMaterial({ color: 0xd9a400, side: THREE.DoubleSide }),
+  };
+  const routeMats = [];              // one per drone (colour follows its state)
+  let selTubeMat;
+
+  // ------------------------------------------------------------- scene objects
+  let buildingMesh, customerMesh, bodies, arms, blades, discs, halos, shadows, parcels, expressParcels, orderRings, orderDots;
+  let stalks, stalkPos, stalkCol, selRing, beam, beamRing, routeLines = [], selTube = null, selTubeKey = "";
+  let arrows, arrowPos, arrowTips, bubbles, losLines, losPos, lastWind = [0, 0];
+  let trails, trailPos, trailCol, trailDots, avoidRings;
+  const TRAIL_SEGS = 16;                // 30 s of 2-s samples, plus the current position
+  const zones = [], flashMeshes = [], pads = [];
+  const ringGeo = new THREE.RingGeometry(.3, .38, 32).rotateX(-Math.PI / 2);
+
+  function padTexture(kind) {
+    const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+    const c = cv.getContext("2d");
+    if (kind === "hub") {
+      c.fillStyle = T.ink; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = T.surface; c.font = `800 78px ${A.FONT}`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("H", 64, 70);
+    } else {
+      c.fillStyle = T.surface; c.fillRect(0, 0, 128, 128);
+      c.strokeStyle = T["c-energy"]; c.lineWidth = 12; c.strokeRect(6, 6, 116, 116);
+      c.fillStyle = T["c-energy"]; c.beginPath();
+      const k = 40, cx = 64, cy = 64;
+      c.moveTo(cx + k * .15, cy - k); c.lineTo(cx - k * .55, cy + k * .12); c.lineTo(cx - k * .02, cy + k * .12);
+      c.lineTo(cx - k * .2, cy + k); c.lineTo(cx + k * .55, cy - k * .15); c.lineTo(cx + k * .02, cy - k * .15); c.closePath(); c.fill();
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  function buildScene() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(42, 1, .1, 600);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    wrap.insertBefore(renderer.domElement, labelsEl);
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = .09;
+    controls.maxPolarAngle = Math.PI * .47; controls.minDistance = 2.5; controls.maxDistance = Math.max(W, H) * 4;
+    controls.screenSpacePanning = false;
+    controls.addEventListener("start", () => { flying = null; });
+    hemi = new THREE.HemisphereLight(0xffffff, 0x888888, .85); scene.add(hemi);
+    sun = new THREE.DirectionalLight(0xffffff, .55); sun.position.set(-W * .4, Math.max(W, H), -H * .2); scene.add(sun);
+
+    // ground and grid
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(-Math.PI / 2), mat.ground);
+    ground.position.set(W / 2, 0, H / 2); scene.add(ground);
+    const gp = [];
+    for (let x = 0; x <= W; x++) gp.push(x, .002, 0, x, .002, H);
+    for (let y = 0; y <= H; y++) gp.push(0, .002, y, W, .002, y);
+    const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.Float32BufferAttribute(gp, 3));
+    scene.add(new THREE.LineSegments(gg, mat.grid));
+
+    // buildings at their real height
+    const bl = [...A.heights];
+    buildingMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat.building, Math.max(1, bl.length));
+    bl.forEach(([b, h], j) => {
+      const [x, y] = A.decode(b), top = (h + .5) * LH;
+      O.position.set(x + .5, top / 2, y + .5); O.scale.set(.94, top, .94); O.rotation.set(0, 0, 0); O.updateMatrix();
+      buildingMesh.setMatrixAt(j, O.matrix); buildingMesh.setColorAt(j, C("#888"));
+    });
+    buildingMesh.userData.cells = bl;
+    scene.add(buildingMesh);
+
+    // pads
+    const slab = new THREE.BoxGeometry(.84, .08, .84);
+    for (const [list, kind] of [[A.hubs, "hub"], [A.stations, "station"]]) {
+      list.forEach(([x, y], i) => {
+        const side = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        const top = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const m = new THREE.Mesh(slab, [side, side, top, side, side, side]);
+        m.position.set(x + .5, .04, y + .5); scene.add(m);
+        pads.push({ kind, i, x, y, mesh: m, side, top });
+      });
+    }
+
+    // customers
+    const cs = DATA.world.customers;
+    customerMesh = new THREE.InstancedMesh(new THREE.CircleGeometry(.09, 12).rotateX(-Math.PI / 2), mat.customer, Math.max(1, cs.length));
+    cs.forEach(([x, y], j) => { O.position.set(x + .5, .004, y + .5); O.scale.set(1, 1, 1); O.updateMatrix(); customerMesh.setMatrixAt(j, O.matrix); });
+    scene.add(customerMesh);
+
+    // order rings (instanced, coloured per order state)
+    orderRings = new THREE.InstancedMesh(ringGeo, mat.ring, A.orders.length || 1);
+    orderDots = new THREE.InstancedMesh(new THREE.CircleGeometry(.12, 16).rotateX(-Math.PI / 2), mat.ring, A.orders.length || 1);
+    for (let j = 0; j < (A.orders.length || 1); j++) { orderRings.setColorAt(j, C("#888")); orderDots.setColorAt(j, C("#888")); }
+    scene.add(orderRings, orderDots);
+
+    // drones: body + 2 crossed arms + 4 rotors (blade + disc), battery halo, ground shadow, parcel
+    const inst = (geo, m, n) => { const im = new THREE.InstancedMesh(geo, m, n); im.frustumCulled = false; scene.add(im); return im; };
+    bodies = inst(new THREE.BoxGeometry(.26, .1, .26), mat.body, N);
+    arms = inst(new THREE.BoxGeometry(.66, .035, .05), mat.arm, N * 2);
+    blades = inst(new THREE.BoxGeometry(.25, .012, .035), mat.blade, N * 4);
+    discs = inst(new THREE.CircleGeometry(.13, 20).rotateX(-Math.PI / 2), mat.disc, N * 4);
+    halos = inst(new THREE.RingGeometry(.27, .33, 32).rotateX(-Math.PI / 2), mat.halo, N);
+    shadows = inst(new THREE.CircleGeometry(.2, 16).rotateX(-Math.PI / 2), mat.shadow, N);
+    parcels = inst(new THREE.BoxGeometry(.13, .11, .13), mat.parcel, N);
+    expressParcels = inst(new THREE.OctahedronGeometry(.1), mat.parcel, N);
+    for (let k = 0; k < N; k++) { bodies.setColorAt(k, C("#888")); halos.setColorAt(k, C("#888")); yaw.push(0); }
+    stalkPos = new Float32Array(N * 6); stalkCol = new Float32Array(N * 6);
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute("position", new THREE.BufferAttribute(stalkPos, 3)); sg.setAttribute("color", new THREE.BufferAttribute(stalkCol, 3));
+    stalks = new THREE.LineSegments(sg, mat.stalk); stalks.frustumCulled = false; scene.add(stalks);
+
+    // continuous flight: velocity arrows, separation bubbles, loss-of-separation links
+    if (A.CONT) {
+      arrowPos = new Float32Array(N * 6);
+      const ag = new THREE.BufferGeometry(); ag.setAttribute("position", new THREE.BufferAttribute(arrowPos, 3));
+      arrows = new THREE.LineSegments(ag, mat.arrow); arrows.frustumCulled = false; scene.add(arrows);
+      arrowTips = inst(new THREE.ConeGeometry(.06, .16, 10), mat.arrowTip, N);
+      const [sepH, sepV] = A.TRACK.sep;
+      bubbles = inst(new THREE.CylinderGeometry(sepH / A.CELL_M, sepH / A.CELL_M, 2 * sepV / A.TRACK.layer_m * LH, 32, 1, true), mat.bubble, N);
+      for (let k = 0; k < N; k++) bubbles.setColorAt(k, C("#888"));
+      trailPos = new Float32Array(N * TRAIL_SEGS * 6); trailCol = new Float32Array(N * TRAIL_SEGS * 6);
+      const tg = new THREE.BufferGeometry();
+      tg.setAttribute("position", new THREE.BufferAttribute(trailPos, 3)); tg.setAttribute("color", new THREE.BufferAttribute(trailCol, 3));
+      trails = new THREE.LineSegments(tg, mat.trail); trails.frustumCulled = false; scene.add(trails);
+      avoidRings = inst(new THREE.RingGeometry(.42, .5, 32).rotateX(-Math.PI / 2), mat.avoid, N);
+      // breadcrumbs at every recorded sample: WebGL lines are one pixel wide, dots stay visible
+      trailDots = inst(new THREE.SphereGeometry(.07, 8, 6), mat.dot, N * TRAIL_SEGS);
+      for (let j = 0; j < N * TRAIL_SEGS; j++) { trailDots.setMatrixAt(j, hidden); trailDots.setColorAt(j, C("#888")); }
+      losPos = new Float32Array(N * 6);
+      const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.BufferAttribute(losPos, 3));
+      losLines = new THREE.LineSegments(lg, mat.los); losLines.frustumCulled = false; scene.add(losLines);
+    }
+
+    // booked routes: one polyline per drone (the followed drone also gets a tube)
+    for (let k = 0; k < N; k++) {
+      const m = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: .6 });
+      routeMats.push(m);
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3 * 256), 3));
+      const line = new THREE.Line(g, m); line.frustumCulled = false; line.visible = false; scene.add(line);
+      routeLines.push(line);
+    }
+    selTubeMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+
+    // the followed drone: ring around it, beam over its destination
+    selRing = new THREE.Mesh(new THREE.RingGeometry(.44, .5, 40).rotateX(-Math.PI / 2), mat.sel); selRing.visible = false; scene.add(selRing);
+    beam = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, 1, 12, 1, true), mat.beam); beam.visible = false; scene.add(beam);
+    beamRing = new THREE.Mesh(new THREE.RingGeometry(.42, .5, 40).rotateX(-Math.PI / 2), mat.sel); beamRing.visible = false; scene.add(beamRing);
+
+    // no-fly zones: a translucent volume over the closed layers
+    for (const z of DATA.world.nfz) {
+      const [x0, y0, x1, y1] = z.rect, [z0, z1] = z.layers || [1, L];
+      const lo = (z0 - .5) * LH, hi = (z1 + .5) * LH;
+      const geo = new THREE.BoxGeometry(x1 - x0 + 1, hi - lo, y1 - y0 + 1);
+      const fill = new THREE.Mesh(geo, mat.zoneFill);
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), mat.zoneEdge);
+      const dashed = new THREE.LineSegments(new THREE.EdgesGeometry(geo), mat.zoneDash); dashed.computeLineDistances();
+      for (const o of [fill, edges, dashed]) { o.position.set((x0 + x1 + 1) / 2, (lo + hi) / 2, (y0 + y1 + 1) / 2); o.visible = false; scene.add(o); }
+      zones.push({ z, fill, edges, dashed, top: hi });
+    }
+    for (let j = 0; j < 6; j++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(.5, 16, 12), mat.flash.clone()); m.visible = false; scene.add(m); flashMeshes.push(m);
+    }
+  }
+
+  // ------------------------------------------------------------- theme
+  function theme() {
+    if (!scene) return;
+    const dark = document.documentElement.getAttribute("data-theme") === "dark" ||
+                 (document.documentElement.getAttribute("data-theme") !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+    scene.background = C(T.sky);
+    mat.ground.color.set(T.ground); mat.grid.color.set(T.grid);
+    hemi.intensity = dark ? .75 : .85; sun.intensity = dark ? .45 : .55;
+    hemi.groundColor.set(dark ? 0x333333 : 0x999999);
+    const base = C(T.building), ink = C(T.ink);
+    buildingMesh.userData.cells.forEach(([, h], j) => {
+      const c = base.clone();
+      if (L > 1 && h > 1) c.lerp(ink, .3 * (h - 1) / (L - 1));
+      buildingMesh.setColorAt(j, c);
+    });
+    if (buildingMesh.instanceColor) buildingMesh.instanceColor.needsUpdate = true;
+    mat.arm.color.set(T.ink2); mat.blade.color.set(T.ink); mat.disc.color.set(T.ink); mat.parcel.color.set(T.ink);
+    mat.customer.color.set(T.base); mat.sel.color.set(T.ink); mat.beam.color.set(T.ink);
+    mat.shadow.opacity = dark ? .35 : .16;
+    for (const m of [mat.zoneFill, mat.zoneEdge, mat.zoneDash]) m.color.set(T.critical);
+    flashMeshes.forEach(m => m.material.color.set(T.critical));
+    mat.arrow.color.set(T.ink); mat.arrowTip.color.set(T.ink); mat.los.color.set(T.critical); mat.avoid.color.set(T.warning);
+    for (const p of pads) {
+      if (p.top.map) p.top.map.dispose();
+      p.top.map = padTexture(p.kind); p.top.needsUpdate = true;
+      p.side.color.set(p.kind === "hub" ? T.ink : T["c-energy"]);
+    }
+    lastDraw && drawFrame(...lastDraw, true);
+    dirty = true;
+  }
+
+  // ------------------------------------------------------------- per-frame state
+  const lerp = (a, b, f) => a + (b - a) * f;
+  const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+  const worldPos = [];               // per drone: {x, y, z (world), air, dead, shown}
+  let labelItems = [];               // {key, pos: Vector3, html, cls, prio, w}
+
+  function place(im, idx, x, y, z, ry, sx = 1, sy = 1, sz = 1) {
+    O.position.set(x, y, z); O.rotation.set(0, ry, 0); O.scale.set(sx, sy, sz); O.updateMatrix(); im.setMatrixAt(idx, O.matrix);
+  }
+
+  function drawFrame(i, f, t, force) {
+    lastDraw = [i, f, t];
+    const sel = A.selected, spin = A.playing ? performance.now() / 1000 * 38 : 0;
+    const Fa = frames[i], Fb = frames[Math.min(i + 1, LAST)];
+    const showGround = A.opt("optGround"), showTags = A.opt("optTags"), showStalks = A.opt("optStalks");
+    const sec = (t + f) * A.TICK_S;
+    const items = [];
+    const parked = new Map();
+    for (let k = 0; k < N; k++) {
+      const a = Fa.d[k], b = Fb.d[k], st = STATES[a[3]];
+      const dead = st === "dead";
+      let x, zc, y, air = !!a[2], vel = null;
+      const p = A.CONT && !dead ? A.trackAt(k, sec) : null;
+      if (dead) { x = a[0] + .5; zc = a[1] + .5; y = .06; air = false; }
+      else if (p && p.air) {                          // continuous flight: the recorded position
+        x = p.x + .5; zc = p.y + .5; y = Math.max(.09, p.z * LH); air = true;
+        vel = [p.vx, p.vy, p.vz];
+        if (Math.hypot(p.vx, p.vy) > .5) yaw[k] = Math.atan2(p.vx, p.vy);
+      }
+      else if (p ? true : !a[2] && !(b[2] && f > 0)) {  // on the ground: park around the pad
+        const key = a[0] + "," + a[1];
+        if (!parked.has(key)) parked.set(key, []);
+        const j = parked.get(key).push(k) - 1;
+        const ang = -Math.PI * .75 + j * 2 * Math.PI / 8, rad = .72;
+        x = a[0] + .5 + Math.cos(ang) * rad; zc = a[1] + .5 + Math.sin(ang) * rad; y = .09;
+      } else {                                        // flying, taking off or touching down
+        const bx = b[2] ? b[0] : a[0], by = b[2] ? b[1] : a[1], by3 = b[2] ? A.altOf(b) * LH : .09;
+        x = lerp(a[0], bx, f) + .5; zc = lerp(a[1], by, f) + .5;
+        y = lerp(a[2] ? A.altOf(a) * LH : .09, by3, f);
+        air = true;
+        if (bx !== a[0] || by !== a[1]) yaw[k] = Math.atan2(bx - a[0], by - a[1]);
+      }
+      const shown = dead || air || showGround;
+      worldPos[k] = { x, y, z: zc, air, dead, shown, d: a, vel };
+      const col = C(A.colorOf(a)), dim = sel >= 0 && sel !== k;
+      if (dim) col.lerp(C(T.sky), .45);
+      bodies.setColorAt(k, col);
+      const s = shown ? (air || dead ? DS : .75 * DS) : 0;
+      const ry = yaw[k] + Math.PI / 4;
+      if (!shown) { bodies.setMatrixAt(k, hidden); arms.setMatrixAt(2 * k, hidden); arms.setMatrixAt(2 * k + 1, hidden); }
+      else {
+        O.position.set(x, y, zc); E.set(dead ? .9 : 0, yaw[k], dead ? .5 : 0); O.rotation.copy(E); O.scale.setScalar(s); O.updateMatrix();
+        bodies.setMatrixAt(k, O.matrix);
+        for (let j = 0; j < 2; j++) {
+          E.set(dead ? .9 : 0, yaw[k] + Math.PI / 4 + j * Math.PI / 2, dead ? .5 : 0); O.rotation.copy(E); O.updateMatrix(); arms.setMatrixAt(2 * k + j, O.matrix);
+        }
+      }
+      for (let j = 0; j < 4; j++) {
+        if (!shown || dead) { blades.setMatrixAt(4 * k + j, hidden); discs.setMatrixAt(4 * k + j, hidden); continue; }
+        const ang = ry + j * Math.PI / 2, rx = x + Math.sin(ang) * .23 * s, rz = zc + Math.cos(ang) * .23 * s;
+        place(blades, 4 * k + j, rx, y + .045 * s, rz, spin * (air ? 1 : 0) + j, s, 1, s);
+        place(discs, 4 * k + j, rx, y + .05 * s, rz, 0, air ? s : 0, 1, air ? s : 0);
+      }
+      if (air) {
+        place(halos, k, x, y - .1 * DS, zc, 0, DS, 1, DS);
+        halos.setColorAt(k, C(A.socColor(a[4])));
+        place(shadows, k, x, .006, zc, 0, DS, 1, DS);
+      } else { halos.setMatrixAt(k, hidden); shadows.setMatrixAt(k, hidden); }
+      const carry = !!a[6] && shown && !dead;
+      const ps = carry && !a[7] ? DS : 0, es = carry && a[7] ? DS : 0;
+      place(parcels, k, x, y - .13 * DS, zc, yaw[k], ps, ps, ps);
+      place(expressParcels, k, x, y - .15 * DS, zc, yaw[k], es, es, es);
+      // altitude line (solid ink while lowering a parcel on the winch)
+      const lowering = a[9] === A.FLAG.LOWERING;
+      const on = air && (showStalks || lowering);
+      stalkPos.set(on ? [x, y - .06, zc, x, 0, zc] : [0, 0, 0, 0, 0, 0], 6 * k);
+      const sc = lowering ? C(T.ink) : C(T.muted);
+      for (let j = 0; j < 2; j++) stalkCol.set([sc.r, sc.g, sc.b], 6 * k + 3 * j);
+      // labels
+      if (shown) {
+        const desc = A.describe(a), isSel = k === sel;
+        let text = showTags && desc.label ? desc.label : "";
+        if (text && p && p.air) text = text.replace(/\bL\d+\b/, `${Math.round(p.zm)} m`);
+        if (air || dead || isSel) {
+          const alert = dead || (a[10] === A.TRIP.EMERGENCY && st === "to_station");
+          items.push({ key: "d" + k, pos: new THREE.Vector3(x, y + .28, zc), prio: isSel ? 0 : 2,
+                       html: `<b>${k}</b>${dead ? " LOST" : text ? " " + A.esc(text) : ""}`,
+                       cls: "lbl" + (text || dead ? "" : " num") + (isSel ? " sel" : "") + (alert ? " alert" : "") + (sel >= 0 && !isSel ? " dim" : ""),
+                       border: alert ? T.critical : A.colorOf(a), w: 12 + 6.2 * ((dead ? 6 : text.length) + String(k).length) });
+        }
+      }
+    }
+    if (A.CONT) drawContinuous(sec, items);
+    for (const im of [bodies, arms, blades, discs, halos, shadows, parcels, expressParcels]) im.instanceMatrix.needsUpdate = true;
+    bodies.instanceColor.needsUpdate = true; halos.instanceColor.needsUpdate = true;
+    stalks.geometry.attributes.position.needsUpdate = true; stalks.geometry.attributes.color.needsUpdate = true;
+
+    // pads
+    for (const p of pads) {
+      const q = p.kind === "station" ? Fa.s[p.i][0] : 0;
+      items.push({ key: "p" + p.kind + p.i, pos: new THREE.Vector3(p.x + .5, .1, p.y + 1.25), prio: 1, cls: "lbl pad",
+                   html: A.esc((p.kind === "hub" ? `Hub ${p.i}` : `Station ${p.i}`) + (q ? ` · ${q} waiting` : "")), w: 70 });
+    }
+
+    // orders waiting at customers
+    const held = new Map();
+    Fa.d.forEach((d, k) => { if (d[5] >= 0) held.set(d[5], { k, carrying: !!d[6] }); });
+    let n = 0;
+    if (A.opt("optOrders")) {
+      for (const o of A.orders) {
+        if (o.created > t) continue;
+        const open = o.delivered >= 0 ? t < o.delivered : o.status !== "failed";
+        if (!open) continue;
+        const h = held.get(o.oid);
+        const col = C(!h ? T.muted : h.carrying ? T["c-parcel"] : T["c-pickup"]);
+        if (sel >= 0 && (!h || h.k !== sel)) col.lerp(C(T.ground), .5);
+        place(orderRings, n, o.x + .5, .01, o.y + .5, 0, o.express ? 1.15 : 1, 1, o.express ? 1.15 : 1);
+        orderRings.setColorAt(n, col);
+        place(orderDots, n, o.x + .5, .012, o.y + .5, 0, o.express ? 1 : 0, 1, o.express ? 1 : 0);
+        orderDots.setColorAt(n, col);
+        items.push({ key: "o" + o.oid, pos: new THREE.Vector3(o.x + .95, .02, o.y + .5), prio: 4, cls: "lbl order",
+                     html: `${o.express ? "<b>" : ""}#${o.oid}${o.express ? "</b>" : ""}`, w: 30, anchor: "left" });
+        n++;
+      }
+    }
+    orderRings.count = orderDots.count = n;
+    orderRings.instanceMatrix.needsUpdate = orderDots.instanceMatrix.needsUpdate = true;
+    if (n) { orderRings.instanceColor.needsUpdate = orderDots.instanceColor.needsUpdate = true; }
+
+    // zones
+    for (const zn of zones) {
+      const z = zn.z, active = t >= z.start && t < z.end, announced = t >= z.announce && t < z.start;
+      zn.fill.visible = zn.edges.visible = active; zn.dashed.visible = announced;
+      if (active || announced) {
+        const [x0, y0] = z.rect, [z0, z1] = z.layers || [1, L];
+        const layers = L > 1 && (z0 > 1 || z1 < L) ? ` (layers ${z0}–${z1})` : "";
+        items.push({ key: "z" + zones.indexOf(zn), pos: new THREE.Vector3(x0 + .1, zn.top + .1, y0 + .1), prio: 3, cls: "lbl zone", anchor: "left",
+                     html: A.esc(active ? `No-fly zone until t=${z.end}${layers}` : `No-fly zone from t=${z.start}${layers}`), w: 170 });
+      }
+    }
+
+    // routes (rebuilt when the tick changes; the first point follows the drone smoothly)
+    const showPaths = A.opt("optPaths");
+    const newTick = t !== lastT || force;
+    for (let k = 0; k < N; k++) {
+      const line = routeLines[k], wp = worldPos[k];
+      if (!showPaths || !wp.air || wp.dead) { line.visible = false; continue; }
+      if (newTick) line.userData.route = A.routeAhead(k, t, Fa.d[k]);
+      const route = line.userData.route;
+      if (!route || route.length < 2) { line.visible = false; continue; }
+      const arr = line.geometry.attributes.position.array, m = Math.min(route.length, 255);
+      arr[0] = wp.x; arr[1] = wp.y; arr[2] = wp.z;
+      for (let j = 1; j < m; j++) { arr[3 * j] = route[j][0] + .5; arr[3 * j + 1] = route[j][2] * LH; arr[3 * j + 2] = route[j][1] + .5; }
+      line.geometry.setDrawRange(0, m); line.geometry.attributes.position.needsUpdate = true;
+      line.visible = true;
+      const isSel = k === sel;
+      routeMats[k].color.set(A.colorOf(Fa.d[k]));
+      routeMats[k].opacity = sel < 0 ? .7 : isSel ? 1 : .14;
+    }
+    // the followed drone's route as a tube, plus its destination beam
+    const selRoute = sel >= 0 && showPaths && routeLines[sel] && routeLines[sel].visible ? routeLines[sel].userData.route : null;
+    const tubeKey = selRoute ? sel + ":" + t : "";
+    if (tubeKey !== selTubeKey) {
+      if (selTube) { scene.remove(selTube); selTube.geometry.dispose(); selTube = null; }
+      if (selRoute) {
+        const path = new THREE.CurvePath();
+        const pts = selRoute.map(c => new THREE.Vector3(c[0] + .5, c[2] * LH, c[1] + .5));
+        for (let j = 1; j < pts.length; j++) path.add(new THREE.LineCurve3(pts[j - 1], pts[j]));
+        selTube = new THREE.Mesh(new THREE.TubeGeometry(path, Math.max(8, pts.length * 3), .045, 6, false), selTubeMat);
+        scene.add(selTube);
+      }
+      selTubeKey = tubeKey;
+    }
+    if (sel >= 0) selTubeMat.color.set(A.colorOf(Fa.d[sel]));
+    const sw = sel >= 0 ? worldPos[sel] : null;
+    selRing.visible = !!(sw && sw.shown);
+    if (selRing.visible) { selRing.position.set(sw.x, sw.y - .02, sw.z); }
+    const d = sel >= 0 ? Fa.d[sel] : null;
+    beam.visible = beamRing.visible = !!(d && d[8] >= 0 && STATES[d[3]] !== "dead");
+    if (beam.visible) {
+      const [bx, by] = A.decode(d[8]), top = (L + 1) * LH;
+      beam.position.set(bx + .5, top / 2, by + .5); beam.scale.set(1, top, 1);
+      beamRing.position.set(bx + .5, .015, by + .5);
+    }
+
+    // collision flashes
+    let fi = 0;
+    for (const fl of A.flashes) {
+      const age = i + f - fl.i;
+      if (age < 0 || age > 3 || fi >= flashMeshes.length) continue;
+      const m = flashMeshes[fi++];
+      m.visible = true; m.position.set(fl.x + .5, fl.z * LH, fl.y + .5); m.scale.setScalar(.6 + age * .5);
+      m.material.opacity = .55 * (1 - age / 3.2);
+      if (age < 1) items.push({ key: "f" + fi, pos: new THREE.Vector3(fl.x + .5, fl.z * LH + .9, fl.y + .5), prio: 0, cls: "lbl flash", html: `COLLISION${L > 1 ? ` (L${fl.z})` : ""}`, w: 90 });
+    }
+    for (; fi < flashMeshes.length; fi++) flashMeshes[fi].visible = false;
+
+    labelItems = items;
+    lastT = t;
+    dirty = true;
+  }
+
+  /* Continuous flight: velocity arrows and bubbles (optional), loss-of-separation links, wind. */
+  function drawContinuous(sec, items) {
+    const showArrows = A.opt("optArrows"), showBubbles = A.opt("optBubbles"), showTrails = A.opt("optTrails");
+    // trails: the last 30 s of each airborne drone, fading into the background
+    const sky = C(T.sky), avoiding = A.orcaAt(sec), sel = A.selected;
+    trailPos.fill(0); trailCol.fill(0);
+    for (let k = 0; k < N; k++) {
+      const w = worldPos[k];
+      if (w.air && !w.dead && avoiding.has(k)) place(avoidRings, k, w.x, w.y - .02, w.z, 0, 1, 1, 1);
+      else avoidRings.setMatrixAt(k, hidden);
+      for (let j = 0; j < TRAIL_SEGS; j++) trailDots.setMatrixAt(k * TRAIL_SEGS + j, hidden);
+      if (!showTrails || !w.air || w.dead) continue;
+      const pts = A.trailAt(k, sec, 30), n = pts.length, base = C(A.colorOf(w.d));
+      if (sel >= 0 && sel !== k) base.lerp(sky, .6);
+      const first = Math.max(1, n - TRAIL_SEGS);
+      for (let j = first; j < n; j++) {
+        const p = pts[j - 1], q = pts[j];
+        if (!p.air || !q.air) continue;
+        const o = 6 * (k * TRAIL_SEGS + (j - first)), fa = .15 + .85 * (j - 1) / n, fb = .15 + .85 * j / n;
+        trailPos.set([p.x + .5, Math.max(.09, p.z * LH), p.y + .5, q.x + .5, Math.max(.09, q.z * LH), q.y + .5], o);
+        const ca = sky.clone().lerp(base, fa), cb = sky.clone().lerp(base, fb);
+        trailCol.set([ca.r, ca.g, ca.b, cb.r, cb.g, cb.b], o);
+        if (j < n - 1) {                  // a dot at each recorded sample (the drone itself marks the present)
+          const di = k * TRAIL_SEGS + (j - first), sc = .5 + .8 * j / n;
+          place(trailDots, di, q.x + .5, Math.max(.09, q.z * LH), q.y + .5, 0, sc, sc, sc);
+          trailDots.setColorAt(di, cb);
+        }
+      }
+    }
+    trails.geometry.attributes.position.needsUpdate = true; trails.geometry.attributes.color.needsUpdate = true;
+    trailDots.instanceMatrix.needsUpdate = true; if (trailDots.instanceColor) trailDots.instanceColor.needsUpdate = true;
+    avoidRings.instanceMatrix.needsUpdate = true;
+    const los = A.losAt(sec), inLos = new Set();
+    for (const l of los) { inLos.add(l.i); inLos.add(l.j); }
+    const AHEAD = 8;                                   // seconds of travel shown by an arrow
+    for (let k = 0; k < N; k++) {
+      const w = worldPos[k], on = w.air && !w.dead && w.vel;
+      const ax = on ? w.vel[0] * AHEAD / A.CELL_M : 0, ay = on ? w.vel[2] * AHEAD / A.TRACK.layer_m * LH : 0, az = on ? w.vel[1] * AHEAD / A.CELL_M : 0;
+      const long = on && showArrows && Math.hypot(ax, az) > .05;
+      arrowPos.set(long ? [w.x, w.y, w.z, w.x + ax, w.y + ay, w.z + az] : [0, 0, 0, 0, 0, 0], 6 * k);
+      if (long) {
+        O.position.set(w.x + ax, w.y + ay, w.z + az);
+        O.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), V.set(ax, ay, az).normalize());
+        O.scale.setScalar(1); O.updateMatrix(); arrowTips.setMatrixAt(k, O.matrix);
+        O.rotation.set(0, 0, 0);
+      } else arrowTips.setMatrixAt(k, hidden);
+      if (w.air && !w.dead && (showBubbles || inLos.has(k))) {
+        place(bubbles, k, w.x, w.y, w.z, 0);
+        bubbles.setColorAt(k, C(inLos.has(k) ? T.critical : T.ink2));
+      } else bubbles.setMatrixAt(k, hidden);
+    }
+    arrows.geometry.attributes.position.needsUpdate = true;
+    arrowTips.instanceMatrix.needsUpdate = true;
+    bubbles.instanceMatrix.needsUpdate = true; bubbles.instanceColor.needsUpdate = true;
+    let n = 0;
+    for (const l of los) {
+      const a = worldPos[l.i], b = worldPos[l.j];
+      if (!a || !b || !a.air || !b.air || n >= N) continue;
+      losPos.set([a.x, a.y, a.z, b.x, b.y, b.z], 6 * n++);
+      if (l.live) items.push({ key: "los" + l.i + "_" + l.j, pos: new THREE.Vector3((a.x + b.x) / 2, (a.y + b.y) / 2 + .35, (a.z + b.z) / 2), prio: 0,
+                               cls: "lbl los", html: `too close: ${l.dmin.toFixed(0)} m`, w: 100 });
+    }
+    losLines.geometry.setDrawRange(0, 2 * n);
+    losLines.geometry.attributes.position.needsUpdate = true;
+    lastWind = A.windAt(sec);
+  }
+
+  const windArrow = document.getElementById("windArrow"), windText = document.getElementById("windText");
+  function updateWind() {
+    if (!A.CONT) return;
+    const [wx, wy] = lastWind, sp = Math.hypot(wx, wy);
+    windText.textContent = `wind ${sp.toFixed(1)} m/s`;
+    if (sp < .05) return;
+    // where the wind vector points on screen, from the centre of the city
+    const c = new THREE.Vector3(W / 2, 0, H / 2), tip = c.clone().add(new THREE.Vector3(wx / sp, 0, wy / sp));
+    c.project(camera); tip.project(camera);
+    const ang = Math.atan2(tip.x - c.x, tip.y - c.y) * 180 / Math.PI;
+    windArrow.setAttribute("transform", `rotate(${ang.toFixed(1)})`);
+  }
+
+  // ------------------------------------------------------------- labels overlay
+  const labelPool = new Map();
+  function layoutLabels() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    const camPos = camera.position;
+    const vis = [];
+    for (const it of labelItems) {
+      V.copy(it.pos).project(camera);
+      if (V.z > 1 || V.z < -1 || V.x < -1.1 || V.x > 1.1 || V.y < -1.1 || V.y > 1.1) continue;
+      vis.push({ it, x: (V.x + 1) / 2 * w, y: (1 - V.y) / 2 * h, dist: camPos.distanceToSquared(it.pos) });
+    }
+    vis.sort((a, b) => a.it.prio - b.it.prio || a.dist - b.dist);
+    const placed = [], used = new Set();
+    for (const v of vis) {
+      const lw = v.it.w, lh = 18;
+      let x = v.it.anchor === "left" ? v.x : v.x - lw / 2, y = v.it.anchor === "left" ? v.y - lh / 2 : v.y - lh;
+      if (v.x < 0 || v.x > w || v.y < 0 || v.y > h) continue;         // its anchor is off-screen
+      x = Math.max(2, Math.min(x, w - lw - 2));                        // keep the rest of the label in view
+      if (v.it.prio > 0 && placed.some(p => x < p.x + p.w && p.x < x + lw && y < p.y + p.h && p.y < y + lh)) continue;
+      if (x + lw < 0 || x > w || y + lh < 0 || y > h) continue;
+      placed.push({ x, y, w: lw, h: lh });
+      let el = labelPool.get(v.it.key);
+      if (!el) { el = document.createElement("div"); labelsEl.appendChild(el); labelPool.set(v.it.key, el); }
+      if (el._html !== v.it.html) { el.innerHTML = v.it.html; el._html = v.it.html; }
+      if (el.className !== v.it.cls) el.className = v.it.cls;
+      const bc = v.it.border || "";
+      if (el._bc !== bc) { el.style.borderColor = bc; el._bc = bc; }
+      el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+      el.hidden = false;
+      used.add(v.it.key);
+    }
+    for (const [key, el] of labelPool) if (!used.has(key) && !el.hidden) el.hidden = true;
+  }
+
+  // ------------------------------------------------------------- camera
+  /* Camera pose that fits the whole city in view at the current aspect ratio. */
+  function overviewPose(top) {
+    const centre = new THREE.Vector3(W / 2, 0, H / 2);
+    const dir = top ? new THREE.Vector3(0, 1, .001) : new THREE.Vector3(.07, .72, 1).normalize();
+    const vHalf = THREE.MathUtils.degToRad(camera.fov / 2), hHalf = Math.atan(Math.tan(vHalf) * camera.aspect);
+    const reach = Math.hypot(W, H) / 2;             // radius of the city around its centre
+    const d = 1.08 * Math.max(W / 2 / Math.tan(hHalf), (top ? H / 2 : reach * .72) / Math.tan(vHalf));
+    return { target: centre, position: centre.clone().addScaledVector(dir.normalize(), d) };
+  }
+  function overview(top) {
+    chase = false; updateChaseBtn();
+    const pose = overviewPose(top);
+    flyTo(pose.target, pose.position);
+  }
+  function flyTo(target, position) {
+    flying = { t0: performance.now(), fromT: controls.target.clone(), toT: target, fromP: camera.position.clone(), toP: position };
+    dirty = true;
+  }
+  function chaseTarget() {
+    const w = worldPos[A.selected];
+    return w ? new THREE.Vector3(w.x, w.y, w.z) : null;
+  }
+  function startChase() {
+    const tgt = chaseTarget();
+    if (!tgt) return;
+    chase = true; updateChaseBtn();
+    const back = new THREE.Vector3(-Math.sin(yaw[A.selected]), 0, -Math.cos(yaw[A.selected]));
+    flyTo(tgt, tgt.clone().addScaledVector(back, 5).add(new THREE.Vector3(0, 2.4, 0)));
+  }
+  const chaseBtn = document.getElementById("camChase");
+  function updateChaseBtn() { chaseBtn.hidden = A.selected < 0; chaseBtn.setAttribute("aria-pressed", String(chase && A.selected >= 0)); }
+  document.getElementById("camOverview").onclick = () => overview(false);
+  document.getElementById("camTop").onclick = () => overview(true);
+  chaseBtn.onclick = () => { if (chase) { chase = false; updateChaseBtn(); } else startChase(); };
+
+  function tick() {
+    requestAnimationFrame(tick);
+    if (flying) {
+      const k = Math.min(1, (performance.now() - flying.t0) / 650), e = k * k * (3 - 2 * k);
+      // while chasing, aim at where the drone is now
+      const toT = chase ? (chaseTarget() || flying.toT) : flying.toT;
+      const shift = chase ? toT.clone().sub(flying.toT) : new THREE.Vector3();
+      controls.target.lerpVectors(flying.fromT, toT, e);
+      camera.position.lerpVectors(flying.fromP, flying.toP.clone().add(shift), e);
+      if (k >= 1) flying = null;
+      dirty = true;
+    } else if (chase && A.selected >= 0) {
+      const tgt = chaseTarget();
+      if (tgt && tgt.distanceToSquared(controls.target) > 1e-6) {
+        const delta = tgt.clone().sub(controls.target).multiplyScalar(.2);
+        controls.target.add(delta); camera.position.add(delta); dirty = true;
+      }
+    }
+    if (controls.update()) dirty = true;
+    if (dirty) renderNow();
+  }
+  function renderNow() {
+    controls.update();                 // aims the camera at its target (also before the first animation frame)
+    renderer.render(scene, camera);
+    layoutLabels();
+    updateWind();
+    dirty = false;
+  }
+
+  function resize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    dirty = true;
+  }
+
+  // ------------------------------------------------------------- pointer
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pickDrone(ev) {
+    const r = renderer.domElement.getBoundingClientRect();
+    const px = ev.clientX - r.left, py = ev.clientY - r.top;
+    let best = -1, bd = 22;
+    worldPos.forEach((w, k) => {
+      if (!w || !w.shown) return;
+      V.set(w.x, w.y, w.z).project(camera);
+      if (V.z > 1) return;
+      const d = Math.hypot((V.x + 1) / 2 * r.width - px, (1 - V.y) / 2 * r.height - py);
+      if (d < bd) { bd = d; best = k; }
+    });
+    return best;
+  }
+  function pickBuilding(ev) {
+    if (L === 1) return null;
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(buildingMesh, false)[0];
+    return hit && hit.instanceId != null ? buildingMesh.userData.cells[hit.instanceId][1] : null;
+  }
+  let down = null;
+  function bindPointer() {
+    const el = renderer.domElement;
+    el.addEventListener("pointerdown", ev => { down = { x: ev.clientX, y: ev.clientY }; A.hideTip(); });
+    el.addEventListener("pointerup", ev => {
+      if (!down || Math.hypot(ev.clientX - down.x, ev.clientY - down.y) > 6) { down = null; return; }
+      down = null;
+      const k = pickDrone(ev);
+      A.select(k >= 0 ? (k === A.selected ? -1 : k) : -1);
+    });
+    el.addEventListener("pointermove", ev => {
+      if (down || ev.pointerType === "touch") return;
+      const k = pickDrone(ev);
+      el.style.cursor = k >= 0 ? "pointer" : "grab";
+      if (k >= 0) { A.showTip(A.droneTip(k), ev.clientX, ev.clientY); return; }
+      const h = pickBuilding(ev);
+      if (h) A.showTip(`<b>Building</b> · ${h} layer${h > 1 ? "s" : ""} tall<br><span class="why">` +
+                       (h < L ? `Drones on layer ${h + 1} or higher fly over it` : "Blocks every flight layer") + `</span>`, ev.clientX, ev.clientY);
+      else A.hideTip();
+    });
+    el.addEventListener("pointerleave", () => A.hideTip());
+  }
+
+  return {
+    tokens: ["sky", "ground"],
+    followHint: "Click a drone in the scene or in the fleet list: the camera chases it.",
+    clickHint: "Click to follow (the camera chases it)",
+    init(api) {
+      A = api; T = api.T;
+      ({ W, H, L, frames, LAST, N, STATES } = api);
+      buildScene();
+      bindPointer();
+      new ResizeObserver(resize).observe(wrap);
+      resize();
+      const pose = overviewPose(false);
+      controls.target.copy(pose.target); camera.position.copy(pose.position);
+      controls.update();
+      requestAnimationFrame(tick);
+    },
+    draw(i, f, t) { drawFrame(i, f, t); if (!A.playing) renderNow(); },
+    theme,
+    selected(k) {
+      if (k >= 0) startChase(); else { chase = false; updateChaseBtn(); }
+      if (lastDraw) drawFrame(...lastDraw, true);
+    },
+  };
+})());
+</script>
+</body>
+</html>

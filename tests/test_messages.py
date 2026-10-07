@@ -148,7 +148,7 @@ class CliTests(unittest.TestCase):
             out = Path(tmp) / "run.html"
             with contextlib.redirect_stdout(io.StringIO()) as printed:
                 run_simulation.main(["--quiet", "--ticks", "40", "--out", str(out)])
-            log = Path(tmp) / "run_messages.txt"
+            log = Path(tmp) / "log_run_messages.txt"
             self.assertTrue(log.exists())
             self.assertIn("Messages between the agents: seed 7", log.read_text())
             self.assertIn(str(log), printed.getvalue())
@@ -156,9 +156,13 @@ class CliTests(unittest.TestCase):
 
     def test_message_and_cruise_options(self):
         self.assertEqual(run_simulation.messages_path("", []), "")
-        self.assertEqual(run_simulation.messages_path(None, []), "results/messages.txt")
+        self.assertEqual(run_simulation.messages_path(None, []), "results/log_messages.txt")
         self.assertEqual(run_simulation.messages_path(None, run_simulation.replay_paths("r/x_3d.html", "3d")),
-                         "r/x_messages.txt")
+                         "r/log_x_messages.txt")
+        self.assertEqual(run_simulation.messages_path(None, run_simulation.replay_paths(None, "all")),
+                         "results/log_messages.txt")
+        self.assertEqual(run_simulation.messages_path(None, run_simulation.replay_paths("r/replay_continuous.html", "2d")),
+                         "r/log_continuous_messages.txt")
         self.assertIsNone(run_simulation.parse_args([]).cruise_layer)
         self.assertEqual({k: getattr(SimConfig(), k) for k in CRUISE},
                          dict(CRUISE, cruise_layer=0))                    # the tests use the defaults

@@ -1,9 +1,10 @@
 """Records a compact trace of a run and exports self-contained HTML replays.
 
-Two viewers share one core (``viewer_core.js`` / ``viewer_core.css``, inlined
+Three viewers share one core (``viewer_core.js`` / ``viewer_core.css``, inlined
 at export time): the top-down 2-D map (``viewer_template.html``, works
-offline) and a 3-D scene (``viewer3d_template.html``, loads three.js from a
-CDN).
+offline), a 3-D city (``viewer3d_template.html``, loads three.js from a CDN)
+and the original 3-D block view (``viewer3d_blocks_template.html``, also
+three.js): coloured boxes on a board, one per planning cell.
 
 Cells are encoded as integers ``(z * H + y) * W + x``; sites such as pads,
 customers and building footprints have ``z = 0``, so their code is the plain
@@ -24,7 +25,8 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).parent
-TEMPLATES = {"2d": HERE / "viewer_template.html", "3d": HERE / "viewer3d_template.html"}
+TEMPLATES = {"2d": HERE / "viewer_template.html", "3d": HERE / "viewer3d_template.html",
+             "blocks": HERE / "viewer3d_blocks_template.html"}
 TEMPLATE = TEMPLATES["2d"]
 CORE_JS = HERE / "viewer_core.js"
 CORE_CSS = HERE / "viewer_core.css"
@@ -178,7 +180,7 @@ def render_html(data: dict, view: str = "2d") -> str:
 
 
 def export_html(sim, metrics: dict, path: str | Path, view: str = "2d") -> Path:
-    """Write a self-contained replay; ``view`` is "2d" (offline) or "3d" (needs internet for three.js)."""
+    """Write a self-contained replay; ``view`` is "2d" (offline), "3d" or "blocks" (both need internet for three.js)."""
     if sim.trace is None:
         raise ValueError("run the simulation with record_trace=True to export a replay")
     path = Path(path)

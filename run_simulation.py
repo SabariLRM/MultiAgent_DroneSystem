@@ -9,6 +9,7 @@ Examples
     python3 run_simulation.py --battery naive --seed 1     # watch drones run dry
     python3 run_simulation.py --layers 5 --layer-rule heading   # stacked airspace
     python3 run_simulation.py --view 3d                    # 3-D replay (loads three.js online)
+    python3 run_simulation.py --view all                   # 2-D map, 3-D city and 3-D blocks
     python3 run_simulation.py --motion continuous          # metres and seconds, ORCA, wind field
     python3 run_simulation.py --motion continuous --wind strong --tactical none
     python3 run_simulation.py --motion continuous --drones 32 --rate 0.47 --spare-packs 6
@@ -59,13 +60,16 @@ def parse_args(argv=None) -> argparse.Namespace:
                     help="customers live in houses and buildings, and parcels are winched onto roofs at several "
                          "heights (default: on in continuous mode, off in grid mode)")
     ap.add_argument("--out", default=None,
-                    help="HTML replay path ('' to skip; default results/replay.html, or results/replay_3d.html for --view 3d)")
-    ap.add_argument("--view", choices=("2d", "3d", "both"), default="2d",
-                    help="replay viewer: 2d (works offline), 3d (needs internet for three.js) or both")
+                    help="HTML replay path ('' to skip; default results/replay.html, results/replay_3d.html for --view 3d, "
+                         "or results/replay_3d_blocks.html for --view blocks)")
+    ap.add_argument("--view", choices=("2d", "3d", "blocks", "both", "all"), default="2d",
+                    help="replay viewer: 2d (works offline), 3d (a realistic city; needs internet for three.js), "
+                         "blocks (the original 3-D view of coloured blocks; also needs internet), "
+                         "both (2d and 3d) or all (2d, 3d and blocks)")
     ap.add_argument("--metrics-json", default="", help="also write metrics to this JSON file")
     ap.add_argument("--messages", default=None,
                     help="write every message between the agents, in plain English, to this file ('' to skip; "
-                         "default: next to the replay, e.g. results/replay_messages.txt)")
+                         "default: next to the replay, e.g. results/log_messages.txt)")
     ap.add_argument("--messages-all", action="store_true",
                     help="also list the routine status reports (telemetry and station status, every tick)")
     ap.add_argument("--map", action="store_true", help="print the ASCII city map")
@@ -75,25 +79,32 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 
 def replay_paths(out: str | None, view: str) -> list[tuple[str, Path]]:
-    """(view, path) pairs to export; ``both`` writes the 3-D replay next to the 2-D one as *_3d.html."""
+    """(view, path) pairs to export; ``both`` writes the 3-D replay next to the 2-D one as *_3d.html,
+    and ``all`` also writes the block view as *_3d_blocks.html."""
     if out == "":
         return []
     if out is None:
-        out = "results/replay_3d.html" if view == "3d" else "results/replay.html"
+        out = {"3d": "results/replay_3d.html", "blocks": "results/replay_3d_blocks.html"}.get(view, "results/replay.html")
     path = Path(out)
-    if view == "both":
-        return [("2d", path), ("3d", path.with_name(path.stem + "_3d" + path.suffix))]
+    if view in ("both", "all"):
+        pairs = [("2d", path), ("3d", path.with_name(path.stem + "_3d" + path.suffix))]
+        if view == "all":
+            pairs.append(("blocks", path.with_name(path.stem + "_3d_blocks" + path.suffix)))
+        return pairs
     return [(view, path)]
 
 
 def messages_path(messages: str | None, replays: list[tuple[str, Path]]) -> str:
-    """Where the message log goes: the given path, or <replay>_messages.txt next to the replay."""
+    """Where the message log goes: the given path, or log_<run>_messages.txt next to the replay
+    (replay.html -> log_messages.txt, replay_continuous.html -> log_continuous_messages.txt,
+    demo.html -> log_demo_messages.txt)."""
     if messages is not None:
         return messages
     if not replays:
-        return "results/messages.txt"
+        return "results/log_messages.txt"
     path = replays[0][1]
-    return str(path.with_name(path.stem.removesuffix("_3d") + "_messages.txt"))
+    run = path.stem.removesuffix("_blocks").removesuffix("_3d").removeprefix("replay").lstrip("_")
+    return str(path.with_name("log_" + (run + "_" if run else "") + "messages.txt"))
 
 
 def main(argv=None) -> int:
@@ -142,7 +153,8 @@ def main(argv=None) -> int:
     for view, out in replays:
         path = export_html(sim, metrics, out, view=view)
         note = "" if view == "2d" else "; the 3-D view loads three.js from cdn.jsdelivr.net"
-        print(f"\nReplay ({view.upper()}) written to {path}  (open it in a browser{note})")
+        label = "3D blocks" if view == "blocks" else view.upper()
+        print(f"\nReplay ({label}) written to {path}  (open it in a browser{note})")
     if a.messages:
         title = (f"Messages between the agents: seed {cfg.seed}, {cfg.n_drones} drones, {cfg.motion} flight, "
                  f"{metrics['ticks']} ticks (1 tick = 10 s)")
